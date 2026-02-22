@@ -1,0 +1,71 @@
+import streamlit as st
+import pandas as pd
+import plotly.graph_objs as go
+import yfinance as yf
+from datetime import date
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.stattools import acf
+from statsmodels.tsa.arima.model import ARIMA
+
+from utils import require_login, show_logo
+
+st.set_page_config(page_title="ARIMA Dólar", page_icon="📈", layout="wide")
+require_login()
+show_logo()
+
+
+@st.cache_data(ttl=3600)
+def baixar_dados_dolar():
+    start_date = date(2014, 1, 1)
+    df = yf.download('USDBRL=X', start=start_date, end=date.today().strftime('%Y-%m-%d'), auto_adjust=True, multi_level_index=False, progress=False)
+    return df
+
+
+def decompor_serie_dolar(df):
+    decomposition = seasonal_decompose(df['Close'], model='multiplicative', period=365)
+    trend = decomposition.trend.dropna()
+    seasonal = decomposition.seasonal.dropna()
+    residual = decomposition.resid.dropna()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df['Close'].index, y=df['Close'], mode='lines', name='Valor Real', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=trend.index, y=trend, mode='lines', name='Tendência', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=seasonal.index, y=seasonal, mode='lines', name='Sazonalidade', line=dict(color='orange')))
+    fig.add_trace(go.Scatter(x=residual.index, y=residual, mode='lines', name='Resíduos', line=dict(color='green')))
+    fig.update_layout(title="Decomposição da Série Temporal do Dólar", xaxis_title='Data', yaxis_title='Valor')
+    st.plotly_chart(fig)
+
+
+def plot_acf_dolar(df):
+    df_clean = df['Close'].dropna()
+    lags = 50
+    acf_vals = acf(df_clean, nlags=lags)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=list(range(lags+1)), y=acf_vals, mode='markers+lines', marker=dict(color='blue', size=6)))
+    fig.update_layout(title='Autocorrelação (ACF) do Dólar', xaxis_title='Lags', yaxis_title='Autocorrelação')
+    st.plotly_chart(fig)
+
+
+def arima_previsao_dolar(df, dias_futuro, p=5, d=1, q=0):
+    model = ARIMA(df['Close'], order=(p, d, q))
+    model_fit = model.fit()
+    forecast = model_fit.forecast(steps=dias_futuro)
+    previsao_datas = pd.date_range(df.index[-1], periods=dias_futuro + 1, freq='D')[1:]
+    df_forecast = pd.DataFrame({'Data': previsao_datas, 'Previsão': forecast})
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Valor Real', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=df_forecast['Data'], y=df_forecast['Previsão'], mode='lines+markers', name=f'Previsão de {dias_futuro} dias', line=dict(color='red', dash='dash')))
+    fig.update_layout(title=f'Previsão ARIMA ({p}, {d}, {q}) - {dias_futuro} Dias', xaxis_title='Data', yaxis_title='USD/BRL')
+    st.plotly_chart(fig)
+
+
+st.title("Previsão do Preço do Dólar com ARIMA")
+df = baixar_dados_dolar()
+st.write("### Dados Históricos")
+st.write(df.tail())
+st.write("### Decomposição da Série Temporal")
+decompor_serie_dolar(df)
+st.write("### Autocorrelação (ACF)")
+plot_acf_dolar(df)
+dias_futuro = st.number_input("Quantos dias no futuro deseja prever?", min_value=1, max_value=365, value=30, step=1)
+if st.button("Simular"):
+    arima_previsao_dolar(df, dias_futuro)
