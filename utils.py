@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 import yfinance as yf
 
@@ -14,8 +16,12 @@ def require_login():
         st.title("Login")
         st.text_input("Login", key="username")
         st.text_input("Senha", type="password", key="password")
-        expected_user = st.secrets.get("login_username", "")
-        expected_pass = st.secrets.get("login_password", "")
+        try:
+            expected_user = st.secrets.get("login_username", "")
+            expected_pass = st.secrets.get("login_password", "")
+        except FileNotFoundError:
+            expected_user = os.environ.get("LOGIN_USERNAME", "")
+            expected_pass = os.environ.get("LOGIN_PASSWORD", "")
         if st.button("Entrar"):
             if (st.session_state.get("username") == expected_user and
                     st.session_state.get("password") == expected_pass):
