@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pip install -r requirements.txt
-streamlit run MonteCarlo.py
+streamlit run Painel.py
 ```
 
 The app runs on `http://localhost:8501`. There are no tests or linting configurations.
@@ -20,8 +20,10 @@ The app runs on `http://localhost:8501`. There are no tests or linting configura
 This is a multi-page Streamlit app:
 
 - **`config.py`** — Single source of truth for all asset configs (CSV filename, default price, bounds). Both pages import `ATIVOS` from here.
-- **`MonteCarlo.py`** — Main page. Runs 100,000 Monte Carlo simulations to calculate the probability of a price being above/below a threshold within a given number of days. Supports three assets: Açúcar, Dólar, SBV24. Displays results as a percentile fan chart (P5/P25/P50/P75/P95).
-- **`pages/Opções.py`** — Second page. Prices European call options via Monte Carlo (100,000 simulations per strike) across a range of strikes, outputting a pricing table and bar chart. Supports all three assets.
+- **`Painel.py`** — Entry point / dashboard home. Shows live prices and an index of all modules.
+- **`pages/09_Monte_Carlo.py`** — Monte Carlo simulation fan chart (P5–P95 percentiles).
+- **`pages/08_Payoff_Opções.py`** — Multi-leg options strategy payoff diagram builder.
+- **`pages/23_Opções.py`** — European call pricer via Monte Carlo across a range of strikes.
 
 ### Data Loading
 
