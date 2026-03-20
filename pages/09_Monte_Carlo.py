@@ -47,9 +47,9 @@ hoje = pd.to_datetime('today').date()
 dias_simulados = calcular_dias_uteis(hoje, data_simulacao)
 
 if "valor_simulado_mc" not in st.session_state:
-    st.session_state["valor_simulado_mc"] = float(data['Close'].iloc[-1])
+    st.session_state["valor_simulado_mc"] = float(data['Close'].dropna().iloc[-1])
 valor_simulado = st.number_input("Qual valor deseja simular?", value=st.session_state["valor_simulado_mc"], step=0.01)
-preco_atual = float(data['Close'].iloc[-1])
+preco_atual = float(data['Close'].dropna().iloc[-1])
 PCT_BOUND = 0.50
 limite_inferior = preco_atual * (1 - PCT_BOUND)
 limite_superior = preco_atual * (1 + PCT_BOUND)
