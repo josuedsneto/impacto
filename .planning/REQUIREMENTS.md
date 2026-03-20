@@ -50,7 +50,7 @@
 
 ### Infraestrutura e Deploy
 
-- [ ] **INFRA-01**: Schema Supabase aplicado via migrations versionadas (supabase db push)
+- [x] **INFRA-01**: Schema Supabase aplicado via migrations versionadas (supabase db push)
 - [ ] **INFRA-02**: Nginx roteia / para Next.js :3000 e /api/* para FastAPI :8000 com SSL Let's Encrypt
 - [ ] **INFRA-03**: GitHub Actions faz deploy automático em merge na main
 - [ ] **INFRA-04**: Toggle dark/light persiste após fechar e reabrir o browser
@@ -89,7 +89,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
 | INFRA-02 | Phase 1 | Pending |
 | AUTH-01 | Phase 2 | Pending |
 | AUTH-02 | Phase 2 | Pending |

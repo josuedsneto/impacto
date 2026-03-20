@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 Milestone: v2.0 Plataforma Escalavel
 Phase: 1 of 8 (Infra & Schema)
-Plan: Not started
-Status: Not started
-Last activity: 2026-03-20 — Roadmap v2.0 created
+Plan: 1 of 3
+Status: In progress
+Last activity: 2026-03-20 — Completed 01-01 (Supabase schema migrations)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 4%
 
 ## Performance Metrics
 
@@ -28,10 +28,10 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-infra-schema | 1 | ~10 min | ~10 min |
 
 **Recent Trend:**
-- Last 5 plans: -
+- Last 5 plans: 01-01 (~10 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -51,10 +51,15 @@ Carried forward from v1.0:
 - Oracle Cloud Always Free for deploy — zero cost, 4 vCPUs / 24GB sufficient for 100 users
 - Next.js App Router + shadcn/ui new-york — modern React ecosystem
 - Supabase Auth with JWT RS256 — managed auth, RLS on all user-owned tables
+- market_coverage has no RLS — accessed exclusively by FastAPI via service role key
+- tickers_catalog write enforced in FastAPI (not RLS) to keep policies simple
+- simulations stores JSONB percentiles_series alongside scalar p5/p50/p95 for flexible querying
+- All user-owned table FKs use ON DELETE CASCADE from auth.users
 
 ### Pending Todos
 
-- Create first plan for Phase 1: Infra & Schema
+- Execute Phase 1 Plan 02 (app scaffold)
+- Execute Phase 1 Plan 03 (nginx + VM bootstrap)
 
 ### Blockers/Concerns
 
@@ -63,5 +68,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Roadmap v2.0 created — ready to plan Phase 1
+Stopped at: Completed 01-01-PLAN.md (Supabase schema migrations)
 Resume file: None
