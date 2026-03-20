@@ -4,22 +4,23 @@
 
 See: .planning/PROJECT.md (updated 2026-03-20)
 
-**Core value:** Correct, trustworthy simulation outputs users can rely on for hedging decisions
-**Current focus:** Phase 1 — Monte Carlo Core
+**Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
+**Current focus:** Phase 1 — Infra & Schema (v2.0 Plataforma Escalável)
 
 ## Current Position
 
-Phase: 1 of 3 (Monte Carlo Core)
-Plan: 1 of TBD in current phase
-Status: In progress
-Last activity: 2026-03-20 — Completed 01-01-PLAN.md
+Milestone: v2.0 Plataforma Escalavel
+Phase: 1 of 8 (Infra & Schema)
+Plan: Not started
+Status: Not started
+Last activity: 2026-03-20 — Roadmap v2.0 created
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 0 (v2.0)
 - Average duration: -
 - Total execution time: -
 
@@ -34,23 +35,26 @@ Progress: [█░░░░░░░░░] 10%
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 01-monte-carlo-core P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Carried forward from v1.0:
 
-- Audit-first then fix approach confirmed in PROJECT.md
+- Audit-first then fix approach confirmed in v1.0
 - Risk-neutral drift for options MC (financially correct for derivatives)
-- Asset-relative bounds as % of price (fixed ±10 meaningless across asset scales)
-- [Phase 01-monte-carlo-core]: PCT_BOUND=0.50: bounds are 50% of last close to avoid truncating GBM cone
+- PCT_BOUND=0.50: bounds are 50% of last close to avoid truncating GBM cone
+- FastAPI validates JWT locally (PyJWT + RS256 public key) — no round-trip to Supabase
+- Cache-aside incremental in PostgreSQL — reduces yfinance calls, history persisted
+- Oracle Cloud Always Free for deploy — zero cost, 4 vCPUs / 24GB sufficient for 100 users
+- Next.js App Router + shadcn/ui new-york — modern React ecosystem
+- Supabase Auth with JWT RS256 — managed auth, RLS on all user-owned tables
 
 ### Pending Todos
 
-None yet.
+- Create first plan for Phase 1: Infra & Schema
 
 ### Blockers/Concerns
 
@@ -59,5 +63,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 01-monte-carlo-core 01-01-PLAN.md
+Stopped at: Roadmap v2.0 created — ready to plan Phase 1
 Resume file: None
