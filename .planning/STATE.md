@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 Milestone: v2.0 Plataforma Escalavel
 Phase: 1 of 8 (Infra & Schema)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: In progress
-Last activity: 2026-03-20 — Completed 01-01 (Supabase schema migrations)
+Last activity: 2026-03-20 — Completed 01-02 (App scaffold: Next.js frontend + FastAPI backend)
 
-Progress: [█░░░░░░░░░] 4%
+Progress: [██░░░░░░░░] 7%
 
 ## Performance Metrics
 
@@ -55,10 +55,11 @@ Carried forward from v1.0:
 - tickers_catalog write enforced in FastAPI (not RLS) to keep policies simple
 - simulations stores JSONB percentiles_series alongside scalar p5/p50/p95 for flexible querying
 - All user-owned table FKs use ON DELETE CASCADE from auth.users
+- FastAPI routes use full /api/health prefix — Nginx proxies without stripping prefix (proxy_pass no rewrite)
+- shadcn style locked to new-york/zinc per design spec
 
 ### Pending Todos
 
-- Execute Phase 1 Plan 02 (app scaffold)
 - Execute Phase 1 Plan 03 (nginx + VM bootstrap)
 
 ### Blockers/Concerns
@@ -68,5 +69,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 01-01-PLAN.md (Supabase schema migrations)
+Stopped at: Completed 01-02-PLAN.md (App scaffold: Next.js frontend + FastAPI backend)
 Resume file: None
