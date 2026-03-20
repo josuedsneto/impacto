@@ -1,70 +1,129 @@
-# Requirements: Impacto — Formula Audit & Fix
+# Requirements: Impacto — Plataforma Escalável
 
 **Defined:** 2026-03-20
-**Core Value:** Correct, trustworthy simulation outputs users can rely on for hedging decisions
+**Core Value:** Simulações corretas e confiáveis acessíveis a múltiplos usuários com dados persistidos e autenticação robusta
 
-## v1 Requirements
+## v1 Requirements (Milestone v2.0 — Plataforma)
 
-### Monte Carlo
+### Autenticação
 
-- [x] **MC-01**: Monte Carlo simulation uses the user-provided starting price (`valor_simulado`), not always the last close
-- [x] **MC-02**: Price clipping bounds are asset-relative (percentage of current price), not a fixed ±10
-- [x] **MC-03**: Fan chart percentile bands (P5–P95) visually match expected GBM cone shape
+- [ ] **AUTH-01**: Usuário pode fazer login com email e senha via Supabase Auth
+- [ ] **AUTH-02**: Sessão do usuário persiste após fechar e reabrir o browser
+- [ ] **AUTH-03**: Usuário não autenticado é redirecionado para /login ao acessar qualquer rota /app/*
+- [ ] **AUTH-04**: FastAPI valida JWT RS256 localmente sem round-trip ao Supabase
+- [ ] **AUTH-05**: Role admin/user é extraída do JWT (app_metadata.role) e aplicada nas rotas protegidas
+- [ ] **AUTH-06**: Frontend tenta refresh automático do token antes de redirecionar para /login
 
-### Options
+### Mercado
 
-- [ ] **OPT-01**: 23_Opções.py decouples strike range from price clipping bounds (currently conflated)
-- [ ] **OPT-02**: Options MC (23_Opções.py) uses risk-neutral drift (risk-free rate) not historical mean
-- [ ] **OPT-03**: Black-Scholes page exposes volatility input so user can update it (currently hardcoded 0.2573)
+- [ ] **MKT-01**: Segunda consulta ao mesmo ticker/range retorna do banco sem chamar o yfinance
+- [ ] **MKT-02**: Consultar range estendido (+1 dia) acrescenta apenas o novo dia ao banco
+- [ ] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
+- [ ] **MKT-04**: Backfill aceita range disponível se histórico menor que 2013-01-01
 
-### Audit
+### Simulação MC
 
-- [ ] **AUD-01**: ARIMA pages (20, 21) reviewed — documented findings of formula correctness
-- [ ] **AUD-02**: VaR page (15) reviewed — documented findings
-- [ ] **AUD-03**: Volatility page (06) and Jump Diffusion page (07) reviewed — documented findings
-- [ ] **AUD-04**: Stress test page (18) reviewed — documented findings
-- [ ] **AUD-05**: OSS/academic benchmarks surveyed and improvement opportunities documented in a findings report
+- [ ] **SIM-01**: Usuário executa simulação MC e vê fan chart + métricas em menos de 15s com cold cache
+- [ ] **SIM-02**: Simulação salva aparece na aba "Histórico" sem recarregar a página
+- [ ] **SIM-03**: Fan chart pode ser replayed via percentis JSONB salvos
+- [ ] **SIM-04**: Usuário A não consegue ver simulações do usuário B (RLS)
 
-## v2 Requirements
+### Opções e Pricing
 
-### Future improvements (not this milestone)
+- [ ] **OPT-01**: Usuário pode construir estratégia multi-leg e ver o payoff diagram
+- [ ] **OPT-02**: Usuário pode configurar volatilidade customizada para o pricer Black-Scholes
+- [ ] **OPT-03**: Pricer European call via MC usa taxa livre de risco como drift
 
-- **MC-V2-01**: Quasi-random (Sobol/Halton) sampling for faster convergence
-- **MC-V2-02**: Antithetic variates variance reduction
-- **OPT-V2-01**: Greeks calculation and display (Delta, Gamma, Vega, Theta)
-- **OPT-V2-02**: Implied volatility surface from market prices
-- **STAT-V2-01**: GARCH volatility model replacing constant sigma assumption
+### Parâmetros e Watchlist
+
+- [ ] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
+- [ ] **PARAM-02**: Configurações de parâmetros persistem entre sessões
+- [ ] **PARAM-03**: Usuário pode adicionar e remover tickers da watchlist
+- [ ] **PARAM-04**: Dashboard exibe preços ao vivo + watchlist do usuário
+
+### Admin
+
+- [ ] **ADM-01**: Admin pode ver fila de tickers pendentes de aprovação
+- [ ] **ADM-02**: Admin aprova ticker e ele aparece na lista com status "approved" imediatamente
+- [ ] **ADM-03**: Após aprovação, backfill_status muda de "pending" para "done" em menos de 60s
+- [ ] **ADM-04**: Admin pode rejeitar ticker com nota explicativa
+
+### Infraestrutura e Deploy
+
+- [ ] **INFRA-01**: Schema Supabase aplicado via migrations versionadas (supabase db push)
+- [ ] **INFRA-02**: Nginx roteia / para Next.js :3000 e /api/* para FastAPI :8000 com SSL Let's Encrypt
+- [ ] **INFRA-03**: GitHub Actions faz deploy automático em merge na main
+- [ ] **INFRA-04**: Toggle dark/light persiste após fechar e reabrir o browser
+
+## v2 Requirements (Deferred)
+
+### Notificações
+
+- **NOTIF-01**: Usuário recebe alerta quando preço atinge nível configurado
+- **NOTIF-02**: Relatório periódico automático por email
+
+### Exportação
+
+- **EXP-01**: Exportar simulação como PDF
+- **EXP-02**: Exportar dados históricos como CSV
+
+### Análise Avançada
+
+- **ADV-01**: Páginas ARIMA corrigidas com diagnósticos de resíduos (da v1.0)
+- **ADV-02**: VaR com múltiplas metodologias (da v1.0)
+- **ADV-03**: Jump Diffusion, Stress Test migrados para a plataforma
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| UI redesign | Not this milestone — formula quality only |
-| New pages | Audit existing, not expand |
-| Real-time market data streaming | Beyond current architecture |
-| Portfolio optimization | Separate domain, future milestone |
+| App mobile | Web-first; mobile requer esforço separado |
+| OAuth social login | Email/senha suficiente para usuários internos |
+| Integração com corretoras | Fora do escopo de análise |
+| Multi-tenancy | Escopo: uma empresa, 20–100 usuários |
+| Reprodutibilidade MC (random seed) | MC é estocástico por design |
+| Migração dos CSVs históricos | yfinance é source of truth |
+| ARIMA / VaR / Jump Diffusion na plataforma v2 | Migrar só MC + BS + payoff; demais ficam para v3 |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MC-01 | Phase 1 | Complete |
-| MC-02 | Phase 1 | Complete |
-| MC-03 | Phase 1 | Complete |
-| OPT-01 | Phase 2 | Pending |
-| OPT-02 | Phase 2 | Pending |
-| OPT-03 | Phase 2 | Pending |
-| AUD-01 | Phase 3 | Pending |
-| AUD-02 | Phase 3 | Pending |
-| AUD-03 | Phase 3 | Pending |
-| AUD-04 | Phase 3 | Pending |
-| AUD-05 | Phase 3 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 2 | Pending |
+| AUTH-02 | Phase 2 | Pending |
+| AUTH-03 | Phase 2 | Pending |
+| AUTH-04 | Phase 2 | Pending |
+| AUTH-05 | Phase 2 | Pending |
+| AUTH-06 | Phase 2 | Pending |
+| MKT-01 | Phase 3 | Pending |
+| MKT-02 | Phase 3 | Pending |
+| MKT-03 | Phase 3 | Pending |
+| MKT-04 | Phase 3 | Pending |
+| SIM-01 | Phase 4 | Pending |
+| SIM-02 | Phase 4 | Pending |
+| SIM-03 | Phase 4 | Pending |
+| SIM-04 | Phase 4 | Pending |
+| OPT-01 | Phase 5 | Pending |
+| OPT-02 | Phase 5 | Pending |
+| OPT-03 | Phase 5 | Pending |
+| PARAM-01 | Phase 6 | Pending |
+| PARAM-02 | Phase 6 | Pending |
+| PARAM-03 | Phase 6 | Pending |
+| PARAM-04 | Phase 6 | Pending |
+| ADM-01 | Phase 7 | Pending |
+| ADM-02 | Phase 7 | Pending |
+| ADM-03 | Phase 7 | Pending |
+| ADM-04 | Phase 7 | Pending |
+| INFRA-03 | Phase 8 | Pending |
+| INFRA-04 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 11 total
-- Mapped to phases: 11
+- v1 requirements: 29 total
+- Mapped to phases: 29
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after initial definition*
+*Last updated: 2026-03-20 after milestone v2.0 definition*
