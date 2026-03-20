@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 2 — Auth (v2.0 Plataforma Escalável)
+**Current focus:** Phase 3 — Market Cache (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 2 of 8 (Auth) — COMPLETE
-Plan: 3 of 3 — COMPLETE
-Status: Phase 2 Plan 3 complete — Next.js proxy route guard, PKCE callback, and protected dashboard page
-Last activity: 2026-03-20 — Completed 02-03 (proxy.ts route guard, /api/auth/callback, /app/dashboard)
+Phase: 3 of 8 (Market Cache) — PLANNED, not yet executed
+Plan: 0 of 3 — Ready to execute
+Status: Phase 3 plans written and verified — ready for /gsd:execute-phase 3
+Last activity: 2026-03-20 — Phases 1 and 2 complete; Phase 3 planned (3 plans: cache-aside service, FastAPI routes, Next.js market page)
 
 Progress: [█████░░░░░] 25%
 
