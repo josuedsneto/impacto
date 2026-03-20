@@ -35,6 +35,7 @@ Progress: [████░░░░░░] 19%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02-auth P01 | 8 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -60,9 +61,13 @@ Carried forward from v1.0:
 - FastAPI routes use full /api/health prefix — Nginx proxies without stripping prefix (proxy_pass no rewrite)
 - shadcn style locked to new-york/zinc per design spec
 - Nginx does NOT strip /api prefix — proxy_pass http://localhost:8000 with no rewrite (FastAPI routes include /api/)
-- setup-vm.sh accepts domain as $1; SSL setup skipped with warning if omitted
+- setup-vm.sh accepts domain as ### Decisions
+
+; SSL setup skipped with warning if omitted
 - PM2 ecosystem.config.js uses interpreter=none for uvicorn (it is the executable, not a Python script)
 - VM and Supabase provisioning deferred to infrastructure availability; all local artifacts validated
+- [Phase 02-auth]: Used @supabase/ssr factories for cookie-based session persistence across SSR and client renders
+- [Phase 02-auth]: Token auto-refresh delegated to @supabase/ssr library — no custom timer code needed
 
 ### Pending Todos
 
@@ -77,5 +82,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 02-02-PLAN.md (JWT RS256 auth dependencies, /api/me + /api/admin/ping routes) — Phase 2 complete
+Stopped at: Completed 02-01-PLAN.md (Supabase SSR client helpers and /login page) and 02-02-PLAN.md (JWT RS256 auth dependencies, /api/me + /api/admin/ping routes) — Phase 2 complete
 Resume file: None
