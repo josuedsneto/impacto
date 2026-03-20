@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 1 of 8 (Infra & Schema)
-Plan: 2 of 3
-Status: In progress
-Last activity: 2026-03-20 — Completed 01-02 (App scaffold: Next.js frontend + FastAPI backend)
+Phase: 1 of 8 (Infra & Schema) — COMPLETE
+Plan: 3 of 3 — COMPLETE
+Status: Phase 1 complete — ready for Phase 2 (Auth)
+Last activity: 2026-03-20 — Completed 01-03 (Nginx + VM bootstrap + Supabase migrations validated)
 
-Progress: [██░░░░░░░░] 7%
+Progress: [███░░░░░░░] 11%
 
 ## Performance Metrics
 
@@ -28,7 +28,7 @@ Progress: [██░░░░░░░░] 7%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-infra-schema | 1 | ~10 min | ~10 min |
+| 01-infra-schema | 3 | ~60 min | ~20 min |
 
 **Recent Trend:**
 - Last 5 plans: 01-01 (~10 min)
@@ -57,10 +57,16 @@ Carried forward from v1.0:
 - All user-owned table FKs use ON DELETE CASCADE from auth.users
 - FastAPI routes use full /api/health prefix — Nginx proxies without stripping prefix (proxy_pass no rewrite)
 - shadcn style locked to new-york/zinc per design spec
+- Nginx does NOT strip /api prefix — proxy_pass http://localhost:8000 with no rewrite (FastAPI routes include /api/)
+- setup-vm.sh accepts domain as $1; SSL setup skipped with warning if omitted
+- PM2 ecosystem.config.js uses interpreter=none for uvicorn (it is the executable, not a Python script)
+- VM and Supabase provisioning deferred to infrastructure availability; all local artifacts validated
 
 ### Pending Todos
 
-- Execute Phase 1 Plan 03 (nginx + VM bootstrap)
+- Provision Oracle Cloud VM and run scripts/setup-vm.sh
+- Link Supabase CLI and run supabase db push
+- Begin Phase 2 (Auth)
 
 ### Blockers/Concerns
 
@@ -69,5 +75,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 01-02-PLAN.md (App scaffold: Next.js frontend + FastAPI backend)
+Stopped at: Completed 01-03-PLAN.md (Nginx + VM bootstrap, Supabase migrations validated) — Phase 1 complete
 Resume file: None
