@@ -12,7 +12,7 @@ Three phases correct the quantitative foundation of Impacto. Phase 1 fixes the M
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Monte Carlo Core** - Fix the MC simulation engine so outputs are numerically correct and user-controlled
+- [x] **Phase 1: Monte Carlo Core** - Fix the MC simulation engine so outputs are numerically correct and user-controlled (completed 2026-03-20)
 - [ ] **Phase 2: Options Pricing** - Fix options pricing pages to use financially correct drift and decouple parameters
 - [ ] **Phase 3: Quant Audit** - Audit all remaining statistical pages and document findings and improvement opportunities
 
@@ -60,6 +60,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Monte Carlo Core | 0/1 | Not started | - |
+| 1. Monte Carlo Core | 1/1 | Complete   | 2026-03-20 |
 | 2. Options Pricing | 0/TBD | Not started | - |
 | 3. Quant Audit | 0/TBD | Not started | - |

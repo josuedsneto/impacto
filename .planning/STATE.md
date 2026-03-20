@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Phase: 1 of 3 (Monte Carlo Core)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-20 — Roadmap created
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-03-20 — Completed 01-01-PLAN.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-monte-carlo-core P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -45,6 +46,7 @@ Recent decisions affecting current work:
 - Audit-first then fix approach confirmed in PROJECT.md
 - Risk-neutral drift for options MC (financially correct for derivatives)
 - Asset-relative bounds as % of price (fixed ±10 meaningless across asset scales)
+- [Phase 01-monte-carlo-core]: PCT_BOUND=0.50: bounds are 50% of last close to avoid truncating GBM cone
 
 ### Pending Todos
 
@@ -57,5 +59,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Roadmap created — ready to plan Phase 1
+Stopped at: Completed 01-monte-carlo-core 01-01-PLAN.md
 Resume file: None

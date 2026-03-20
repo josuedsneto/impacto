@@ -7,9 +7,9 @@
 
 ### Monte Carlo
 
-- [ ] **MC-01**: Monte Carlo simulation uses the user-provided starting price (`valor_simulado`), not always the last close
-- [ ] **MC-02**: Price clipping bounds are asset-relative (percentage of current price), not a fixed ±10
-- [ ] **MC-03**: Fan chart percentile bands (P5–P95) visually match expected GBM cone shape
+- [x] **MC-01**: Monte Carlo simulation uses the user-provided starting price (`valor_simulado`), not always the last close
+- [x] **MC-02**: Price clipping bounds are asset-relative (percentage of current price), not a fixed ±10
+- [x] **MC-03**: Fan chart percentile bands (P5–P95) visually match expected GBM cone shape
 
 ### Options
 
@@ -48,9 +48,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MC-01 | Phase 1 | Pending |
-| MC-02 | Phase 1 | Pending |
-| MC-03 | Phase 1 | Pending |
+| MC-01 | Phase 1 | Complete |
+| MC-02 | Phase 1 | Complete |
+| MC-03 | Phase 1 | Complete |
 | OPT-01 | Phase 2 | Pending |
 | OPT-02 | Phase 2 | Pending |
 | OPT-03 | Phase 2 | Pending |
