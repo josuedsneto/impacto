@@ -45,7 +45,11 @@ Plans:
   3. User visits `/app/dashboard` without a session and is redirected to /login.
   4. FastAPI rejects a tampered JWT with 401 without making any external network call to Supabase.
   5. An admin user can reach an admin-only route; a regular user receives 403 on the same route.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — Supabase SSR client + /login page (email/password, session cookie, token refresh)
+- [ ] 02-02-PLAN.md — FastAPI JWT RS256 middleware + admin role guard
+- [ ] 02-03-PLAN.md — Next.js route protection middleware + /app/dashboard + auth callback
 
 ### Phase 3: Market Cache
 **Goal**: Price data is served from a PostgreSQL cache so repeated queries for the same ticker and range do not call yfinance, and users can suggest new tickers for admin review.
@@ -118,7 +122,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infra & Schema | 3/3 | Complete   | 2026-03-20 |
-| 2. Auth | 0/TBD | Not started | - |
+| 2. Auth | 0/3 | Not started | - |
 | 3. Market Cache | 0/TBD | Not started | - |
 | 4. MC Simulation | 0/TBD | Not started | - |
 | 5. Options & Pricing | 0/TBD | Not started | - |
