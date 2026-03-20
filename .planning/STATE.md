@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 1 — Infra & Schema (v2.0 Plataforma Escalável)
+**Current focus:** Phase 2 — Auth (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 1 of 8 (Infra & Schema) — COMPLETE
-Plan: 3 of 3 — COMPLETE
-Status: Phase 1 complete — ready for Phase 2 (Auth)
-Last activity: 2026-03-20 — Completed 01-03 (Nginx + VM bootstrap + Supabase migrations validated)
+Phase: 2 of 8 (Auth) — IN PROGRESS
+Plan: 2 of 2 — COMPLETE
+Status: Phase 2 Plan 2 complete — JWT RS256 auth dependencies wired into FastAPI
+Last activity: 2026-03-20 — Completed 02-02 (JWT RS256 local verification, auth dependencies, protected routes)
 
-Progress: [███░░░░░░░] 11%
+Progress: [████░░░░░░] 19%
 
 ## Performance Metrics
 
@@ -46,7 +46,9 @@ Carried forward from v1.0:
 - Audit-first then fix approach confirmed in v1.0
 - Risk-neutral drift for options MC (financially correct for derivatives)
 - PCT_BOUND=0.50: bounds are 50% of last close to avoid truncating GBM cone
-- FastAPI validates JWT locally (PyJWT + RS256 public key) — no round-trip to Supabase
+- FastAPI validates JWT locally (PyJWT + RS256 public key) — no round-trip to Supabase [IMPLEMENTED 02-02]
+- Role sourced from app_metadata.role in JWT (set by Supabase admin), not top-level role claim [02-02]
+- Auth dependency chain: verify_jwt -> get_current_user -> require_admin via FastAPI Depends [02-02]
 - Cache-aside incremental in PostgreSQL — reduces yfinance calls, history persisted
 - Oracle Cloud Always Free for deploy — zero cost, 4 vCPUs / 24GB sufficient for 100 users
 - Next.js App Router + shadcn/ui new-york — modern React ecosystem
@@ -66,7 +68,7 @@ Carried forward from v1.0:
 
 - Provision Oracle Cloud VM and run scripts/setup-vm.sh
 - Link Supabase CLI and run supabase db push
-- Begin Phase 2 (Auth)
+- Phase 2 (Auth) COMPLETE — begin Phase 3 (Data API)
 
 ### Blockers/Concerns
 
@@ -75,5 +77,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 01-03-PLAN.md (Nginx + VM bootstrap, Supabase migrations validated) — Phase 1 complete
+Stopped at: Completed 02-02-PLAN.md (JWT RS256 auth dependencies, /api/me + /api/admin/ping routes) — Phase 2 complete
 Resume file: None
