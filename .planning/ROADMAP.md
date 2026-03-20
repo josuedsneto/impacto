@@ -26,7 +26,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User-provided starting price is used as the simulation's first value — changing the input changes the fan chart origin
   2. Price bounds automatically scale with the asset's current price rather than being fixed at ±10
   3. The P5–P95 fan chart widens over time in a cone shape consistent with geometric Brownian motion
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix simulacao_monte_carlo() signature, bounds, and call site in 09_Monte_Carlo.py
 
 ### Phase 2: Options Pricing
 **Goal**: Options pricing outputs use risk-neutral drift and correctly separated parameters so prices are financially defensible
@@ -57,6 +60,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Monte Carlo Core | 0/TBD | Not started | - |
+| 1. Monte Carlo Core | 0/1 | Not started | - |
 | 2. Options Pricing | 0/TBD | Not started | - |
 | 3. Quant Audit | 0/TBD | Not started | - |
