@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 2 of 8 (Auth) — IN PROGRESS
-Plan: 2 of 2 — COMPLETE
-Status: Phase 2 Plan 2 complete — JWT RS256 auth dependencies wired into FastAPI
-Last activity: 2026-03-20 — Completed 02-02 (JWT RS256 local verification, auth dependencies, protected routes)
+Phase: 2 of 8 (Auth) — COMPLETE
+Plan: 3 of 3 — COMPLETE
+Status: Phase 2 Plan 3 complete — Next.js proxy route guard, PKCE callback, and protected dashboard page
+Last activity: 2026-03-20 — Completed 02-03 (proxy.ts route guard, /api/auth/callback, /app/dashboard)
 
-Progress: [████░░░░░░] 19%
+Progress: [█████░░░░░] 25%
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [████░░░░░░] 19%
 
 *Updated after each plan completion*
 | Phase 02-auth P01 | 8 | 2 tasks | 5 files |
+| Phase 02-auth P03 | 20 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Carried forward from v1.0:
 - VM and Supabase provisioning deferred to infrastructure availability; all local artifacts validated
 - [Phase 02-auth]: Used @supabase/ssr factories for cookie-based session persistence across SSR and client renders
 - [Phase 02-auth]: Token auto-refresh delegated to @supabase/ssr library — no custom timer code needed
+- [Phase 02-auth]: Used proxy.ts (Next.js 16 convention) instead of deprecated middleware.ts — export function named proxy
+- [Phase 02-auth]: getUser() not getSession() in proxy — forces server-side token validation and triggers silent refresh
 
 ### Pending Todos
 
@@ -82,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 02-01-PLAN.md (Supabase SSR client helpers and /login page) and 02-02-PLAN.md (JWT RS256 auth dependencies, /api/me + /api/admin/ping routes) — Phase 2 complete
+Stopped at: Completed 02-03-PLAN.md (proxy.ts route guard, PKCE auth callback, /app/dashboard Server Component) — Phase 2 (Auth) fully complete
 Resume file: None

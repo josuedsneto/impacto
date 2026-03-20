@@ -7,12 +7,12 @@
 
 ### Autenticação
 
-- [ ] **AUTH-01**: Usuário pode fazer login com email e senha via Supabase Auth
-- [ ] **AUTH-02**: Sessão do usuário persiste após fechar e reabrir o browser
-- [ ] **AUTH-03**: Usuário não autenticado é redirecionado para /login ao acessar qualquer rota /app/*
+- [x] **AUTH-01**: Usuário pode fazer login com email e senha via Supabase Auth
+- [x] **AUTH-02**: Sessão do usuário persiste após fechar e reabrir o browser
+- [x] **AUTH-03**: Usuário não autenticado é redirecionado para /login ao acessar qualquer rota /app/*
 - [x] **AUTH-04**: FastAPI valida JWT RS256 localmente sem round-trip ao Supabase
 - [x] **AUTH-05**: Role admin/user é extraída do JWT (app_metadata.role) e aplicada nas rotas protegidas
-- [ ] **AUTH-06**: Frontend tenta refresh automático do token antes de redirecionar para /login
+- [x] **AUTH-06**: Frontend tenta refresh automático do token antes de redirecionar para /login
 
 ### Mercado
 
@@ -91,12 +91,12 @@
 |-------------|-------|--------|
 | INFRA-01 | Phase 1 | Complete |
 | INFRA-02 | Phase 1 | Complete |
-| AUTH-01 | Phase 2 | Pending |
-| AUTH-02 | Phase 2 | Pending |
-| AUTH-03 | Phase 2 | Pending |
+| AUTH-01 | Phase 2 | Complete |
+| AUTH-02 | Phase 2 | Complete |
+| AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 2 | Complete |
 | AUTH-05 | Phase 2 | Complete |
-| AUTH-06 | Phase 2 | Pending |
+| AUTH-06 | Phase 2 | Complete |
 | MKT-01 | Phase 3 | Pending |
 | MKT-02 | Phase 3 | Pending |
 | MKT-03 | Phase 3 | Pending |
