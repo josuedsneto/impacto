@@ -60,6 +60,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Monte Carlo Core | 1/1 | Complete   | 2026-03-20 |
+| 1. Monte Carlo Core | 1/1 | Complete    | 2026-03-20 |
 | 2. Options Pricing | 0/TBD | Not started | - |
 | 3. Quant Audit | 0/TBD | Not started | - |
