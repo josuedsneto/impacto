@@ -22,9 +22,8 @@ def baixar_dados_mc(ativo: str) -> pd.DataFrame:
     return data
 
 
-def simulacao_monte_carlo(data, media, std, dias_simulados, num_simulacoes, limite_inferior, limite_superior):
+def simulacao_monte_carlo(preco_inicial, media, std, dias_simulados, num_simulacoes, limite_inferior, limite_superior):
     retornos = np.random.normal(media, std, (dias_simulados, num_simulacoes))
-    preco_inicial = float(data['Close'].iloc[-1])
     fator = np.cumprod(1 + retornos, axis=0)
     precos_simulados = np.clip(preco_inicial * fator, limite_inferior, limite_superior)
     return precos_simulados
@@ -50,15 +49,17 @@ dias_simulados = calcular_dias_uteis(hoje, data_simulacao)
 if "valor_simulado_mc" not in st.session_state:
     st.session_state["valor_simulado_mc"] = float(data['Close'].iloc[-1])
 valor_simulado = st.number_input("Qual valor deseja simular?", value=st.session_state["valor_simulado_mc"], step=0.01)
-limite_inferior = float(data['Close'].iloc[-1]) - 10
-limite_superior = float(data['Close'].iloc[-1]) + 10
+preco_atual = float(data['Close'].iloc[-1])
+PCT_BOUND = 0.50
+limite_inferior = preco_atual * (1 - PCT_BOUND)
+limite_superior = preco_atual * (1 + PCT_BOUND)
 
 if dias_simulados <= 0:
     st.warning("A data de simulação deve ser posterior a hoje.")
     st.stop()
 
 if st.button("Simular"):
-    simulacoes = simulacao_monte_carlo(data, media_retornos_diarios, desvio_padrao_retornos_diarios, dias_simulados, 10000, limite_inferior, limite_superior)
+    simulacoes = simulacao_monte_carlo(valor_simulado, media_retornos_diarios, desvio_padrao_retornos_diarios, dias_simulados, 10000, limite_inferior, limite_superior)
     percentil_20 = np.percentile(simulacoes[-1], 20)
     percentil_80 = np.percentile(simulacoes[-1], 80)
     prob_acima_valor = np.mean(simulacoes[-1] > valor_simulado) * 100
