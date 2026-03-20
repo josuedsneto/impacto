@@ -60,7 +60,11 @@ Plans:
   2. Extending the range by one day causes exactly one new row to be inserted; all prior rows remain unchanged.
   3. Submitting an invalid ticker symbol returns a visible error message before anything is saved to the database.
   4. A ticker whose yfinance history starts after 2013-01-01 is backfilled from its earliest available date without error.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 03-01-PLAN.md — backend/market_cache.py: cache-aside service (get_prices, backfill_ticker)
+- [ ] 03-02-PLAN.md — FastAPI market routes: GET /api/market/prices, POST /api/market/suggest, POST /api/admin/market/backfill/{ticker}
+- [ ] 03-03-PLAN.md — Next.js /app/market page: price query view + ticker suggestion form
 
 ### Phase 4: MC Simulation
 **Goal**: Users can run a Monte Carlo simulation through the API, see the fan chart and metrics, and find past simulations in a history tab; simulations from other users are never visible.
@@ -123,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Infra & Schema | 3/3 | Complete   | 2026-03-20 |
 | 2. Auth | 3/3 | Complete   | 2026-03-20 |
-| 3. Market Cache | 0/TBD | Not started | - |
+| 3. Market Cache | 0/3 | Not started | - |
 | 4. MC Simulation | 0/TBD | Not started | - |
 | 5. Options & Pricing | 0/TBD | Not started | - |
 | 6. Params & Watchlist | 0/TBD | Not started | - |
