@@ -8,6 +8,7 @@ from supabase import create_client
 from pydantic import BaseModel
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
+from simulation import run_simulation
 
 app = FastAPI(title="Impacto API", version="2.0.0")
 
@@ -42,6 +43,15 @@ async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
 
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
+
+class SimulationRequest(BaseModel):
+    ticker: str
+    preco_inicial: float
+    dias_simulados: int = 252
+    num_simulacoes: int = 10_000
+    pct_bound: float = 0.50
+    label: str = ""
+
 
 class TickerSuggestRequest(BaseModel):
     ticker: str
@@ -143,3 +153,88 @@ async def admin_backfill(
     ).eq("ticker", ticker.upper()).execute()
 
     return result
+
+
+# ── Simulations ────────────────────────────────────────────────────────────────
+
+@app.post("/api/simulations", status_code=201)
+async def create_simulation(
+    body: SimulationRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    SIM-01: Run MC simulation and persist results.
+    Returns scalar metrics + percentiles_series for fan chart rendering.
+    """
+    result = run_simulation(
+        ticker=body.ticker.strip().upper(),
+        preco_inicial=body.preco_inicial,
+        dias_simulados=body.dias_simulados,
+        num_simulacoes=body.num_simulacoes,
+        pct_bound=body.pct_bound,
+    )
+
+    # Persist to simulations table with user_id (SIM-04: user isolation)
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    insert_payload = {
+        "user_id": user["id"],
+        "ticker": result["ticker"],
+        "preco_inicial": result["preco_inicial"],
+        "dias_simulados": result["dias_simulados"],
+        "num_simulacoes": result["num_simulacoes"],
+        "pct_bound": result["pct_bound"],
+        "p5": result["p5"],
+        "p20": result["p20"],
+        "p25": result["p25"],
+        "p50": result["p50"],
+        "p75": result["p75"],
+        "p80": result["p80"],
+        "p95": result["p95"],
+        "percentiles_series": result["percentiles_series"],
+        "label": body.label or None,
+    }
+    saved = client.table("simulations").insert(insert_payload).execute()
+    sim_id = saved.data[0]["id"]
+
+    return {**result, "id": sim_id, "created_at": saved.data[0]["created_at"]}
+
+
+@app.get("/api/simulations")
+async def list_simulations(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    SIM-02/SIM-04: List all simulations for the authenticated user only.
+    Returns id, ticker, label, p50, created_at (no percentiles_series to keep payload small).
+    """
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("simulations")
+        .select("id,ticker,label,preco_inicial,dias_simulados,p5,p50,p95,created_at")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return {"simulations": result.data}
+
+
+@app.get("/api/simulations/{sim_id}")
+async def get_simulation(
+    sim_id: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    SIM-03/SIM-04: Fetch a single simulation including percentiles_series.
+    Returns 404 if sim_id does not exist OR belongs to a different user.
+    """
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("simulations")
+        .select("*")
+        .eq("id", sim_id)
+        .eq("user_id", user["id"])  # SIM-04: enforces user isolation at query level
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Simulation not found.")
+    return result.data[0]
