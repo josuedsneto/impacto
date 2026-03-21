@@ -75,7 +75,11 @@ Plans:
   2. The completed simulation appears in the "Histórico" tab without a page reload.
   3. Clicking a past simulation in Histórico replays the exact fan chart from saved JSONB percentiles.
   4. Logged in as User B, the simulations created by User A are not listed or accessible.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 04-01-PLAN.md — MC engine (backend/simulation.py) + FastAPI simulation routes
+- [x] 04-02-PLAN.md — React simulation components (SimulationForm, FanChart, SimulationMetrics)
+- [x] 04-03-PLAN.md — Next.js /app/simulation page with Simular + Histórico tabs
 
 ### Phase 5: Options & Pricing
 **Goal**: Users can build a multi-leg options payoff diagram, price European calls with custom volatility via Black-Scholes, and price calls via risk-neutral MC.
@@ -85,7 +89,10 @@ Plans:
   1. User adds two or more option legs and the payoff diagram updates to reflect the combined strategy.
   2. User changes the volatility input and the Black-Scholes price recalculates immediately with the new value.
   3. The European call MC pricer uses the risk-free rate as drift and returns a price consistent with Black-Scholes at ATM.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 05-01-PLAN.md — backend/options.py (payoff, BS, MC pricer) + three FastAPI routes
+- [ ] 05-02-PLAN.md — Next.js /app/options page with PayoffBuilder, PayoffChart, BSPricer, MCPricer
 
 ### Phase 6: Params & Watchlist
 **Goal**: Users can persist per-asset simulation parameters and a personal watchlist across sessions, and the dashboard shows live prices for watched tickers.
@@ -129,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Auth | 3/3 | Complete   | 2026-03-20 |
 | 3. Market Cache | 3/3 | Complete   | 2026-03-21 |
 | 4. MC Simulation | 3/3 | Complete   | 2026-03-21 |
-| 5. Options & Pricing | 0/TBD | Not started | - |
+| 5. Options & Pricing | 0/2 | Not started | - |
 | 6. Params & Watchlist | 0/TBD | Not started | - |
 | 7. Admin | 0/TBD | Not started | - |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
