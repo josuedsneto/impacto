@@ -44,6 +44,7 @@ Progress: [██████░░░░] 38%
 | Phase 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
 | Phase 04-mc-simulation P03 | 8 | 1 tasks | 2 files |
 | Phase 05-options-pricing P01 | 8 | 2 tasks | 2 files |
+| Phase 05-options-pricing P02 | 10 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,7 @@ Carried forward from v1.0:
 - [Phase 04-mc-simulation]: ui/tabs.tsx created as native HTML stub with React context — API matches shadcn Tabs surface
 - [Phase 04-mc-simulation]: History fetch deferred to first Histórico tab activation — avoids API call on every page load
 - [Phase 05-01]: Risk-neutral drift (r - 0.5*sigma^2) used in mc_call_price — not historical mu — per no-arbitrage pricing theory
+- [Phase 05-options-pricing]: useRef + setTimeout/clearTimeout for 300ms debounce in BSPricer — no external library
 
 ### Pending Todos
 
