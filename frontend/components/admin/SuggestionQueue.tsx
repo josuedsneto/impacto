@@ -46,7 +46,7 @@ export function SuggestionQueue() {
         if (!res.ok) {
           toast.error(data.detail ?? "Erro ao carregar sugestões.");
         } else {
-          setSuggestions(data);
+          setSuggestions(data.suggestions ?? []);
         }
       } catch {
         toast.error("Erro de conexão com o servidor.");
