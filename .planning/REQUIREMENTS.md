@@ -24,8 +24,8 @@
 ### Simulação MC
 
 - [x] **SIM-01**: Usuário executa simulação MC e vê fan chart + métricas em menos de 15s com cold cache
-- [ ] **SIM-02**: Simulação salva aparece na aba "Histórico" sem recarregar a página
-- [ ] **SIM-03**: Fan chart pode ser replayed via percentis JSONB salvos
+- [x] **SIM-02**: Simulação salva aparece na aba "Histórico" sem recarregar a página
+- [x] **SIM-03**: Fan chart pode ser replayed via percentis JSONB salvos
 - [x] **SIM-04**: Usuário A não consegue ver simulações do usuário B (RLS)
 
 ### Opções e Pricing
@@ -102,8 +102,8 @@
 | MKT-03 | Phase 3 | Complete |
 | MKT-04 | Phase 3 | Complete |
 | SIM-01 | Phase 4 | Complete |
-| SIM-02 | Phase 4 | Pending |
-| SIM-03 | Phase 4 | Pending |
+| SIM-02 | Phase 4 | Complete |
+| SIM-03 | Phase 4 | Complete |
 | SIM-04 | Phase 4 | Complete |
 | OPT-01 | Phase 5 | Pending |
 | OPT-02 | Phase 5 | Pending |

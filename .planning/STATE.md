@@ -41,6 +41,7 @@ Progress: [█████░░░░░] 31%
 | Phase 03-market-cache P02 | 5 | 1 tasks | 1 files |
 | Phase 03-market-cache P03 | 15 | 3 tasks | 3 files |
 | Phase 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
+| Phase 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Carried forward from v1.0:
 - [Phase 03-market-cache]: Route prefixes kept as /api/* per existing Nginx-no-strip architectural decision
 - [Phase 03-market-cache]: TickerSuggestForm fetches access token inline via createBrowserClient — no global auth store
 - [Phase 04-mc-simulation]: User isolation enforced at query level (.eq user_id) in all simulation read routes alongside RLS
+- [Phase 04-mc-simulation]: SimulationResult interface defined in SimulationForm.tsx and re-imported by SimulationMetrics to avoid duplication
+- [Phase 04-mc-simulation]: Input and Label ui stubs created as native HTML wrappers (no @base-ui/react equivalent)
 
 ### Pending Todos
 
