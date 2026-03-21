@@ -118,7 +118,10 @@ Plans:
   2. Admin clicks "Aprovar" on a ticker and its status changes to "approved" in the list without a page reload.
   3. Within 60 seconds of approval the ticker's backfill_status changes from "pending" to "done".
   4. Admin clicks "Rejeitar", types a note, and the ticker status updates to "rejected" with the note visible.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — FastAPI admin routes: GET /api/admin/suggestions, PATCH /api/admin/suggestions/{id}
+- [ ] 07-02-PLAN.md — Next.js /app/admin page with SuggestionQueue component
 
 ### Phase 8: CI/CD & Polish
 **Goal**: Every merge to main triggers an automatic deploy to the Oracle Cloud VM, and the user's dark/light theme preference survives browser restarts.
@@ -142,5 +145,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. MC Simulation | 3/3 | Complete   | 2026-03-21 |
 | 5. Options & Pricing | 2/2 | Complete   | 2026-03-21 |
 | 6. Params & Watchlist | 3/3 | Complete   | 2026-03-21 |
-| 7. Admin | 0/TBD | Not started | - |
+| 7. Admin | 0/2 | Not started | - |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
