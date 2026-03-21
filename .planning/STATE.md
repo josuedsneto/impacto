@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 Milestone: v2.0 Plataforma Escalavel
 Phase: 7 of 8 (Admin) — In Progress
-Plan: 1 of 2 — Plan 01 complete
-Status: Phase 7 plan 1 complete — admin suggestion queue backend routes (GET + PATCH /api/admin/suggestions)
-Last activity: 2026-03-21 — Phase 7 plan 01 complete (admin suggestion queue backend — GET/PATCH /api/admin/suggestions)
+Plan: 2 of 2 — Plan 02 complete
+Status: Phase 7 complete — admin panel frontend (SuggestionQueue + /app/admin page)
+Last activity: 2026-03-21 — Phase 7 plan 02 complete (admin panel frontend — SuggestionQueue client component + /app/admin server page)
 
 Progress: [████████░░] 50%
 
@@ -96,6 +96,7 @@ Carried forward from v1.0:
 - [Phase 06-01]: User isolation enforced at query level (.eq user_id) matching SIM-04 pattern
 - [Phase 06-01]: Watchlist POST uses upsert with ignore_duplicates=True for idempotent add
 - [Phase 07-admin]: Approval of ticker suggestion calls backfill_ticker() synchronously within the PATCH request (ADM-03 sync pattern)
+- [Phase 07-admin]: Admin page guards only against unauthenticated access server-side — backend enforces admin role on every API call (returns 403), avoiding JWT role check duplication in Next.js
 
 ### Pending Todos
 
@@ -110,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 07-01-PLAN.md (admin suggestion queue backend — GET/PATCH /api/admin/suggestions)
+Stopped at: Completed 07-02-PLAN.md (admin panel frontend — SuggestionQueue + /app/admin page)
 Resume file: None
