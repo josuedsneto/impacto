@@ -30,9 +30,9 @@
 
 ### Opções e Pricing
 
-- [ ] **OPT-01**: Usuário pode construir estratégia multi-leg e ver o payoff diagram
-- [ ] **OPT-02**: Usuário pode configurar volatilidade customizada para o pricer Black-Scholes
-- [ ] **OPT-03**: Pricer European call via MC usa taxa livre de risco como drift
+- [x] **OPT-01**: Usuário pode construir estratégia multi-leg e ver o payoff diagram
+- [x] **OPT-02**: Usuário pode configurar volatilidade customizada para o pricer Black-Scholes
+- [x] **OPT-03**: Pricer European call via MC usa taxa livre de risco como drift
 
 ### Parâmetros e Watchlist
 
@@ -105,9 +105,9 @@
 | SIM-02 | Phase 4 | Complete |
 | SIM-03 | Phase 4 | Complete |
 | SIM-04 | Phase 4 | Complete |
-| OPT-01 | Phase 5 | Pending |
-| OPT-02 | Phase 5 | Pending |
-| OPT-03 | Phase 5 | Pending |
+| OPT-01 | Phase 5 | Complete |
+| OPT-02 | Phase 5 | Complete |
+| OPT-03 | Phase 5 | Complete |
 | PARAM-01 | Phase 6 | Pending |
 | PARAM-02 | Phase 6 | Pending |
 | PARAM-03 | Phase 6 | Pending |

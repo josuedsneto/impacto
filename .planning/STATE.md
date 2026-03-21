@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 4 — MC Simulation (v2.0 Plataforma Escalável)
+**Current focus:** Phase 5 — Options Pricing (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 4 of 8 (MC Simulation) — COMPLETE
-Plan: 3 of 3 — Plan 03 complete
-Status: Phase 4 complete — MC engine, React components, and simulation page all done
-Last activity: 2026-03-21 — Phase 4 plan 03 complete (simulation page with Simular + Histórico tabs)
+Phase: 5 of 8 (Options Pricing) — In Progress
+Plan: 1 of 2 — Plan 01 complete
+Status: Phase 5 plan 1 complete — options.py + three FastAPI pricing routes
+Last activity: 2026-03-21 — Phase 5 plan 01 complete (payoff, Black-Scholes, MC pricer)
 
 Progress: [██████░░░░] 38%
 
@@ -43,6 +43,7 @@ Progress: [██████░░░░] 38%
 | Phase 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
 | Phase 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
 | Phase 04-mc-simulation P03 | 8 | 1 tasks | 2 files |
+| Phase 05-options-pricing P01 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Carried forward from v1.0:
 - [Phase 04-mc-simulation]: Input and Label ui stubs created as native HTML wrappers (no @base-ui/react equivalent)
 - [Phase 04-mc-simulation]: ui/tabs.tsx created as native HTML stub with React context — API matches shadcn Tabs surface
 - [Phase 04-mc-simulation]: History fetch deferred to first Histórico tab activation — avoids API call on every page load
+- [Phase 05-01]: Risk-neutral drift (r - 0.5*sigma^2) used in mc_call_price — not historical mu — per no-arbitrage pricing theory
 
 ### Pending Todos
 
@@ -99,5 +101,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 04-03-PLAN.md (simulation page with Simular + Histórico tabs — Phase 4 complete)
+Stopped at: Completed 05-01-PLAN.md (options pricing backend — payoff, BS, MC routes)
 Resume file: None
