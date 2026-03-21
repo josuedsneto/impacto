@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 Milestone: v2.0 Plataforma Escalavel
 Phase: 3 of 8 (Market Cache) — IN PROGRESS
-Plan: 1 of 3 — Plan 01 complete, Plan 02 next
-Status: Phase 3 plan 01 executed — market_cache.py cache-aside service complete
-Last activity: 2026-03-21 — Phase 3 plan 01 complete (cache-aside service in backend/market_cache.py)
+Plan: 2 of 3 — Plan 02 complete, Plan 03 next
+Status: Phase 3 plan 02 executed — FastAPI market routes complete
+Last activity: 2026-03-21 — Phase 3 plan 02 complete (market routes in backend/main.py)
 
 Progress: [█████░░░░░] 28%
 
@@ -38,6 +38,7 @@ Progress: [█████░░░░░] 28%
 | Phase 02-auth P01 | 8 | 2 tasks | 5 files |
 | Phase 02-auth P03 | 20 | 2 tasks | 3 files |
 | Phase 03-market-cache P01 | 5 | 1 tasks | 1 files |
+| Phase 03-market-cache P02 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Carried forward from v1.0:
 - [Phase 02-auth]: Used proxy.ts (Next.js 16 convention) instead of deprecated middleware.ts — export function named proxy
 - [Phase 02-auth]: getUser() not getSession() in proxy — forces server-side token validation and triggers silent refresh
 - [Phase 03-market-cache]: coverage boundary extended to gap_end even on empty yfinance response to prevent repeated re-queries
+- [Phase 03-market-cache]: Route prefixes kept as /api/* per existing Nginx-no-strip architectural decision
 
 ### Pending Todos
 
@@ -86,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20
-Stopped at: Completed 03-01-PLAN.md (cache-aside market data service, backend/market_cache.py)
+Last session: 2026-03-21
+Stopped at: Completed 03-02-PLAN.md (FastAPI market routes: prices, suggest, backfill)
 Resume file: None
