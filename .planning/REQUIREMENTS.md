@@ -36,9 +36,9 @@
 
 ### Parâmetros e Watchlist
 
-- [ ] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
-- [ ] **PARAM-02**: Configurações de parâmetros persistem entre sessões
-- [ ] **PARAM-03**: Usuário pode adicionar e remover tickers da watchlist
+- [x] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
+- [x] **PARAM-02**: Configurações de parâmetros persistem entre sessões
+- [x] **PARAM-03**: Usuário pode adicionar e remover tickers da watchlist
 - [ ] **PARAM-04**: Dashboard exibe preços ao vivo + watchlist do usuário
 
 ### Admin
@@ -108,9 +108,9 @@
 | OPT-01 | Phase 5 | Complete |
 | OPT-02 | Phase 5 | Complete |
 | OPT-03 | Phase 5 | Complete |
-| PARAM-01 | Phase 6 | Pending |
-| PARAM-02 | Phase 6 | Pending |
-| PARAM-03 | Phase 6 | Pending |
+| PARAM-01 | Phase 6 | Complete |
+| PARAM-02 | Phase 6 | Complete |
+| PARAM-03 | Phase 6 | Complete |
 | PARAM-04 | Phase 6 | Pending |
 | ADM-01 | Phase 7 | Pending |
 | ADM-02 | Phase 7 | Pending |
