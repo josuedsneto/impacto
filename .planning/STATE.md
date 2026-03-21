@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 3 — Market Cache (v2.0 Plataforma Escalável)
+**Current focus:** Phase 4 — MC Simulation (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 3 of 8 (Market Cache) — COMPLETE
-Plan: 3 of 3 — All plans complete
-Status: Phase 3 complete — market cache DB schema, FastAPI routes, and Next.js market page all done
-Last activity: 2026-03-21 — Phase 3 plan 03 complete (Next.js /app/market page: TickerSuggestForm + PriceChart)
+Phase: 4 of 8 (MC Simulation) — IN PROGRESS
+Plan: 1 of 3 — Plan 01 complete
+Status: Phase 4 plan 01 complete — MC engine (simulation.py) + FastAPI simulation routes done
+Last activity: 2026-03-21 — Phase 4 plan 01 complete (MC engine + POST/GET /api/simulations routes)
 
-Progress: [█████░░░░░] 28%
+Progress: [█████░░░░░] 31%
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [█████░░░░░] 28%
 | Phase 03-market-cache P01 | 5 | 1 tasks | 1 files |
 | Phase 03-market-cache P02 | 5 | 1 tasks | 1 files |
 | Phase 03-market-cache P03 | 15 | 3 tasks | 3 files |
+| Phase 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Carried forward from v1.0:
 - [Phase 03-market-cache]: coverage boundary extended to gap_end even on empty yfinance response to prevent repeated re-queries
 - [Phase 03-market-cache]: Route prefixes kept as /api/* per existing Nginx-no-strip architectural decision
 - [Phase 03-market-cache]: TickerSuggestForm fetches access token inline via createBrowserClient — no global auth store
+- [Phase 04-mc-simulation]: User isolation enforced at query level (.eq user_id) in all simulation read routes alongside RLS
 
 ### Pending Todos
 
@@ -91,5 +93,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 03-03-PLAN.md (Market page: TickerSuggestForm + PriceChart — Phase 3 done)
+Stopped at: Completed 04-01-PLAN.md (MC engine + FastAPI simulation routes)
 Resume file: None
