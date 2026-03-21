@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 3 of 8 (Market Cache) — IN PROGRESS
-Plan: 2 of 3 — Plan 02 complete, Plan 03 next
-Status: Phase 3 plan 02 executed — FastAPI market routes complete
-Last activity: 2026-03-21 — Phase 3 plan 02 complete (market routes in backend/main.py)
+Phase: 3 of 8 (Market Cache) — COMPLETE
+Plan: 3 of 3 — All plans complete
+Status: Phase 3 complete — market cache DB schema, FastAPI routes, and Next.js market page all done
+Last activity: 2026-03-21 — Phase 3 plan 03 complete (Next.js /app/market page: TickerSuggestForm + PriceChart)
 
 Progress: [█████░░░░░] 28%
 
@@ -39,6 +39,7 @@ Progress: [█████░░░░░] 28%
 | Phase 02-auth P03 | 20 | 2 tasks | 3 files |
 | Phase 03-market-cache P01 | 5 | 1 tasks | 1 files |
 | Phase 03-market-cache P02 | 5 | 1 tasks | 1 files |
+| Phase 03-market-cache P03 | 15 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Carried forward from v1.0:
 - [Phase 02-auth]: getUser() not getSession() in proxy — forces server-side token validation and triggers silent refresh
 - [Phase 03-market-cache]: coverage boundary extended to gap_end even on empty yfinance response to prevent repeated re-queries
 - [Phase 03-market-cache]: Route prefixes kept as /api/* per existing Nginx-no-strip architectural decision
+- [Phase 03-market-cache]: TickerSuggestForm fetches access token inline via createBrowserClient — no global auth store
 
 ### Pending Todos
 
@@ -89,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 03-02-PLAN.md (FastAPI market routes: prices, suggest, backfill)
+Stopped at: Completed 03-03-PLAN.md (Market page: TickerSuggestForm + PriceChart — Phase 3 done)
 Resume file: None
