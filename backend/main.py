@@ -310,3 +310,112 @@ async def options_mc_price(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+
+
+# ── User Parameters ────────────────────────────────────────────────────────────
+
+class UserParamsRequest(BaseModel):
+    volatilidade_custom: float | None = None   # 0–5
+    taxa_livre_risco: float | None = None       # -0.5–1
+    pct_bound_preferido: float | None = None    # 0.05–2
+
+
+class WatchlistAddRequest(BaseModel):
+    ticker: str
+
+
+@app.get("/api/params/{ticker}")
+async def get_params(
+    ticker: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """PARAM-01: Return saved simulation params for a ticker, or 404 if not set."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("user_parameters")
+        .select("*")
+        .eq("user_id", user["id"])
+        .eq("ticker", ticker.upper())
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Params not found for ticker")
+    return result.data[0]
+
+
+@app.put("/api/params/{ticker}")
+async def upsert_params(
+    ticker: str,
+    body: UserParamsRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """PARAM-02: Upsert per-ticker simulation params for the authenticated user."""
+    update_dict: dict = {}
+    if body.volatilidade_custom is not None:
+        update_dict["volatilidade_custom"] = body.volatilidade_custom
+    if body.taxa_livre_risco is not None:
+        update_dict["taxa_livre_risco"] = body.taxa_livre_risco
+    if body.pct_bound_preferido is not None:
+        update_dict["pct_bound_preferido"] = body.pct_bound_preferido
+
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No params provided")
+
+    update_dict["updated_at"] = date_type.today().isoformat()
+
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client.table("user_parameters").upsert(
+        {"user_id": user["id"], "ticker": ticker.upper(), **update_dict},
+        on_conflict="user_id,ticker",
+    ).execute()
+
+    return {"ticker": ticker.upper(), "saved": True}
+
+
+# ── Watchlist ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/watchlist")
+async def get_watchlist(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """PARAM-03: Return all tickers in the user's watchlist."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("watchlist")
+        .select("ticker,created_at")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return {"tickers": [row["ticker"] for row in result.data]}
+
+
+@app.post("/api/watchlist", status_code=201)
+async def add_to_watchlist(
+    body: WatchlistAddRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
+    ticker = body.ticker.strip().upper()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="ticker cannot be empty")
+
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client.table("watchlist").upsert(
+        {"user_id": user["id"], "ticker": ticker},
+        on_conflict="user_id,ticker",
+        ignore_duplicates=True,
+    ).execute()
+
+    return {"ticker": ticker, "added": True}
+
+
+@app.delete("/api/watchlist/{ticker}")
+async def remove_from_watchlist(
+    ticker: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """PARAM-03: Remove a ticker from the user's watchlist."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
+    return {"ticker": ticker.upper(), "removed": True}
