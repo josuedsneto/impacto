@@ -135,6 +135,74 @@ async def suggest_ticker(
     return {"ticker": ticker, "status": "pending", "message": f"Ticker '{ticker}' submitted for admin review."}
 
 
+@app.get("/api/admin/suggestions")
+async def admin_list_suggestions(
+    user: Annotated[dict, Depends(require_admin)],
+    status: str | None = None,
+):
+    """ADM-01: Return ticker suggestions. Optionally filter by status=pending|approved|rejected."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    query = client.table("tickers_catalog").select(
+        "id,ticker,nome,tipo,status,backfill_status,review_note,adicionado_por,created_at"
+    ).order("created_at", desc=False)
+    if status:
+        query = query.eq("status", status)
+    result = query.execute()
+    return {"suggestions": result.data}
+
+
+class SuggestionReviewRequest(BaseModel):
+    action: str          # "approve" | "reject"
+    review_note: str = ""
+
+
+@app.patch("/api/admin/suggestions/{suggestion_id}")
+async def admin_review_suggestion(
+    suggestion_id: str,
+    body: SuggestionReviewRequest,
+    user: Annotated[dict, Depends(require_admin)],
+):
+    """
+    ADM-02: Approve or reject a ticker suggestion.
+    ADM-03: On approve, calls backfill_ticker() synchronously and sets backfill_status='done'.
+    ADM-04: On reject, stores review_note and sets status='rejected'.
+    """
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+    # Fetch the suggestion to get the ticker symbol
+    existing = (
+        client.table("tickers_catalog")
+        .select("id,ticker,status")
+        .eq("id", suggestion_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    ticker = existing.data[0]["ticker"]
+
+    if body.action == "approve":
+        # ADM-03: trigger backfill synchronously — completes within the request
+        backfill_ticker(ticker)
+        update_payload = {
+            "status": "approved",
+            "backfill_status": "done",
+            "review_note": body.review_note or None,
+        }
+    else:  # reject
+        update_payload = {
+            "status": "rejected",
+            "review_note": body.review_note or None,
+        }
+
+    client.table("tickers_catalog").update(update_payload).eq("id", suggestion_id).execute()
+
+    return {"id": suggestion_id, "ticker": ticker, **update_payload}
+
+
 @app.post("/api/admin/market/backfill/{ticker}")
 async def admin_backfill(
     ticker: str,
