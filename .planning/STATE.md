@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 5 — Options Pricing (v2.0 Plataforma Escalável)
+**Current focus:** Phase 6 — Params and Watchlist (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 5 of 8 (Options Pricing) — In Progress
-Plan: 1 of 2 — Plan 01 complete
-Status: Phase 5 plan 1 complete — options.py + three FastAPI pricing routes
-Last activity: 2026-03-21 — Phase 5 plan 01 complete (payoff, Black-Scholes, MC pricer)
+Phase: 6 of 8 (Params and Watchlist) — In Progress
+Plan: 2 of 3 — Plan 02 complete
+Status: Phase 6 plan 2 complete — WatchlistManager component + dashboard with live prices
+Last activity: 2026-03-21 — Phase 6 plan 02 complete (watchlist frontend — WatchlistManager + dashboard)
 
 Progress: [██████░░░░] 38%
 
@@ -46,6 +46,8 @@ Progress: [██████░░░░] 38%
 | Phase 05-options-pricing P01 | 8 | 2 tasks | 2 files |
 | Phase 05-options-pricing P02 | 10 | 2 tasks | 5 files |
 | Phase 06-params-watchlist P01 | 10 | 1 tasks | 1 files |
+| Phase 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
+| Phase 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -106,5 +108,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 05-01-PLAN.md (options pricing backend — payoff, BS, MC routes)
+Stopped at: Completed 06-02-PLAN.md (watchlist frontend — WatchlistManager + dashboard)
 Resume file: None
