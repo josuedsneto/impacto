@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 4 of 8 (MC Simulation) — IN PROGRESS
-Plan: 1 of 3 — Plan 01 complete
-Status: Phase 4 plan 01 complete — MC engine (simulation.py) + FastAPI simulation routes done
-Last activity: 2026-03-21 — Phase 4 plan 01 complete (MC engine + POST/GET /api/simulations routes)
+Phase: 4 of 8 (MC Simulation) — COMPLETE
+Plan: 3 of 3 — Plan 03 complete
+Status: Phase 4 complete — MC engine, React components, and simulation page all done
+Last activity: 2026-03-21 — Phase 4 plan 03 complete (simulation page with Simular + Histórico tabs)
 
-Progress: [█████░░░░░] 31%
+Progress: [██████░░░░] 38%
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Progress: [█████░░░░░] 31%
 | Phase 03-market-cache P03 | 15 | 3 tasks | 3 files |
 | Phase 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
 | Phase 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
+| Phase 04-mc-simulation P03 | 8 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Carried forward from v1.0:
 - [Phase 04-mc-simulation]: User isolation enforced at query level (.eq user_id) in all simulation read routes alongside RLS
 - [Phase 04-mc-simulation]: SimulationResult interface defined in SimulationForm.tsx and re-imported by SimulationMetrics to avoid duplication
 - [Phase 04-mc-simulation]: Input and Label ui stubs created as native HTML wrappers (no @base-ui/react equivalent)
+- [Phase 04-mc-simulation]: ui/tabs.tsx created as native HTML stub with React context — API matches shadcn Tabs surface
+- [Phase 04-mc-simulation]: History fetch deferred to first Histórico tab activation — avoids API call on every page load
 
 ### Pending Todos
 
@@ -96,5 +99,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 04-01-PLAN.md (MC engine + FastAPI simulation routes)
+Stopped at: Completed 04-03-PLAN.md (simulation page with Simular + Histórico tabs — Phase 4 complete)
 Resume file: None
