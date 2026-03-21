@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 6 — Params and Watchlist (v2.0 Plataforma Escalável)
+**Current focus:** Phase 7 — Admin (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 6 of 8 (Params and Watchlist) — In Progress
-Plan: 3 of 3 — Plan 03 complete
-Status: Phase 6 plan 3 complete — ParamsForm + /app/params route
-Last activity: 2026-03-21 — Phase 6 plan 03 complete (params settings page — ParamsForm + /app/params route)
+Phase: 7 of 8 (Admin) — In Progress
+Plan: 1 of 2 — Plan 01 complete
+Status: Phase 7 plan 1 complete — admin suggestion queue backend routes (GET + PATCH /api/admin/suggestions)
+Last activity: 2026-03-21 — Phase 7 plan 01 complete (admin suggestion queue backend — GET/PATCH /api/admin/suggestions)
 
-Progress: [███████░░░] 44%
+Progress: [████████░░] 50%
 
 ## Performance Metrics
 
@@ -95,6 +95,7 @@ Carried forward from v1.0:
 - [Phase 05-options-pricing]: useRef + setTimeout/clearTimeout for 300ms debounce in BSPricer — no external library
 - [Phase 06-01]: User isolation enforced at query level (.eq user_id) matching SIM-04 pattern
 - [Phase 06-01]: Watchlist POST uses upsert with ignore_duplicates=True for idempotent add
+- [Phase 07-admin]: Approval of ticker suggestion calls backfill_ticker() synchronously within the PATCH request (ADM-03 sync pattern)
 
 ### Pending Todos
 
@@ -109,5 +110,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 06-03-PLAN.md (params settings page — ParamsForm + /app/params route)
+Stopped at: Completed 07-01-PLAN.md (admin suggestion queue backend — GET/PATCH /api/admin/suggestions)
 Resume file: None
