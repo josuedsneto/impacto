@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
+from options import compute_payoff, bs_call_price, mc_call_price
 
 app = FastAPI(title="Impacto API", version="2.0.0")
 
@@ -238,3 +239,74 @@ async def get_simulation(
     if not result.data:
         raise HTTPException(status_code=404, detail="Simulation not found.")
     return result.data[0]
+
+
+# ── Options & Pricing ─────────────────────────────────────────────────────────
+
+class OptionLeg(BaseModel):
+    type: str        # "call" | "put"
+    strike: float
+    premium: float
+    position: str    # "long" | "short"
+    quantity: int = 1
+
+
+class PayoffRequest(BaseModel):
+    legs: list[OptionLeg]
+
+
+class BSPriceRequest(BaseModel):
+    S: float          # current underlying price
+    K: float          # strike
+    T: float          # time to expiry in years
+    r: float          # risk-free rate (annualized)
+    sigma: float      # volatility (annualized)
+
+
+class MCPriceRequest(BaseModel):
+    S: float
+    K: float
+    T: float
+    r: float
+    sigma: float
+    num_simulacoes: int = 10_000
+
+
+@app.post("/api/options/payoff")
+async def options_payoff(
+    body: PayoffRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """OPT-01: Compute combined payoff for a multi-leg options strategy."""
+    legs = [leg.model_dump() for leg in body.legs]
+    result = compute_payoff(legs, price_range=None)
+    return result
+
+
+@app.post("/api/options/bs-price")
+async def options_bs_price(
+    body: BSPriceRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """OPT-02: Black-Scholes European call price with user-supplied sigma."""
+    try:
+        price = bs_call_price(S=body.S, K=body.K, T=body.T, r=body.r, sigma=body.sigma)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+
+
+@app.post("/api/options/mc-price")
+async def options_mc_price(
+    body: MCPriceRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """OPT-03: Risk-neutral MC European call pricer."""
+    try:
+        price = mc_call_price(
+            S=body.S, K=body.K, T=body.T, r=body.r,
+            sigma=body.sigma, num_simulacoes=body.num_simulacoes,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
