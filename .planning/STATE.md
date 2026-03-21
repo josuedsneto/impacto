@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 3 of 8 (Market Cache) — PLANNED, not yet executed
-Plan: 0 of 3 — Ready to execute
-Status: Phase 3 plans written and verified — ready for /gsd:execute-phase 3
-Last activity: 2026-03-20 — Phases 1 and 2 complete; Phase 3 planned (3 plans: cache-aside service, FastAPI routes, Next.js market page)
+Phase: 3 of 8 (Market Cache) — IN PROGRESS
+Plan: 1 of 3 — Plan 01 complete, Plan 02 next
+Status: Phase 3 plan 01 executed — market_cache.py cache-aside service complete
+Last activity: 2026-03-21 — Phase 3 plan 01 complete (cache-aside service in backend/market_cache.py)
 
-Progress: [█████░░░░░] 25%
+Progress: [█████░░░░░] 28%
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [█████░░░░░] 25%
 *Updated after each plan completion*
 | Phase 02-auth P01 | 8 | 2 tasks | 5 files |
 | Phase 02-auth P03 | 20 | 2 tasks | 3 files |
+| Phase 03-market-cache P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Carried forward from v1.0:
 - [Phase 02-auth]: Token auto-refresh delegated to @supabase/ssr library — no custom timer code needed
 - [Phase 02-auth]: Used proxy.ts (Next.js 16 convention) instead of deprecated middleware.ts — export function named proxy
 - [Phase 02-auth]: getUser() not getSession() in proxy — forces server-side token validation and triggers silent refresh
+- [Phase 03-market-cache]: coverage boundary extended to gap_end even on empty yfinance response to prevent repeated re-queries
 
 ### Pending Todos
 
@@ -85,5 +87,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 02-03-PLAN.md (proxy.ts route guard, PKCE auth callback, /app/dashboard Server Component) — Phase 2 (Auth) fully complete
+Stopped at: Completed 03-01-PLAN.md (cache-aside market data service, backend/market_cache.py)
 Resume file: None

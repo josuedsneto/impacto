@@ -16,10 +16,10 @@
 
 ### Mercado
 
-- [ ] **MKT-01**: Segunda consulta ao mesmo ticker/range retorna do banco sem chamar o yfinance
-- [ ] **MKT-02**: Consultar range estendido (+1 dia) acrescenta apenas o novo dia ao banco
+- [x] **MKT-01**: Segunda consulta ao mesmo ticker/range retorna do banco sem chamar o yfinance
+- [x] **MKT-02**: Consultar range estendido (+1 dia) acrescenta apenas o novo dia ao banco
 - [ ] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
-- [ ] **MKT-04**: Backfill aceita range disponível se histórico menor que 2013-01-01
+- [x] **MKT-04**: Backfill aceita range disponível se histórico menor que 2013-01-01
 
 ### Simulação MC
 
@@ -97,10 +97,10 @@
 | AUTH-04 | Phase 2 | Complete |
 | AUTH-05 | Phase 2 | Complete |
 | AUTH-06 | Phase 2 | Complete |
-| MKT-01 | Phase 3 | Pending |
-| MKT-02 | Phase 3 | Pending |
+| MKT-01 | Phase 3 | Complete |
+| MKT-02 | Phase 3 | Complete |
 | MKT-03 | Phase 3 | Pending |
-| MKT-04 | Phase 3 | Pending |
+| MKT-04 | Phase 3 | Complete |
 | SIM-01 | Phase 4 | Pending |
 | SIM-02 | Phase 4 | Pending |
 | SIM-03 | Phase 4 | Pending |
