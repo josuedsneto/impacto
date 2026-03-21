@@ -103,7 +103,11 @@ Plans:
   2. User adds USDBRL=X to the watchlist, closes the browser, reopens it, and the ticker is still listed.
   3. User removes a ticker from the watchlist and it disappears from the dashboard immediately.
   4. The dashboard displays the current market price for each ticker in the user's watchlist.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 06-01-PLAN.md — FastAPI routes: GET/PUT /api/params/{ticker}, GET/POST/DELETE /api/watchlist
+- [ ] 06-02-PLAN.md — WatchlistManager component + dashboard upgrade with live prices
+- [ ] 06-03-PLAN.md — /app/params settings page with ParamsForm
 
 ### Phase 7: Admin
 **Goal**: Admins can review the ticker suggestion queue, approve tickers triggering automatic backfill, and reject tickers with an explanatory note.
@@ -137,6 +141,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Market Cache | 3/3 | Complete   | 2026-03-21 |
 | 4. MC Simulation | 3/3 | Complete   | 2026-03-21 |
 | 5. Options & Pricing | 2/2 | Complete   | 2026-03-21 |
-| 6. Params & Watchlist | 0/TBD | Not started | - |
+| 6. Params & Watchlist | 0/3 | Not started | - |
 | 7. Admin | 0/TBD | Not started | - |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
