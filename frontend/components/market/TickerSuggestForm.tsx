@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { createBrowserClient } from "@supabase/ssr";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export function TickerSuggestForm() {
   const [ticker, setTicker] = useState("");

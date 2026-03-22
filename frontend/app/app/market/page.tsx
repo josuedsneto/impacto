@@ -10,7 +10,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { TickerSuggestForm } from "@/components/market/TickerSuggestForm";
 import { PriceChart } from "@/components/market/PriceChart";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface PriceRow {
   date: string;
