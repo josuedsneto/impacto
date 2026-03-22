@@ -75,7 +75,7 @@ export default function SimulationPage() {
         if (!res.ok) {
           setHistoryError(data.detail ?? "Erro ao carregar histórico.");
         } else {
-          setHistory(data as HistorySummary[]);
+          setHistory((data as { simulations: HistorySummary[] }).simulations);
           setHistoryLoaded(true);
         }
       } catch {

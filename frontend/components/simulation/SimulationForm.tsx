@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,24 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadParams() {
+      try {
+        const token = await getAccessToken();
+        const res = await fetch(`${BACKEND_URL}/api/params/${encodeURIComponent(ticker)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
+        }
+      } catch {
+        // silently ignore — defaults remain
+      }
+    }
+    loadParams();
+  }, [ticker]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
