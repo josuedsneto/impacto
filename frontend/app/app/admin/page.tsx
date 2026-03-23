@@ -10,6 +10,11 @@ export default async function AdminPage() {
     redirect('/login')
   }
 
+  const role = user.app_metadata?.role
+  if (role !== 'admin') {
+    redirect('/app/dashboard')
+  }
+
   return (
     <main className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold mb-6">Painel do Administrador</h1>
