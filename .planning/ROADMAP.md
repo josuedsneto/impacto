@@ -143,8 +143,8 @@ Plans:
   3. run_simulation() uses `volatilidade_custom` when set, falling back to historical std when not.
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md � Fix MKT-03: column name + tipo enum (backend + frontend)
-- [ ] 09-02-PLAN.md � Wire PARAM-01 volatilidade_custom into run_simulation()
+- [ ] 09-01-PLAN.md — Fix MKT-03: column name + tipo enum (backend + frontend)
+- [ ] 09-02-PLAN.md — Wire PARAM-01 volatilidade_custom into run_simulation()
 
 ### Phase 10: CI/CD Artifacts + ADM-01 Frontend Guard + FOUC Fix
 **Goal**: Phase 8 is properly documented with GSD artifacts, GitHub secrets are confirmed, the admin page is protected on the frontend before the API call, and the theme loads without a flash.
@@ -156,7 +156,11 @@ Plans:
   2. GitHub repo has VM_HOST, VM_USER, VM_SSH_KEY secrets confirmed and a test deploy succeeds.
   3. Non-admin authenticated users are redirected away from /app/admin before any API call is made.
   4. App loads in the user's saved theme with no visible flash of the wrong theme on first paint.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 10-01-PLAN.md — FOUC fix (blocking script in layout.tsx + ThemeProvider DOM init) + ADM-01 role guard in admin page
+- [ ] 10-02-PLAN.md — Retroactive Phase 8 GSD artifacts (08-cicd/ PLAN + SUMMARY + VERIFICATION) + REQUIREMENTS.md update
+- [ ] 10-03-PLAN.md — Human checkpoint: confirm GitHub secrets, trigger deploy, verify FOUC fix and admin redirect
 
 ## Progress
 
@@ -174,4 +178,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Admin | 2/2 | Complete   | 2026-03-21 |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
 | 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 2/2 | Complete | 2026-03-22 |
-| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 0/TBD | Not started | - |
+| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 0/3 | Not started | - |
