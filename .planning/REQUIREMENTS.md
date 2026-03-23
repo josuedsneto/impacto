@@ -18,7 +18,7 @@
 
 - [x] **MKT-01**: Segunda consulta ao mesmo ticker/range retorna do banco sem chamar o yfinance
 - [x] **MKT-02**: Consultar range estendido (+1 dia) acrescenta apenas o novo dia ao banco
-- [ ] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
+- [x] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
 - [x] **MKT-04**: Backfill aceita range disponível se histórico menor que 2013-01-01
 
 ### Simulação MC
@@ -36,7 +36,7 @@
 
 ### Parâmetros e Watchlist
 
-- [ ] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
+- [x] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
 - [x] **PARAM-02**: Configurações de parâmetros persistem entre sessões
 - [x] **PARAM-03**: Usuário pode adicionar e remover tickers da watchlist
 - [x] **PARAM-04**: Dashboard exibe preços ao vivo + watchlist do usuário
@@ -99,7 +99,7 @@
 | AUTH-06 | Phase 2 | Complete |
 | MKT-01 | Phase 3 | Complete |
 | MKT-02 | Phase 3 | Complete |
-| MKT-03 | Phase 9 | Pending |
+| MKT-03 | Phase 9 | Complete |
 | MKT-04 | Phase 3 | Complete |
 | SIM-01 | Phase 4 | Complete |
 | SIM-02 | Phase 4 | Complete |
@@ -108,7 +108,7 @@
 | OPT-01 | Phase 5 | Complete |
 | OPT-02 | Phase 5 | Complete |
 | OPT-03 | Phase 5 | Complete |
-| PARAM-01 | Phase 9 | Pending |
+| PARAM-01 | Phase 9 | Complete |
 | PARAM-02 | Phase 6 | Complete |
 | PARAM-03 | Phase 6 | Complete |
 | PARAM-04 | Phase 6 | Complete |
