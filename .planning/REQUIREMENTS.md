@@ -18,7 +18,7 @@
 
 - [x] **MKT-01**: Segunda consulta ao mesmo ticker/range retorna do banco sem chamar o yfinance
 - [x] **MKT-02**: Consultar range estendido (+1 dia) acrescenta apenas o novo dia ao banco
-- [x] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
+- [ ] **MKT-03**: Usuário pode sugerir novo ticker; ticker inválido retorna erro visível antes de ser salvo
 - [x] **MKT-04**: Backfill aceita range disponível se histórico menor que 2013-01-01
 
 ### Simulação MC
@@ -36,14 +36,14 @@
 
 ### Parâmetros e Watchlist
 
-- [x] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
+- [ ] **PARAM-01**: Usuário pode configurar volatilidade, taxa livre de risco e pct_bound por ativo
 - [x] **PARAM-02**: Configurações de parâmetros persistem entre sessões
 - [x] **PARAM-03**: Usuário pode adicionar e remover tickers da watchlist
 - [x] **PARAM-04**: Dashboard exibe preços ao vivo + watchlist do usuário
 
 ### Admin
 
-- [x] **ADM-01**: Admin pode ver fila de tickers pendentes de aprovação
+- [ ] **ADM-01**: Admin pode ver fila de tickers pendentes de aprovação
 - [x] **ADM-02**: Admin aprova ticker e ele aparece na lista com status "approved" imediatamente
 - [x] **ADM-03**: Após aprovação, backfill_status muda de "pending" para "done" em menos de 60s
 - [x] **ADM-04**: Admin pode rejeitar ticker com nota explicativa
@@ -99,7 +99,7 @@
 | AUTH-06 | Phase 2 | Complete |
 | MKT-01 | Phase 3 | Complete |
 | MKT-02 | Phase 3 | Complete |
-| MKT-03 | Phase 3 | Complete |
+| MKT-03 | Phase 9 | Pending |
 | MKT-04 | Phase 3 | Complete |
 | SIM-01 | Phase 4 | Complete |
 | SIM-02 | Phase 4 | Complete |
@@ -108,16 +108,16 @@
 | OPT-01 | Phase 5 | Complete |
 | OPT-02 | Phase 5 | Complete |
 | OPT-03 | Phase 5 | Complete |
-| PARAM-01 | Phase 6 | Complete |
+| PARAM-01 | Phase 9 | Pending |
 | PARAM-02 | Phase 6 | Complete |
 | PARAM-03 | Phase 6 | Complete |
 | PARAM-04 | Phase 6 | Complete |
-| ADM-01 | Phase 7 | Complete |
+| ADM-01 | Phase 10 | Pending |
 | ADM-02 | Phase 7 | Complete |
 | ADM-03 | Phase 7 | Complete |
 | ADM-04 | Phase 7 | Complete |
-| INFRA-03 | Phase 8 | Pending |
-| INFRA-04 | Phase 8 | Pending |
+| INFRA-03 | Phase 10 | Pending |
+| INFRA-04 | Phase 10 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total

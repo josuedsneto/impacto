@@ -132,10 +132,33 @@ Plans:
   2. User switches to light mode, closes the browser, reopens it, and the app loads in light mode.
 **Plans**: TBD
 
+### Phase 9: Fix MKT-03 Bugs + PARAM-01 Wiring
+**Goal**: Ticker suggestion flow completes successfully end-to-end, and volatilidade_custom saved by users is actually consumed by the simulation engine.
+**Depends on**: Phase 8
+**Requirements**: MKT-03, PARAM-01
+**Gap Closure:** Closes gaps from v2.0 audit
+**Success Criteria** (what must be TRUE):
+  1. POST /api/tickers/suggest inserts a row successfully with the correct `adicionado_por` value.
+  2. Submitting a ticker suggestion with any `tipo` from the frontend dropdown does not violate the DB CHECK constraint.
+  3. run_simulation() uses `volatilidade_custom` when set, falling back to historical std when not.
+**Plans**: TBD
+
+### Phase 10: CI/CD Artifacts + ADM-01 Frontend Guard + FOUC Fix
+**Goal**: Phase 8 is properly documented with GSD artifacts, GitHub secrets are confirmed, the admin page is protected on the frontend before the API call, and the theme loads without a flash.
+**Depends on**: Phase 9
+**Requirements**: INFRA-03, INFRA-04, ADM-01
+**Gap Closure:** Closes gaps from v2.0 audit
+**Success Criteria** (what must be TRUE):
+  1. `.planning/phases/08-cicd/` exists with PLAN.md, SUMMARY.md, and VERIFICATION.md.
+  2. GitHub repo has VM_HOST, VM_USER, VM_SSH_KEY secrets confirmed and a test deploy succeeds.
+  3. Non-admin authenticated users are redirected away from /app/admin before any API call is made.
+  4. App loads in the user's saved theme with no visible flash of the wrong theme on first paint.
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -147,3 +170,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 6. Params & Watchlist | 3/3 | Complete   | 2026-03-21 |
 | 7. Admin | 2/2 | Complete   | 2026-03-21 |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
+| 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 0/TBD | Not started | - |
+| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 0/TBD | Not started | - |
