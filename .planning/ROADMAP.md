@@ -143,8 +143,8 @@ Plans:
   3. run_simulation() uses `volatilidade_custom` when set, falling back to historical std when not.
 **Plans**: 2 plans
 Plans:
-- [ ] 09-01-PLAN.md � Fix MKT-03: column name + tipo enum (backend + frontend)
-- [ ] 09-02-PLAN.md � Wire PARAM-01 volatilidade_custom into run_simulation()
+- [ ] 09-01-PLAN.md � Fix MKT-03: column name + tipo enum (backend + frontend)
+- [ ] 09-02-PLAN.md � Wire PARAM-01 volatilidade_custom into run_simulation()
 
 ### Phase 10: CI/CD Artifacts + ADM-01 Frontend Guard + FOUC Fix
 **Goal**: Phase 8 is properly documented with GSD artifacts, GitHub secrets are confirmed, the admin page is protected on the frontend before the API call, and the theme loads without a flash.
@@ -173,5 +173,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Params & Watchlist | 3/3 | Complete   | 2026-03-21 |
 | 7. Admin | 2/2 | Complete   | 2026-03-21 |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
-| 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 0/2 | Planned | - |
+| 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 2/2 | Complete | 2026-03-22 |
 | 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 0/TBD | Not started | - |
