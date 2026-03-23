@@ -43,7 +43,7 @@
 
 ### Admin
 
-- [ ] **ADM-01**: Admin pode ver fila de tickers pendentes de aprovação
+- [x] **ADM-01**: Admin pode ver fila de tickers pendentes de aprovação
 - [x] **ADM-02**: Admin aprova ticker e ele aparece na lista com status "approved" imediatamente
 - [x] **ADM-03**: Após aprovação, backfill_status muda de "pending" para "done" em menos de 60s
 - [x] **ADM-04**: Admin pode rejeitar ticker com nota explicativa
@@ -112,7 +112,7 @@
 | PARAM-02 | Phase 6 | Complete |
 | PARAM-03 | Phase 6 | Complete |
 | PARAM-04 | Phase 6 | Complete |
-| ADM-01 | Phase 10 | Pending |
+| ADM-01 | Phase 10 | Complete |
 | ADM-02 | Phase 7 | Complete |
 | ADM-03 | Phase 7 | Complete |
 | ADM-04 | Phase 7 | Complete |
