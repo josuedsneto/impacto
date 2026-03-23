@@ -235,12 +235,25 @@ async def create_simulation(
     SIM-01: Run MC simulation and persist results.
     Returns scalar metrics + percentiles_series for fan chart rendering.
     """
+    # PARAM-01: fetch user's custom volatility for this ticker, if set
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    params_row = (
+        client.table("user_parameters")
+        .select("volatilidade_custom")
+        .eq("user_id", user["id"])
+        .eq("ticker", body.ticker.strip().upper())
+        .maybe_single()
+        .execute()
+    )
+    volatilidade_custom = (params_row.data or {}).get("volatilidade_custom")
+
     result = run_simulation(
         ticker=body.ticker.strip().upper(),
         preco_inicial=body.preco_inicial,
         dias_simulados=body.dias_simulados,
         num_simulacoes=body.num_simulacoes,
         pct_bound=body.pct_bound,
+        volatilidade_custom=volatilidade_custom,
     )
 
     # Persist to simulations table with user_id (SIM-04: user isolation)
