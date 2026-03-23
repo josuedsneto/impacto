@@ -52,8 +52,8 @@
 
 - [x] **INFRA-01**: Schema Supabase aplicado via migrations versionadas (supabase db push)
 - [x] **INFRA-02**: Nginx roteia / para Next.js :3000 e /api/* para FastAPI :8000 com SSL Let's Encrypt
-- [ ] **INFRA-03**: GitHub Actions faz deploy automático em merge na main
-- [ ] **INFRA-04**: Toggle dark/light persiste após fechar e reabrir o browser
+- [x] **INFRA-03**: GitHub Actions faz deploy automático em merge na main (deploy.yml via appleboy/ssh-action; secrets VM_HOST/VM_USER/VM_SSH_KEY require human confirmation — Phase 10-03)
+- [x] **INFRA-04**: Toggle dark/light persiste após fechar e reabrir o browser (ThemeProvider + localStorage; FOUC fix in Phase 10-01)
 
 ## v2 Requirements (Deferred)
 
@@ -116,8 +116,8 @@
 | ADM-02 | Phase 7 | Complete |
 | ADM-03 | Phase 7 | Complete |
 | ADM-04 | Phase 7 | Complete |
-| INFRA-03 | Phase 10 | Pending |
-| INFRA-04 | Phase 10 | Pending |
+| INFRA-03 | Phase 8 | Complete |
+| INFRA-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 29 total
