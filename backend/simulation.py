@@ -21,6 +21,7 @@ def run_simulation(
     dias_simulados: int = 252,
     num_simulacoes: int = 10_000,
     pct_bound: float = 0.50,
+    volatilidade_custom: float | None = None,
 ) -> dict:
     """
     Run Monte Carlo simulation and return scalar metrics + percentile series.
@@ -45,6 +46,10 @@ def run_simulation(
     log_returns = np.diff(np.log(closes))
     mu = float(np.mean(log_returns))
     sigma = float(np.std(log_returns, ddof=1))
+
+    # Override sigma with user-specified volatility if provided (PARAM-01)
+    if volatilidade_custom is not None:
+        sigma = float(volatilidade_custom)
 
     # --- Simulation bounds ---
     lower_bound = preco_inicial * (1 - pct_bound)
