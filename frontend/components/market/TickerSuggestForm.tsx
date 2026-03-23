@@ -19,7 +19,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 export function TickerSuggestForm() {
   const [ticker, setTicker] = useState("");
   const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState("equity");
+  const [tipo, setTipo] = useState("commodity");
   const [loading, setLoading] = useState(false);
 
   async function getAccessToken(): Promise<string | null> {
@@ -93,11 +93,10 @@ export function TickerSuggestForm() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="equity">Ação</SelectItem>
-            <SelectItem value="futures">Futuro</SelectItem>
-            <SelectItem value="fx">Câmbio</SelectItem>
-            <SelectItem value="etf">ETF</SelectItem>
-            <SelectItem value="crypto">Cripto</SelectItem>
+            <SelectItem value="commodity">Commodity / Futuro</SelectItem>
+            <SelectItem value="fx">Câmbio (FX)</SelectItem>
+            <SelectItem value="acao">Ação</SelectItem>
+            <SelectItem value="indice">Índice</SelectItem>
           </SelectContent>
         </Select>
       </div>
