@@ -3,7 +3,12 @@
     "allow": [
       "Bash(head:*)",
       "Bash(wc:*)",
-      "Bash(cd C:\\\\Users\\\\netin\\\\OneDrive\\\\Documentos\\\\Code\\\\impacto:*)"
+      "Bash(cd C:\\\\Users\\\\netin\\\\OneDrive\\\\Documentos\\\\Code\\\\impacto:*)",
+      "Skill(gsd:map-codebase)",
+      "Skill(gsd:pause-work)",
+      "Bash(ls supabase/migrations/*.sql)",
+      "Bash(node C:/Users/netin/.claude/get-shit-done/bin/gsd-tools.cjs state advance-plan)",
+      "Bash(node C:/Users/netin/.claude/get-shit-done/bin/gsd-tools.cjs requirements mark-complete INFRA-02)"
     ]
   }
 }
