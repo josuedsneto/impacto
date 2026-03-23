@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated
+from typing import Annotated, Literal
 from datetime import date as date_type
 import os
 import yfinance as yf
@@ -57,7 +57,7 @@ class SimulationRequest(BaseModel):
 class TickerSuggestRequest(BaseModel):
     ticker: str
     nome: str = ""        # human-readable name, optional
-    tipo: str = "equity"  # equity | futures | fx | etf | crypto
+    tipo: Literal["commodity", "fx", "acao", "indice"] = "commodity"
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ async def suggest_ticker(
         "tipo": body.tipo,
         "status": "pending",
         "backfill_status": "pending",
-        "suggested_by": user["id"],
+        "adicionado_por": user["id"],
     }).execute()
 
     return {"ticker": ticker, "status": "pending", "message": f"Ticker '{ticker}' submitted for admin review."}
