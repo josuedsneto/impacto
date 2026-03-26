@@ -17,14 +17,15 @@ def require_login():
         st.text_input("Login", key="username")
         st.text_input("Senha", type="password", key="password")
         try:
-            expected_user = st.secrets.get("login_username", "")
-            expected_pass = st.secrets.get("login_password", "")
+            users = dict(st.secrets.get("users", {}))
+            if not users:
+                users = {st.secrets.get("login_username", ""): st.secrets.get("login_password", "")}
         except FileNotFoundError:
-            expected_user = os.environ.get("LOGIN_USERNAME", "")
-            expected_pass = os.environ.get("LOGIN_PASSWORD", "")
+            users = {os.environ.get("LOGIN_USERNAME", ""): os.environ.get("LOGIN_PASSWORD", "")}
         if st.button("Entrar"):
-            if (st.session_state.get("username") == expected_user and
-                    st.session_state.get("password") == expected_pass):
+            entered_user = st.session_state.get("username")
+            entered_pass = st.session_state.get("password")
+            if entered_user in users and users[entered_user] == entered_pass:
                 st.session_state.logged_in = True
                 st.rerun()
             else:
