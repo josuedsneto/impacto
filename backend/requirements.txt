@@ -8,3 +8,4 @@ cryptography==44.0.0
 yfinance==0.2.49
 numpy==2.2.1
 scipy==1.15.0
+python-bcb

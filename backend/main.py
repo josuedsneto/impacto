@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, Literal
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 import os
 import yfinance as yf
 from supabase import create_client
@@ -29,6 +29,65 @@ app.add_middleware(
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/focus")
+async def get_focus(user: Annotated[dict, Depends(get_current_user)]):
+    """
+    Returns latest BCB Focus report medians for IPCA, Câmbio, Selic, PIB Total
+    for the current calendar year, plus the delta vs the reading from ~7 days ago.
+    Falls back to None values if the BCB API is unavailable.
+    """
+    import asyncio
+    from bcb import Expectativas
+
+    current_year = str(date_type.today().year)
+    today = date_type.today()
+    week_ago = today - timedelta(days=9)  # buffer for weekends
+
+    indicators = ["IPCA", "Câmbio", "Selic", "PIB Total"]
+    result = {}
+
+    def fetch_indicator(name: str) -> dict:
+        try:
+            expec = Expectativas()
+            ep = expec.get_endpoint("ExpectativasMercadoAnuais")
+            data = (
+                ep.query()
+                .filter(ep.Indicador == name)
+                .filter(ep.DataReferencia == current_year)
+                .filter(ep.baseCalculo == 0)
+                .filter(ep.Data >= str(week_ago))
+                .filter(ep.Data <= str(today))
+                .collect()
+            )
+            if data.empty:
+                return {"value": None, "delta": None}
+            data = data.sort_values("Data")
+            latest = float(data.iloc[-1]["Mediana"])
+            if len(data) >= 2:
+                prior = float(data.iloc[0]["Mediana"])
+                delta = round(latest - prior, 4)
+            else:
+                delta = None
+            return {"value": round(latest, 4), "delta": delta}
+        except Exception:
+            return {"value": None, "delta": None}
+
+    # Run all indicator fetches in a thread pool to avoid blocking the event loop
+    loop = asyncio.get_event_loop()
+    tasks = [
+        loop.run_in_executor(None, fetch_indicator, name)
+        for name in indicators
+    ]
+    values = await asyncio.gather(*tasks)
+
+    key_map = {"IPCA": "ipca", "Câmbio": "cambio", "Selic": "selic", "PIB Total": "pib"}
+    for name, val in zip(indicators, values):
+        result[key_map[name]] = val
+
+    result["ano_referencia"] = current_year
+    return result
 
 
 @app.get("/api/me")
