@@ -50,6 +50,7 @@ Progress: [██████████░░] 85%
 | Phase 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
 | Phase 06-params-watchlist P03 | 2 | 2 tasks | 2 files |
 | Phase 09-fix-mkt03-param01 P01 | 5 | 2 tasks | 2 files |
+| Phase 12-feature-pages P01 | 2 | 10 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Carried forward from v1.0:
 - [Phase 07-admin]: Approval of ticker suggestion calls backfill_ticker() synchronously within the PATCH request (ADM-03 sync pattern)
 - [Phase 07-admin]: Admin page guards only against unauthenticated access server-side — backend enforces admin role on every API call (returns 403), avoiding JWT role check duplication in Next.js
 - [Phase 09-fix-mkt03-param01]: Used Literal enum for tipo field to enforce DB CHECK constraint at API layer
+- [Phase 12-feature-pages]: feedparser for Google News RSS — avoids XML parsing complexity
 
 ### Pending Todos
 
