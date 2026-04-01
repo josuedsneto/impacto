@@ -562,3 +562,363 @@ async def remove_from_watchlist(
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
     return {"ticker": ticker.upper(), "removed": True}
+
+
+# ── Admin Config ───────────────────────────────────────────────────────────────
+
+class AdminConfigUpdateRequest(BaseModel):
+    value: str
+    description: str | None = None
+
+
+@app.get("/api/admin/config")
+async def admin_get_config(
+    user: Annotated[dict, Depends(require_admin)],
+):
+    """Return all admin_config rows ordered by key."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("admin_config")
+        .select("key,value,description,updated_at")
+        .order("key")
+        .execute()
+    )
+    return {"config": result.data}
+
+
+@app.put("/api/admin/config/{key}")
+async def admin_update_config(
+    key: str,
+    body: AdminConfigUpdateRequest,
+    user: Annotated[dict, Depends(require_admin)],
+):
+    """Upsert a key/value pair in admin_config."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    payload = {
+        "key": key,
+        "value": body.value,
+        "updated_at": date_type.today().isoformat(),
+    }
+    if body.description is not None:
+        payload["description"] = body.description
+    client.table("admin_config").upsert(payload, on_conflict="key").execute()
+    return {"key": key, "value": body.value, "saved": True}
+
+
+# ── VaR ────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/var")
+async def get_var(
+    ticker: str = "SB=F",
+    confidence: float = 0.95,
+    horizon: int = 1,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """
+    Compute Historical and Parametric Value at Risk.
+
+    Returns var_historico and var_parametrico in price units (not percent).
+    Both figures represent the potential loss over `horizon` days at the
+    given confidence level.
+    """
+    from scipy.stats import norm
+    import numpy as np
+
+    if not (0 < confidence < 1):
+        raise HTTPException(status_code=400, detail="confidence must be between 0 and 1")
+    if horizon < 1:
+        raise HTTPException(status_code=400, detail="horizon must be >= 1")
+
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+    if data.empty or len(data) < 10:
+        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+
+    closes = data["Close"].dropna().values.flatten()
+    returns = np.diff(closes) / closes[:-1]
+    last_price = float(closes[-1])
+
+    # Historical VaR
+    var_historico = float(np.percentile(returns, (1 - confidence) * 100) * last_price * (horizon ** 0.5))
+
+    # Parametric VaR
+    mu = float(np.mean(returns))
+    sigma = float(np.std(returns, ddof=1))
+    var_parametrico = float(norm.ppf(1 - confidence) * sigma * last_price * (horizon ** 0.5))
+
+    return {
+        "ticker": ticker,
+        "confidence": confidence,
+        "horizon": horizon,
+        "var_historico": round(var_historico, 4),
+        "var_parametrico": round(var_parametrico, 4),
+        "last_price": round(last_price, 4),
+        "n_observations": len(returns),
+    }
+
+
+# ── Breakeven ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/breakeven")
+async def get_breakeven(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Compute sugar breakeven in BRL/saca.
+
+    breakeven_reais_saca = preco_acucar_cents * fator_conversao * preco_dolar
+
+    fator_conversao is stored in admin_config and defaults to 1.12045 if not found.
+    """
+    # Fetch conversion factor from admin_config
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    config_row = (
+        client.table("admin_config")
+        .select("value")
+        .eq("key", "breakeven_fator_conversao")
+        .maybe_single()
+        .execute()
+    )
+    fator_conversao = float((config_row.data or {}).get("value", "1.12045"))
+
+    # Fetch live prices
+    sugar_data = yf.download("SB=F", period="5d", progress=False, auto_adjust=True)
+    usd_data = yf.download("USDBRL=X", period="5d", progress=False, auto_adjust=True)
+
+    if sugar_data.empty or usd_data.empty:
+        raise HTTPException(status_code=503, detail="Could not fetch live prices from yfinance")
+
+    preco_acucar_cents = float(sugar_data["Close"].dropna().iloc[-1])
+    preco_dolar = float(usd_data["Close"].dropna().iloc[-1])
+    breakeven_reais_saca = preco_acucar_cents * fator_conversao * preco_dolar
+
+    return {
+        "preco_acucar_cents": round(preco_acucar_cents, 4),
+        "preco_dolar": round(preco_dolar, 4),
+        "fator_conversao": fator_conversao,
+        "breakeven_reais_saca": round(breakeven_reais_saca, 2),
+    }
+
+
+# ── ARIMA ──────────────────────────────────────────────────────────────────────
+
+@app.get("/api/arima/{ticker}")
+async def get_arima(
+    ticker: str,
+    steps: int = 30,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """
+    Fit ARIMA(1,1,1) on 2 years of daily closes and forecast `steps` periods ahead.
+
+    Returns forecast values with 95% confidence intervals.
+    """
+    import numpy as np
+    from statsmodels.tsa.arima.model import ARIMA
+    import pandas as pd
+
+    if steps < 1 or steps > 365:
+        raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
+
+    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
+    if data.empty or len(data) < 30:
+        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+
+    closes = data["Close"].dropna()
+
+    try:
+        model = ARIMA(closes, order=(1, 1, 1))
+        fit = model.fit()
+        forecast_result = fit.get_forecast(steps=steps)
+        forecast_mean = forecast_result.predicted_mean
+        conf_int = forecast_result.conf_int(alpha=0.05)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"ARIMA fitting failed: {exc}")
+
+    last_date = closes.index[-1]
+    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=steps, freq="B")
+
+    forecast_list = []
+    lower_list = []
+    upper_list = []
+    for i, dt in enumerate(forecast_dates):
+        date_str = dt.strftime("%Y-%m-%d")
+        forecast_list.append({"date": date_str, "value": round(float(forecast_mean.iloc[i]), 4)})
+        lower_list.append({"date": date_str, "value": round(float(conf_int.iloc[i, 0]), 4)})
+        upper_list.append({"date": date_str, "value": round(float(conf_int.iloc[i, 1]), 4)})
+
+    return {
+        "ticker": ticker,
+        "steps": steps,
+        "forecast": forecast_list,
+        "confidence_lower": lower_list,
+        "confidence_upper": upper_list,
+    }
+
+
+# ── Stress Test ────────────────────────────────────────────────────────────────
+
+@app.get("/api/stress")
+async def get_stress(
+    ticker: str = "SB=F",
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """
+    Compute stress scenarios for the given ticker using full price history.
+
+    Returns three scenarios:
+    - worst_5pct: Worst 5% drawdown period from historical data
+    - crisis_2008: Price performance during Aug 2008 – Mar 2009
+    - covid_2020: Price performance during Feb 2020 – Apr 2020
+    """
+    import numpy as np
+    import pandas as pd
+
+    data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
+    if data.empty or len(data) < 30:
+        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+
+    closes = data["Close"].dropna()
+    last_price = float(closes.iloc[-1])
+
+    def compute_drawdown_window(series: "pd.Series") -> dict:
+        """Return the worst drawdown window (start, end, drawdown_pct, price_after)."""
+        if series.empty:
+            return {"start": None, "end": None, "drawdown_pct": None, "last_price_after": None}
+        roll_max = series.cummax()
+        drawdown = (series - roll_max) / roll_max
+        worst_idx = int(drawdown.argmin())
+        worst_val = float(drawdown.iloc[worst_idx])
+        # Find the peak before the trough
+        peak_idx = int(series.iloc[: worst_idx + 1].argmax())
+        start_date = series.index[peak_idx].strftime("%Y-%m-%d")
+        end_date = series.index[worst_idx].strftime("%Y-%m-%d")
+        return {
+            "start": start_date,
+            "end": end_date,
+            "drawdown_pct": round(worst_val * 100, 2),
+            "last_price_after": round(float(series.iloc[worst_idx]), 4),
+        }
+
+    # Scenario 1: worst 5% drawdown window from full history
+    worst_dd = compute_drawdown_window(closes)
+
+    # Scenario 2: 2008 financial crisis period
+    crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"] if "2008-08-01" in closes.index or closes.index[0].year <= 2008 else pd.Series(dtype=float)
+    try:
+        crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"]
+    except Exception:
+        crisis_2008_series = pd.Series(dtype=float)
+    crisis_2008 = compute_drawdown_window(crisis_2008_series)
+    crisis_2008["name"] = "Crise 2008"
+
+    # Scenario 3: COVID crash
+    try:
+        covid_series = closes.loc["2020-02-01":"2020-04-30"]
+    except Exception:
+        covid_series = pd.Series(dtype=float)
+    covid = compute_drawdown_window(covid_series)
+    covid["name"] = "COVID 2020"
+
+    worst_dd["name"] = "Pior drawdown histórico"
+
+    return {
+        "ticker": ticker,
+        "last_price": round(last_price, 4),
+        "scenarios": [worst_dd, crisis_2008, covid],
+    }
+
+
+# ── News ───────────────────────────────────────────────────────────────────────
+
+import time as _time
+
+_news_cache: dict = {"ts": 0.0, "items": []}
+_NEWS_TTL = 1800  # 30 minutes
+
+
+@app.get("/api/news")
+async def get_news(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Fetch top 10 financial news items from Google News RSS feed.
+
+    Results are cached for 30 minutes to avoid hammering the RSS endpoint.
+    """
+    import feedparser
+
+    now = _time.time()
+    if now - _news_cache["ts"] < _NEWS_TTL and _news_cache["items"]:
+        return {"items": _news_cache["items"], "cached": True}
+
+    url = "https://news.google.com/rss/search?q=açúcar+NY+futuros+dólar+real&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+    try:
+        feed = feedparser.parse(url)
+        items = []
+        for entry in feed.entries[:10]:
+            published = entry.get("published", "")
+            source = entry.get("source", {})
+            source_title = source.get("title", "") if isinstance(source, dict) else str(source)
+            items.append({
+                "title": entry.get("title", ""),
+                "link": entry.get("link", ""),
+                "published": published,
+                "source": source_title,
+            })
+        _news_cache["ts"] = now
+        _news_cache["items"] = items
+    except Exception as exc:
+        if _news_cache["items"]:
+            return {"items": _news_cache["items"], "cached": True, "warning": str(exc)}
+        raise HTTPException(status_code=503, detail=f"Failed to fetch news: {exc}")
+
+    return {"items": items, "cached": False}
+
+
+# ── Volatility ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/volatility")
+async def get_volatility(
+    ticker: str = "SB=F",
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """
+    Compute realized volatility at 30d, 90d and 1y horizons (annualized).
+
+    Also returns rolling 30d volatility history for chart rendering.
+    """
+    import numpy as np
+    import pandas as pd
+
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+    if data.empty or len(data) < 30:
+        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+
+    closes = data["Close"].dropna()
+    last_price = float(closes.iloc[-1])
+    log_returns = np.log(closes / closes.shift(1)).dropna()
+
+    ann = 252 ** 0.5
+
+    vol_30d = float(log_returns.iloc[-30:].std(ddof=1) * ann) if len(log_returns) >= 30 else None
+    vol_90d = float(log_returns.iloc[-90:].std(ddof=1) * ann) if len(log_returns) >= 90 else None
+    vol_1y = float(log_returns.std(ddof=1) * ann)
+
+    rolling_30d = log_returns.rolling(30).std() * ann
+    history = []
+    for dt, row_close, row_vol in zip(closes.index[1:], closes.iloc[1:], rolling_30d):
+        if not np.isnan(row_vol):
+            history.append({
+                "date": dt.strftime("%Y-%m-%d"),
+                "close": round(float(row_close), 4),
+                "vol_30d_rolling": round(float(row_vol), 6),
+            })
+
+    return {
+        "ticker": ticker,
+        "vol_30d": round(vol_30d, 6) if vol_30d is not None else None,
+        "vol_90d": round(vol_90d, 6) if vol_90d is not None else None,
+        "vol_1y": round(vol_1y, 6),
+        "last_price": round(last_price, 4),
+        "history": history,
+    }
