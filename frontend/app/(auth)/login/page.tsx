@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const [tab, setTab] = useState('senha')
+
   // Magic link state
   const [magicEmail, setMagicEmail] = useState('')
   const [magicError, setMagicError] = useState<string | null>(null)
@@ -68,7 +70,7 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-muted-foreground">Entre com sua conta</p>
       </div>
 
-      <Tabs defaultValue="senha">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full">
           <TabsTrigger value="senha" className="flex-1">Email + Senha</TabsTrigger>
           <TabsTrigger value="magic" className="flex-1">Magic Link</TabsTrigger>
