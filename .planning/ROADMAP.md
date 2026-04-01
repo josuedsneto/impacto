@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Streamlit Audit & Fix** - Phases 1-3 (shipped 2026-03-20)
-- 🚧 **v2.0 Plataforma Escalável** - Phases 1-8 (in progress)
+- 🚧 **v2.0 Plataforma Escalável** - Phases 1-12 (in progress)
 
 ## Phases
 
@@ -162,6 +162,22 @@ Plans:
 - [ ] 10-02-PLAN.md — Retroactive Phase 8 GSD artifacts (08-cicd/ PLAN + SUMMARY + VERIFICATION) + REQUIREMENTS.md update
 - [ ] 10-03-PLAN.md — Human checkpoint: confirm GitHub secrets, trigger deploy, verify FOUC fix and admin redirect
 
+### Phase 11: Login + Auth
+**Goal**: Add login page (email+senha + magic link) and Next.js middleware protecting all /app/* routes.
+**Depends on**: Phase 10
+**Plans**: 1 plan
+Plans:
+- [ ] 11-01-PLAN.md — middleware.ts (protect /app/*) + /login page (two tabs: signInWithPassword + signInWithOtp)
+
+### Phase 12: Feature Pages
+**Goal**: Implement 7 missing app pages (Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade) + admin config system.
+**Depends on**: Phase 11
+**Plans**: 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Backend: 7 feature endpoints + admin config API + statsmodels/feedparser deps
+- [ ] 12-02-PLAN.md — Frontend: Focus, VaR, Breakeven, ARIMA pages
+- [ ] 12-03-PLAN.md — Frontend: Stress, Notícias, Volatilidade + admin config UI + ToolGrid update
+
 ## Progress
 
 **Execution Order:**
@@ -178,4 +194,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Admin | 2/2 | Complete   | 2026-03-21 |
 | 8. CI/CD & Polish | 0/TBD | Not started | - |
 | 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 2/2 | Complete | 2026-03-22 |
-| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 0/3 | Not started | - |
+| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 3/3 | Complete | 2026-04-01 |
+| 11. Login + Auth | 1/1 | Complete   | 2026-04-01 |
+| 12. Feature Pages | 0/3 | Not started | - |

@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 7 — Admin (v2.0 Plataforma Escalável)
+**Current focus:** Phase 11 — Login + Auth (v2.0 Plataforma Escalável)
 
 ## Current Position
 
 Milestone: v2.0 Plataforma Escalavel
-Phase: 7 of 8 (Admin) — In Progress
-Plan: 2 of 2 — Plan 02 complete
-Status: Phase 7 complete — admin panel frontend (SuggestionQueue + /app/admin page)
-Last activity: 2026-03-21 — Phase 7 plan 02 complete (admin panel frontend — SuggestionQueue client component + /app/admin server page)
+Phase: 11 of 12 (Login + Auth) — Ready to execute
+Plan: 1 of 1 — Complete
+Status: Phase 11 complete — ready to start Phase 12
+Last activity: 2026-04-01 — Phase 11 plan 01 complete (middleware verified + magic link tab added to login page)
 
-Progress: [████████░░] 50%
+Progress: [██████████░░] 85%
 
 ## Performance Metrics
 
