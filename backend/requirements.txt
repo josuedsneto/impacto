@@ -9,3 +9,5 @@ yfinance==0.2.49
 numpy==2.2.1
 scipy==1.15.0
 python-bcb
+statsmodels==0.14.4
+feedparser==6.0.11
