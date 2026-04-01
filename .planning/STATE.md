@@ -52,6 +52,7 @@ Progress: [██████████░░] 85%
 | Phase 09-fix-mkt03-param01 P01 | 5 | 2 tasks | 2 files |
 | Phase 12-feature-pages P01 | 2 | 10 tasks | 3 files |
 | Phase 12-feature-pages P02 | 2 | 4 tasks | 4 files |
+| Phase 12-feature-pages P03 | 2 | 5 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,7 @@ Carried forward from v1.0:
 - [Phase 09-fix-mkt03-param01]: Used Literal enum for tipo field to enforce DB CHECK constraint at API layer
 - [Phase 12-feature-pages]: feedparser for Google News RSS — avoids XML parsing complexity
 - [Phase 12-feature-pages]: ARIMA CI rendered via stacked Area fill trick (ci_upper filled, ci_lower fills with background color)
+- [Phase 12-feature-pages]: AdminConfig extracted as client component — admin page stays server component for auth guard
 
 ### Pending Todos
 
