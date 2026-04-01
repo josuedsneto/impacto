@@ -2,198 +2,54 @@
 
 ## Milestones
 
-- ✅ **v1.0 Streamlit Audit & Fix** - Phases 1-3 (shipped 2026-03-20)
-- 🚧 **v2.0 Plataforma Escalável** - Phases 1-12 (in progress)
+- ✅ **v1.0 Streamlit Audit & Fix** — Phases v1-1 to v1-3 (shipped 2026-03-20)
+- ✅ **v2.0 Plataforma Escalável** — Phases 1–12 (shipped 2026-04-01)
+- 📋 **v2.1** — TBD (run `/gsd:new-milestone` to plan)
 
 ## Phases
 
-<!-- v1.0 Streamlit Audit & Fix (SHIPPED 2026-03-20)
-  v1-Phase-1 Monte Carlo Core: Fixed simulacao_monte_carlo() signature, bounds, call site (commit 9b118d2)
-  v1-Phase-2 Options Pricing: deferred (superseded by v2.0 platform)
-  v1-Phase-3 Quant Audit: deferred (superseded by v2.0 platform)
--->
+<details>
+<summary>✅ v1.0 Streamlit Audit & Fix — SHIPPED 2026-03-20</summary>
 
----
+- [x] v1-Phase-1: Monte Carlo Core — Fixed simulacao_monte_carlo() signature, bounds, call site
+- [x] v1-Phase-2: Options Pricing — deferred (superseded by v2.0)
+- [x] v1-Phase-3: Quant Audit — deferred (superseded by v2.0)
 
-## 🚧 v2.0 Plataforma Escalável (In Progress)
+</details>
 
-**Milestone Goal:** Transform the Streamlit app into a multi-user web platform with Next.js + FastAPI + Supabase, deployed on Oracle Cloud.
+<details>
+<summary>✅ v2.0 Plataforma Escalável — SHIPPED 2026-04-01</summary>
 
-## Phase Details
+- [x] Phase 1: Infra & Schema (3/3 plans) — completed 2026-03-20
+- [x] Phase 2: Auth (3/3 plans) — completed 2026-03-20
+- [x] Phase 3: Market Cache (3/3 plans) — completed 2026-03-21
+- [x] Phase 4: MC Simulation (3/3 plans) — completed 2026-03-21
+- [x] Phase 5: Options & Pricing (2/2 plans) — completed 2026-03-21
+- [x] Phase 6: Params & Watchlist (3/3 plans) — completed 2026-03-21
+- [x] Phase 7: Admin (2/2 plans) — completed 2026-03-21
+- [x] Phase 8: CI/CD & Polish (1/1 plan) — completed 2026-03-22
+- [x] Phase 9: Fix MKT-03 + PARAM-01 (2/2 plans) — completed 2026-03-22
+- [x] Phase 10: CI/CD Artifacts + ADM-01 + FOUC Fix (3/3 plans) — completed 2026-04-01
+- [x] Phase 11: Login + Auth (1/1 plan) — completed 2026-04-01
+- [x] Phase 12: Feature Pages (3/3 plans) — completed 2026-04-01
 
-### Phase 1: Infra & Schema
-**Goal**: The database schema is version-controlled and applied, and the Oracle Cloud VM serves HTTPS traffic through Nginx for both the Next.js frontend and FastAPI backend.
-**Depends on**: Nothing (first phase)
-**Requirements**: INFRA-01, INFRA-02
-**Success Criteria** (what must be TRUE):
-  1. Running `supabase db push` applies all migrations with no errors and all tables and RLS policies exist in Supabase.
-  2. Visiting `https://<domain>/` returns the Next.js app over HTTPS with a valid Let's Encrypt certificate.
-  3. Sending a request to `https://<domain>/api/health` reaches the FastAPI process and returns a 200 response.
-**Plans**: 3 plans
-Plans:
-- [ ] 01-01-PLAN.md — Supabase migrations: 6 tables + RLS policies
-- [ ] 01-02-PLAN.md — App scaffolding: Next.js frontend + FastAPI health endpoint
-- [ ] 01-03-PLAN.md — Nginx config + VM bootstrap + apply migrations
+Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 
-### Phase 2: Auth
-**Goal**: Users can log in with email and password, stay logged in across browser sessions, and be redirected to /login when unauthenticated; FastAPI validates the JWT locally without contacting Supabase.
-**Depends on**: Phase 1
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06
-**Success Criteria** (what must be TRUE):
-  1. User submits email and password on /login and is redirected to the app dashboard.
-  2. User closes the browser and reopens it; the session is still active without logging in again.
-  3. User visits `/app/dashboard` without a session and is redirected to /login.
-  4. FastAPI rejects a tampered JWT with 401 without making any external network call to Supabase.
-  5. An admin user can reach an admin-only route; a regular user receives 403 on the same route.
-**Plans**: 3 plans
-Plans:
-- [ ] 02-01-PLAN.md — Supabase SSR client + /login page (email/password, session cookie, token refresh)
-- [ ] 02-02-PLAN.md — FastAPI JWT RS256 middleware + admin role guard
-- [ ] 02-03-PLAN.md — Next.js route protection middleware + /app/dashboard + auth callback
-
-### Phase 3: Market Cache
-**Goal**: Price data is served from a PostgreSQL cache so repeated queries for the same ticker and range do not call yfinance, and users can suggest new tickers for admin review.
-**Depends on**: Phase 2
-**Requirements**: MKT-01, MKT-02, MKT-03, MKT-04
-**Success Criteria** (what must be TRUE):
-  1. Fetching SB=F for a date range already in the database returns prices without a yfinance network call.
-  2. Extending the range by one day causes exactly one new row to be inserted; all prior rows remain unchanged.
-  3. Submitting an invalid ticker symbol returns a visible error message before anything is saved to the database.
-  4. A ticker whose yfinance history starts after 2013-01-01 is backfilled from its earliest available date without error.
-**Plans**: 3 plans
-Plans:
-- [ ] 03-01-PLAN.md — backend/market_cache.py: cache-aside service (get_prices, backfill_ticker)
-- [ ] 03-02-PLAN.md — FastAPI market routes: GET /api/market/prices, POST /api/market/suggest, POST /api/admin/market/backfill/{ticker}
-- [ ] 03-03-PLAN.md — Next.js /app/market page: price query view + ticker suggestion form
-
-### Phase 4: MC Simulation
-**Goal**: Users can run a Monte Carlo simulation through the API, see the fan chart and metrics, and find past simulations in a history tab; simulations from other users are never visible.
-**Depends on**: Phase 3
-**Requirements**: SIM-01, SIM-02, SIM-03, SIM-04
-**Success Criteria** (what must be TRUE):
-  1. Clicking "Simular" renders the fan chart and summary metrics in under 15 seconds with no prior cache.
-  2. The completed simulation appears in the "Histórico" tab without a page reload.
-  3. Clicking a past simulation in Histórico replays the exact fan chart from saved JSONB percentiles.
-  4. Logged in as User B, the simulations created by User A are not listed or accessible.
-**Plans**: 3 plans
-Plans:
-- [x] 04-01-PLAN.md — MC engine (backend/simulation.py) + FastAPI simulation routes
-- [x] 04-02-PLAN.md — React simulation components (SimulationForm, FanChart, SimulationMetrics)
-- [x] 04-03-PLAN.md — Next.js /app/simulation page with Simular + Histórico tabs
-
-### Phase 5: Options & Pricing
-**Goal**: Users can build a multi-leg options payoff diagram, price European calls with custom volatility via Black-Scholes, and price calls via risk-neutral MC.
-**Depends on**: Phase 4
-**Requirements**: OPT-01, OPT-02, OPT-03
-**Success Criteria** (what must be TRUE):
-  1. User adds two or more option legs and the payoff diagram updates to reflect the combined strategy.
-  2. User changes the volatility input and the Black-Scholes price recalculates immediately with the new value.
-  3. The European call MC pricer uses the risk-free rate as drift and returns a price consistent with Black-Scholes at ATM.
-**Plans**: 2 plans
-Plans:
-- [ ] 05-01-PLAN.md — backend/options.py (payoff, BS, MC pricer) + three FastAPI routes
-- [ ] 05-02-PLAN.md — Next.js /app/options page with PayoffBuilder, PayoffChart, BSPricer, MCPricer
-
-### Phase 6: Params & Watchlist
-**Goal**: Users can persist per-asset simulation parameters and a personal watchlist across sessions, and the dashboard shows live prices for watched tickers.
-**Depends on**: Phase 3
-**Requirements**: PARAM-01, PARAM-02, PARAM-03, PARAM-04
-**Success Criteria** (what must be TRUE):
-  1. User sets volatility, risk-free rate, and pct_bound for SB=F; values are pre-filled when the user returns in a new session.
-  2. User adds USDBRL=X to the watchlist, closes the browser, reopens it, and the ticker is still listed.
-  3. User removes a ticker from the watchlist and it disappears from the dashboard immediately.
-  4. The dashboard displays the current market price for each ticker in the user's watchlist.
-**Plans**: 3 plans
-Plans:
-- [ ] 06-01-PLAN.md — FastAPI routes: GET/PUT /api/params/{ticker}, GET/POST/DELETE /api/watchlist
-- [ ] 06-02-PLAN.md — WatchlistManager component + dashboard upgrade with live prices
-- [ ] 06-03-PLAN.md — /app/params settings page with ParamsForm
-
-### Phase 7: Admin
-**Goal**: Admins can review the ticker suggestion queue, approve tickers triggering automatic backfill, and reject tickers with an explanatory note.
-**Depends on**: Phase 6
-**Requirements**: ADM-01, ADM-02, ADM-03, ADM-04
-**Success Criteria** (what must be TRUE):
-  1. Admin navigates to the admin panel and sees all tickers with status "pending".
-  2. Admin clicks "Aprovar" on a ticker and its status changes to "approved" in the list without a page reload.
-  3. Within 60 seconds of approval the ticker's backfill_status changes from "pending" to "done".
-  4. Admin clicks "Rejeitar", types a note, and the ticker status updates to "rejected" with the note visible.
-**Plans**: 2 plans
-Plans:
-- [ ] 07-01-PLAN.md — FastAPI admin routes: GET /api/admin/suggestions, PATCH /api/admin/suggestions/{id}
-- [ ] 07-02-PLAN.md — Next.js /app/admin page with SuggestionQueue component
-
-### Phase 8: CI/CD & Polish
-**Goal**: Every merge to main triggers an automatic deploy to the Oracle Cloud VM, and the user's dark/light theme preference survives browser restarts.
-**Depends on**: Phase 7
-**Requirements**: INFRA-03, INFRA-04
-**Success Criteria** (what must be TRUE):
-  1. Merging a PR to main causes the GitHub Actions workflow to SSH into the VM, pull, rebuild, and restart services with no manual steps.
-  2. User switches to light mode, closes the browser, reopens it, and the app loads in light mode.
-**Plans**: TBD
-
-### Phase 9: Fix MKT-03 Bugs + PARAM-01 Wiring
-**Goal**: Ticker suggestion flow completes successfully end-to-end, and volatilidade_custom saved by users is actually consumed by the simulation engine.
-**Depends on**: Phase 8
-**Requirements**: MKT-03, PARAM-01
-**Gap Closure:** Closes gaps from v2.0 audit
-**Success Criteria** (what must be TRUE):
-  1. POST /api/tickers/suggest inserts a row successfully with the correct `adicionado_por` value.
-  2. Submitting a ticker suggestion with any `tipo` from the frontend dropdown does not violate the DB CHECK constraint.
-  3. run_simulation() uses `volatilidade_custom` when set, falling back to historical std when not.
-**Plans**: 2 plans
-Plans:
-- [ ] 09-01-PLAN.md — Fix MKT-03: column name + tipo enum (backend + frontend)
-- [ ] 09-02-PLAN.md — Wire PARAM-01 volatilidade_custom into run_simulation()
-
-### Phase 10: CI/CD Artifacts + ADM-01 Frontend Guard + FOUC Fix
-**Goal**: Phase 8 is properly documented with GSD artifacts, GitHub secrets are confirmed, the admin page is protected on the frontend before the API call, and the theme loads without a flash.
-**Depends on**: Phase 9
-**Requirements**: INFRA-03, INFRA-04, ADM-01
-**Gap Closure:** Closes gaps from v2.0 audit
-**Success Criteria** (what must be TRUE):
-  1. `.planning/phases/08-cicd/` exists with PLAN.md, SUMMARY.md, and VERIFICATION.md.
-  2. GitHub repo has VM_HOST, VM_USER, VM_SSH_KEY secrets confirmed and a test deploy succeeds.
-  3. Non-admin authenticated users are redirected away from /app/admin before any API call is made.
-  4. App loads in the user's saved theme with no visible flash of the wrong theme on first paint.
-**Plans**: 3 plans
-Plans:
-- [ ] 10-01-PLAN.md — FOUC fix (blocking script in layout.tsx + ThemeProvider DOM init) + ADM-01 role guard in admin page
-- [ ] 10-02-PLAN.md — Retroactive Phase 8 GSD artifacts (08-cicd/ PLAN + SUMMARY + VERIFICATION) + REQUIREMENTS.md update
-- [ ] 10-03-PLAN.md — Human checkpoint: confirm GitHub secrets, trigger deploy, verify FOUC fix and admin redirect
-
-### Phase 11: Login + Auth
-**Goal**: Add login page (email+senha + magic link) and Next.js middleware protecting all /app/* routes.
-**Depends on**: Phase 10
-**Plans**: 1 plan
-Plans:
-- [ ] 11-01-PLAN.md — middleware.ts (protect /app/*) + /login page (two tabs: signInWithPassword + signInWithOtp)
-
-### Phase 12: Feature Pages
-**Goal**: Implement 7 missing app pages (Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade) + admin config system.
-**Depends on**: Phase 11
-**Plans**: 3 plans
-Plans:
-- [ ] 12-01-PLAN.md — Backend: 7 feature endpoints + admin config API + statsmodels/feedparser deps
-- [ ] 12-02-PLAN.md — Frontend: Focus, VaR, Breakeven, ARIMA pages
-- [ ] 12-03-PLAN.md — Frontend: Stress, Notícias, Volatilidade + admin config UI + ToolGrid update
+</details>
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Infra & Schema | 3/3 | Complete   | 2026-03-20 |
-| 2. Auth | 3/3 | Complete   | 2026-03-20 |
-| 3. Market Cache | 3/3 | Complete   | 2026-03-21 |
-| 4. MC Simulation | 3/3 | Complete   | 2026-03-21 |
-| 5. Options & Pricing | 2/2 | Complete   | 2026-03-21 |
-| 6. Params & Watchlist | 3/3 | Complete   | 2026-03-21 |
-| 7. Admin | 2/2 | Complete   | 2026-03-21 |
-| 8. CI/CD & Polish | 0/TBD | Not started | - |
-| 9. Fix MKT-03 Bugs + PARAM-01 Wiring | 2/2 | Complete | 2026-03-22 |
-| 10. CI/CD Artifacts + ADM-01 Guard + FOUC Fix | 3/3 | Complete | 2026-04-01 |
-| 11. Login + Auth | 1/1 | Complete   | 2026-04-01 |
-| 12. Feature Pages | 3/3 | Complete   | 2026-04-01 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Infra & Schema | v2.0 | 3/3 | Complete | 2026-03-20 |
+| 2. Auth | v2.0 | 3/3 | Complete | 2026-03-20 |
+| 3. Market Cache | v2.0 | 3/3 | Complete | 2026-03-21 |
+| 4. MC Simulation | v2.0 | 3/3 | Complete | 2026-03-21 |
+| 5. Options & Pricing | v2.0 | 2/2 | Complete | 2026-03-21 |
+| 6. Params & Watchlist | v2.0 | 3/3 | Complete | 2026-03-21 |
+| 7. Admin | v2.0 | 2/2 | Complete | 2026-03-21 |
+| 8. CI/CD & Polish | v2.0 | 1/1 | Complete | 2026-03-22 |
+| 9. Fix MKT-03 + PARAM-01 | v2.0 | 2/2 | Complete | 2026-03-22 |
+| 10. CI/CD Artifacts + FOUC | v2.0 | 3/3 | Complete | 2026-04-01 |
+| 11. Login + Auth | v2.0 | 1/1 | Complete | 2026-04-01 |
+| 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |

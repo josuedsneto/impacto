@@ -2,68 +2,77 @@
 
 ## What This Is
 
-Impacto é uma plataforma web para simulações Monte Carlo, pricing de opções e análise de ativos brasileiros (açúcar NY, USD/BRL). O milestone atual transforma o app Streamlit single-user em uma plataforma multiusuário com frontend Next.js, backend FastAPI e banco Supabase, deployada em Oracle Cloud (Always Free).
+Impacto é uma plataforma web multiusuário para análise de ativos brasileiros (açúcar NY, USD/BRL). Oferece simulações Monte Carlo, pricing de opções, análise de risco (VaR, stress test, volatilidade), previsões ARIMA, e monitoramento de mercado com autenticação Supabase, backend FastAPI e frontend Next.js deployado em Oracle Cloud.
 
 ## Core Value
 
 Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos simultaneamente, com dados persistidos e autenticação robusta.
 
-## Current Milestone: v2.0 — Plataforma Escalável
+## Current State (v2.0 — shipped 2026-04-01)
 
-**Goal:** Transformar o app Streamlit em plataforma web moderna com Next.js + FastAPI + Supabase, com autenticação, cache de mercado incremental e todas as páginas quantitativas migradas.
+**Stack:** Next.js 16 (App Router, shadcn/ui new-york/zinc) + FastAPI + Supabase (PostgreSQL + Auth JWT RS256) + Oracle Cloud VM (Nginx + PM2 + GitHub Actions CI/CD)
 
-**Target features:**
-- Autenticação Supabase (email/senha, JWT RS256, roles admin/user)
+**Shipped in v2.0:**
+- Autenticação completa: email+senha + magic link, JWT RS256, middleware route guard, roles admin/user
 - Cache incremental de preços de mercado via yfinance → PostgreSQL
-- Simulação MC com histórico salvo e replay de fan chart
-- Opções: payoff diagram + Black-Scholes com volatilidade customizável
+- Simulação MC com histórico persistido e replay de fan chart (percentis JSONB)
+- Opções: payoff diagram builder, Black-Scholes, MC pricer com volatilidade customizável por usuário
 - Parâmetros por usuário/ativo + watchlist
-- Admin: aprovação/rejeição de tickers com backfill assíncrono
-- Deploy Oracle Cloud VM: Nginx + SSL + PM2 + GitHub Actions CI/CD
+- Admin: aprovação/rejeição de tickers com backfill assíncrono + config de sistema
+- Deploy automatizado via GitHub Actions → Oracle Cloud VM
+- 7 páginas analíticas: Focus/BCB, VaR, Breakeven, ARIMA, Stress Test, Notícias, Volatilidade
+- ~6.900 LOC (TypeScript/Python), 12 fases, 29 planos
 
 ## Requirements
 
 ### Validated (v1.0 — Streamlit Audit & Fix)
 
-- ✓ Monte Carlo preco_inicial corrigido para usar valor do usuário — Phase 1
-- ✓ Bounds relativos ao preço do ativo (PCT_BOUND=0.50) — Phase 1
-- ✓ Fan chart P5–P95 produz cone correto — Phase 1
-- ✓ Multi-page Streamlit app com login guard — existente
-- ✓ yfinance data loading com caching — existente
-- ✓ Black-Scholes pricer (13_Black_Scholes.py) — existente
-- ✓ European call pricer via MC (23_Opções.py) — existente
-- ✓ Options payoff diagram builder (08_Payoff_Opções.py) — existente
+- ✓ Monte Carlo preco_inicial corrigido — v1.0
+- ✓ Bounds relativos ao preço do ativo (PCT_BOUND=0.50) — v1.0
+- ✓ Fan chart P5–P95 produz cone correto — v1.0
+- ✓ Multi-page Streamlit app com login guard — v1.0
+- ✓ yfinance data loading com caching — v1.0
+- ✓ Black-Scholes pricer — v1.0
+- ✓ European call pricer via MC — v1.0
+- ✓ Options payoff diagram builder — v1.0
 
-### Active (v2.0)
+### Validated (v2.0 — Plataforma Escalável)
 
-- [ ] Usuário pode fazer login com email/senha via Supabase Auth
-- [ ] JWT RS256 validado no FastAPI sem round-trip ao Supabase
-- [ ] Cache incremental: segunda consulta ao mesmo ticker/range retorna do banco
-- [ ] Simulação MC executada via API e resultado salvo no histórico do usuário
-- [ ] Fan chart replay via percentis JSONB salvos
-- [ ] Black-Scholes com volatilidade customizável por usuário
-- [ ] Admin pode aprovar/rejeitar tickers com backfill assíncrono
-- [ ] Deploy automatizado via GitHub Actions na Oracle Cloud VM
+- ✓ Login email/senha + magic link via Supabase Auth — v2.0
+- ✓ JWT RS256 validado no FastAPI sem round-trip ao Supabase — v2.0
+- ✓ Cache incremental: segunda consulta retorna do banco — v2.0
+- ✓ Simulação MC executada via API e resultado salvo no histórico — v2.0
+- ✓ Fan chart replay via percentis JSONB salvos — v2.0
+- ✓ Black-Scholes com volatilidade customizável por usuário — v2.0
+- ✓ Admin pode aprovar/rejeitar tickers com backfill assíncrono — v2.0
+- ✓ Deploy automatizado via GitHub Actions na Oracle Cloud VM — v2.0
+- ✓ Páginas analíticas: Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade — v2.0
+
+### Active (v2.1 — candidates)
+
+- [ ] Testes end-to-end automatizados (Playwright ou Cypress)
+- [ ] Rate limiting nas rotas de simulação (evitar abuso)
+- [ ] Notificações de preço via email (alertas configuráveis)
+- [ ] Exportação de relatório PDF por simulação
+- [ ] Onboarding: tela de boas-vindas para novos usuários
 
 ### Out of Scope
 
 - App mobile — web-first
-- Notificações / alertas de preço — fora do escopo v2
-- Integração com corretoras / execução de ordens — fora do escopo
-- Exportação PDF — fora do escopo
-- Multi-tenancy (múltiplas empresas) — fora do escopo
-- Reprodutibilidade de simulações (random seed) — fora do escopo
+- Integração com corretoras / execução de ordens
+- Multi-tenancy (múltiplas empresas)
+- Reprodutibilidade de simulações (random seed)
 - Migração dos CSVs históricos existentes — yfinance é source of truth
-- OAuth social login — email/senha suficiente para v2
+- OAuth social login — email/senha + magic link suficientes
 
 ## Context
 
 - Ativos: Açúcar NY #11 (SB=F, ~18–20 cents/lb) e USD/BRL (~5.0)
-- Range histórico mínimo: 2013-01-01 (usado na função baixar_dados_mc atual)
-- MC: 10.000 paths, numpy cumprod vetorizado
-- Supabase: PostgreSQL + Auth (JWT RS256) + RLS
+- MC: 10.000 paths, numpy cumprod vetorizado, drift risk-neutral para opções
+- Supabase: PostgreSQL + Auth (JWT RS256) + RLS em todas as tabelas user-owned
 - Oracle Cloud Always Free: ARM Ampere A1, 4 vCPUs, 24GB RAM, Ubuntu 22.04
-- Frontend usa Geist (Sans + Mono), shadcn/ui new-york, tema dark por padrão
+- Frontend: Geist (Sans + Mono), shadcn/ui new-york, dark mode padrão
+- admin_config table: configurações globais editáveis pelo admin (ex: fator de conversão breakeven)
 
 ## Constraints
 
@@ -79,10 +88,14 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 | Audit-first, then fix (v1.0) | Identificar gaps antes da implementação | ✓ Good |
 | Risk-neutral drift para options MC | Financeiramente correto para derivativos | ✓ Good |
 | PCT_BOUND=0.50 para bounds do MC | ±50% do preço atual evita truncar o cone GBM | ✓ Good |
-| FastAPI valida JWT localmente (PyJWT + chave pública RS256) | Sem round-trip ao Supabase, latência mínima | — Pending |
-| Cache-aside incremental no PostgreSQL | Reduz chamadas ao yfinance, histórico persistido | — Pending |
-| Oracle Cloud Always Free para deploy | Zero custo, 4 vCPUs / 24GB suficientes para 100 usuários | — Pending |
-| Next.js App Router + shadcn/ui new-york | Ecossistema React moderno, reutilizável | — Pending |
+| FastAPI valida JWT localmente (PyJWT + RS256) | Sem round-trip ao Supabase, latência mínima | ✓ Good |
+| Cache-aside incremental no PostgreSQL | Reduz chamadas ao yfinance, histórico persistido | ✓ Good |
+| Oracle Cloud Always Free para deploy | Zero custo, 4 vCPUs / 24GB suficientes para 100 usuários | ✓ Good |
+| Next.js App Router + shadcn/ui new-york | Ecossistema React moderno, reutilizável | ✓ Good |
+| proxy.ts (Next.js 16) + middleware.ts re-export | Next.js 16 convention; proxy.ts runs on Node.js runtime | ✓ Good |
+| AdminConfig como componente client separado | Preserva server-side auth guard no page.tsx | ✓ Good |
+| ARIMA(1,1,1) com try/except + 400 response | Modelo robusto para séries financeiras, falha graciosamente | ✓ Good |
+| admin_config table para parâmetros globais | Admins ajustam fator de conversão sem redeploy | ✓ Good |
 
 ---
-*Last updated: 2026-03-20 after milestone v2.0 start*
+*Last updated: 2026-04-01 after v2.0 milestone*
