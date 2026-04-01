@@ -48,6 +48,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 function ArimaPanel({ ticker }: { ticker: string }) {
+  const [tab, setTab] = useState("acucar");
   const [steps, setSteps] = useState("30");
   const [data, setData] = useState<ArimaPoint[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -219,7 +220,7 @@ export default function ArimaPage() {
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Previsão ARIMA</h1>
 
-      <Tabs defaultValue="acucar">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="acucar">Açúcar NY</TabsTrigger>
           <TabsTrigger value="dolar">USD/BRL</TabsTrigger>

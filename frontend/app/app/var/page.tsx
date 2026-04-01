@@ -50,6 +50,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 function VarPanel({ ticker }: { ticker: string }) {
+  const [tab, setTab] = useState("acucar");
   const [confidence, setConfidence] = useState("0.95");
   const [result, setResult] = useState<VarResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -151,7 +152,7 @@ export default function VarPage() {
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Value at Risk</h1>
 
-      <Tabs defaultValue="acucar">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="acucar">Açúcar NY</TabsTrigger>
           <TabsTrigger value="dolar">USD/BRL</TabsTrigger>
