@@ -14,9 +14,19 @@ const TOOLS = [
     desc: "Estratégias multi-perna com gráfico de payoff",
   },
   {
-    href: "/app/pricing",
-    label: "Precificação",
-    desc: "Black-Scholes e MC para calls europeias",
+    href: "/app/params",
+    label: "Parâmetros",
+    desc: "Configurar parâmetros de simulação por ativo",
+  },
+  {
+    href: "/app/market",
+    label: "Mercado",
+    desc: "Histórico de preços por ticker",
+  },
+  {
+    href: "/app/focus",
+    label: "Focus",
+    desc: "Expectativas do Relatório Focus (BCB)",
   },
   {
     href: "/app/var",
@@ -26,7 +36,27 @@ const TOOLS = [
   {
     href: "/app/breakeven",
     label: "Breakeven",
-    desc: "Ponto de equilíbrio por cenário de câmbio",
+    desc: "Ponto de equilíbrio por custo de produção",
+  },
+  {
+    href: "/app/arima",
+    label: "ARIMA",
+    desc: "Previsão de preços com modelo ARIMA + IC",
+  },
+  {
+    href: "/app/stress",
+    label: "Estresse",
+    desc: "Cenários históricos de drawdown por ativo",
+  },
+  {
+    href: "/app/noticias",
+    label: "Notícias",
+    desc: "Feed de notícias — Açúcar & Câmbio",
+  },
+  {
+    href: "/app/volatilidade",
+    label: "Volatilidade",
+    desc: "Volatilidade realizada 30d, 90d, 1 ano",
   },
 ];
 
