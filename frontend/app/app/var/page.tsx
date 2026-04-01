@@ -50,7 +50,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 function VarPanel({ ticker }: { ticker: string }) {
-  const [tab, setTab] = useState("acucar");
   const [confidence, setConfidence] = useState("0.95");
   const [result, setResult] = useState<VarResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -148,6 +147,7 @@ function VarPanel({ ticker }: { ticker: string }) {
 }
 
 export default function VarPage() {
+  const [tab, setTab] = useState("acucar");
   return (
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Value at Risk</h1>

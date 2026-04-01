@@ -49,7 +49,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 function VolPanel({ ticker }: { ticker: string }) {
-  const [tab, setTab] = useState("acucar");
   const [result, setResult] = useState<VolatilityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +157,7 @@ function VolPanel({ ticker }: { ticker: string }) {
 }
 
 export default function VolatilityPage() {
+  const [tab, setTab] = useState("acucar");
   return (
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Volatilidade Realizada</h1>
