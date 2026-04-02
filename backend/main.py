@@ -682,20 +682,22 @@ async def get_breakeven(
         client.table("admin_config")
         .select("value")
         .eq("key", "breakeven_fator_conversao")
-        .maybe_single()
+        .limit(1)
         .execute()
     )
-    fator_conversao = float((config_row.data or {}).get("value", "1.12045"))
+    fator_conversao = float((config_row.data[0] if config_row.data else {}).get("value", "1.12045"))
 
-    # Fetch live prices
-    sugar_data = yf.download("SB=F", period="5d", progress=False, auto_adjust=True, session=_yf_session)
-    usd_data = yf.download("USDBRL=X", period="5d", progress=False, auto_adjust=True, session=_yf_session)
+    # Fetch latest prices from Supabase cache
+    today = date_type.today()
+    start = today - timedelta(days=7)
+    sugar_rows = get_prices("SB=F", start, today)
+    usd_rows = get_prices("USDBRL=X", start, today)
 
-    if sugar_data.empty or usd_data.empty:
-        raise HTTPException(status_code=503, detail="Could not fetch live prices from yfinance")
+    if not sugar_rows or not usd_rows:
+        raise HTTPException(status_code=503, detail="Could not fetch live prices — backfill needed")
 
-    preco_acucar_cents = float(sugar_data["Close"].dropna().iloc[-1])
-    preco_dolar = float(usd_data["Close"].dropna().iloc[-1])
+    preco_acucar_cents = float(sugar_rows[-1]["close"])
+    preco_dolar = float(usd_rows[-1]["close"])
     breakeven_reais_saca = preco_acucar_cents * fator_conversao * preco_dolar
 
     return {
