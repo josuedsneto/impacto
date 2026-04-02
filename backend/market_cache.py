@@ -48,7 +48,6 @@ def _fetch_from_yfinance(ticker: str, start: date, end: date) -> pd.DataFrame:
         end=end_exclusive.isoformat(),
         progress=False,
         auto_adjust=True,
-        session=_yf_session,
     )
     if df.empty:
         return pd.DataFrame()

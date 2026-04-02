@@ -166,7 +166,7 @@ async def suggest_ticker(
 
     # Validate: attempt a minimal yfinance download (last 5 days)
     try:
-        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True, session=_yf_session)
+        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"yfinance error for '{ticker}': {exc}")
 
@@ -636,7 +636,7 @@ async def get_var(
     if horizon < 1:
         raise HTTPException(status_code=400, detail="horizon must be >= 1")
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 10:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -728,7 +728,7 @@ async def get_arima(
     if steps < 1 or steps > 365:
         raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
 
-    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True, session=_yf_session)
+    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -782,7 +782,7 @@ async def get_stress(
     import numpy as np
     import pandas as pd
 
-    data = yf.download(ticker, period="max", progress=False, auto_adjust=True, session=_yf_session)
+    data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -899,7 +899,7 @@ async def get_volatility(
     import numpy as np
     import pandas as pd
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
