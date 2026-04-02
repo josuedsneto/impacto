@@ -732,7 +732,7 @@ async def get_arima(
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
-    closes = data["Close"].dropna()
+    closes = data["Close"].squeeze().dropna()
 
     try:
         model = ARIMA(closes, order=(1, 1, 1))
@@ -786,7 +786,7 @@ async def get_stress(
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
-    closes = data["Close"].dropna()
+    closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])
 
     def compute_drawdown_window(series: "pd.Series") -> dict:
@@ -903,7 +903,7 @@ async def get_volatility(
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
-    closes = data["Close"].dropna()
+    closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])
     log_returns = np.log(closes / closes.shift(1)).dropna()
 
