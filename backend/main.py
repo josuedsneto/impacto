@@ -311,10 +311,10 @@ async def create_simulation(
         .select("volatilidade_custom")
         .eq("user_id", user["id"])
         .eq("ticker", body.ticker.strip().upper())
-        .maybe_single()
+        .limit(1)
         .execute()
     )
-    volatilidade_custom = (params_row.data or {}).get("volatilidade_custom")
+    volatilidade_custom = (params_row.data[0] if params_row.data else {}).get("volatilidade_custom")
 
     result = run_simulation(
         ticker=body.ticker.strip().upper(),
