@@ -701,10 +701,10 @@ async def get_breakeven(
     breakeven_reais_saca = preco_acucar_cents * fator_conversao * preco_dolar
 
     return {
-        "preco_acucar_cents": round(preco_acucar_cents, 4),
-        "preco_dolar": round(preco_dolar, 4),
+        "preco_acucar_cents_lb": round(preco_acucar_cents, 4),
+        "preco_dolar_brl": round(preco_dolar, 4),
         "fator_conversao": fator_conversao,
-        "breakeven_reais_saca": round(breakeven_reais_saca, 2),
+        "breakeven_brl_saca": round(breakeven_reais_saca, 2),
     }
 
 

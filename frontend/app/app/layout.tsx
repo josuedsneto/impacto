@@ -10,8 +10,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/app/simulation", label: "Monte Carlo" },
       { href: "/app/options", label: "Payoff Opções" },
-      { href: "/app/pricing", label: "Precificação" },
-      { href: "/app/volatility", label: "Volatilidade" },
+      { href: "/app/volatilidade", label: "Volatilidade" },
     ],
   },
   {

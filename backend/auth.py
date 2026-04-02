@@ -17,7 +17,10 @@ _JWK_JSON = os.environ.get("SUPABASE_JWT_JWK", "")
 def _load_public_key():
     if not _JWK_JSON:
         return None
-    return ECAlgorithm.from_jwk(_JWK_JSON)
+    try:
+        return ECAlgorithm.from_jwk(_JWK_JSON)
+    except Exception as exc:
+        raise RuntimeError(f"SUPABASE_JWT_JWK inválido: {exc}") from exc
 
 
 _PUBLIC_KEY = _load_public_key()
