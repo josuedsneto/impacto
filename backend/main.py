@@ -120,7 +120,7 @@ class SimulationRequest(BaseModel):
     dias_simulados: int = 252
     num_simulacoes: int = 10_000
     pct_bound: float = 0.50
-    label: str = ""
+    label: str | None = None
 
 
 class TickerSuggestRequest(BaseModel):

@@ -92,7 +92,12 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail ?? "Erro ao executar simulação.");
+        const detail = data.detail;
+        setError(
+          Array.isArray(detail)
+            ? detail.map((e: { msg: string }) => e.msg).join(", ")
+            : (detail ?? "Erro ao executar simulação.")
+        );
       } else {
         onResult(data as SimulationResult);
       }
