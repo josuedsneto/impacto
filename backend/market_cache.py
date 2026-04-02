@@ -15,9 +15,17 @@ Algorithm for get_prices(ticker, start, end):
 import os
 from datetime import date, timedelta
 from typing import Optional
+import requests
 import yfinance as yf
 import pandas as pd
 from supabase import create_client, Client
+
+# Oracle Cloud IPs are blocked by Yahoo Finance's bot detection.
+# A browser User-Agent session bypasses it.
+_yf_session = requests.Session()
+_yf_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+})
 
 
 def _get_service_client() -> Client:
@@ -40,6 +48,7 @@ def _fetch_from_yfinance(ticker: str, start: date, end: date) -> pd.DataFrame:
         end=end_exclusive.isoformat(),
         progress=False,
         auto_adjust=True,
+        session=_yf_session,
     )
     if df.empty:
         return pd.DataFrame()

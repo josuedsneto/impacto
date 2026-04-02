@@ -3,26 +3,20 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-interface FocusRow {
-  data_referencia: string;
-  mediana: number;
-  data: string;
+interface IndicatorValue {
+  value: number | null;
+  delta: number | null;
 }
 
 interface FocusResponse {
-  indicador: string;
-  rows: FocusRow[];
+  ipca: IndicatorValue;
+  cambio: IndicatorValue;
+  selic: IndicatorValue;
+  pib: IndicatorValue;
+  ano_referencia: string;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -34,8 +28,23 @@ async function getAccessToken(): Promise<string> {
   return data.session?.access_token ?? "";
 }
 
+function fmt(v: number | null, decimals = 2): string {
+  return v !== null ? v.toFixed(decimals) : "—";
+}
+
+function delta(d: number | null): string {
+  if (d === null) return "";
+  const sign = d > 0 ? "+" : "";
+  return ` (${sign}${d.toFixed(2)})`;
+}
+
+function deltaColor(d: number | null): string {
+  if (d === null) return "";
+  return d > 0 ? "text-red-500" : d < 0 ? "text-green-600" : "text-muted-foreground";
+}
+
 export default function FocusPage() {
-  const [rows, setRows] = useState<FocusRow[]>([]);
+  const [data, setData] = useState<FocusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,12 +55,12 @@ export default function FocusPage() {
         const res = await fetch(`${API}/api/focus`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        const data: FocusResponse = await res.json();
+        const json = await res.json();
         if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar dados do Focus.");
+          setError((json as { detail?: string }).detail ?? "Erro ao carregar dados do Focus.");
           return;
         }
-        setRows(data.rows);
+        setData(json as FocusResponse);
       } catch {
         setError("Erro de conexão com o servidor.");
       } finally {
@@ -61,63 +70,54 @@ export default function FocusPage() {
     fetchFocus();
   }, []);
 
+  const indicators = data
+    ? [
+        { label: "IPCA", unit: "%", ...data.ipca },
+        { label: "Câmbio (USD/BRL)", unit: "", ...data.cambio },
+        { label: "Selic", unit: "%", ...data.selic },
+        { label: "PIB Total", unit: "%", ...data.pib },
+      ]
+    : [];
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">
-        Expectativa de Mercado — IPCA (Focus/BCB)
+        Expectativa de Mercado — Focus/BCB {data ? `(${data.ano_referencia})` : ""}
       </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Projeções de IPCA</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading && (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-8 rounded bg-muted animate-pulse"
-                />
-              ))}
-            </div>
-          )}
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-          {!loading && !error && rows.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Nenhum dado disponível.
-            </p>
-          )}
-          {!loading && !error && rows.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ano de Referência</TableHead>
-                  <TableHead className="text-right">Mediana (%)</TableHead>
-                  <TableHead className="text-right">Última Atualização</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="font-medium">
-                      {row.data_referencia}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {row.mediana.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {new Date(row.data).toLocaleDateString("pt-BR")}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {!loading && !error && data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {indicators.map((ind) => (
+            <Card key={ind.label}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {ind.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">
+                  {fmt(ind.value)}{ind.unit}
+                </p>
+                {ind.delta !== null && (
+                  <p className={`text-sm mt-1 ${deltaColor(ind.delta)}`}>
+                    Variação 7 dias: {delta(ind.delta)}{ind.unit}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

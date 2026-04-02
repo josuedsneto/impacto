@@ -42,7 +42,7 @@ export default function NoticiasPage() {
         setError((data as { detail?: string }).detail ?? "Erro ao carregar notícias.");
         return;
       }
-      setNews(data as NewsItem[]);
+      setNews(data.items as NewsItem[]);
       const now = new Date();
       setLastUpdate(
         now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })

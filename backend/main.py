@@ -6,8 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, Literal
 from datetime import date as date_type, timedelta
 import os
+import requests
 import yfinance as yf
 from supabase import create_client
+
+# Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
+_yf_session = requests.Session()
+_yf_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+})
 from pydantic import BaseModel
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
@@ -159,7 +166,7 @@ async def suggest_ticker(
 
     # Validate: attempt a minimal yfinance download (last 5 days)
     try:
-        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
+        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True, session=_yf_session)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"yfinance error for '{ticker}': {exc}")
 
@@ -629,7 +636,7 @@ async def get_var(
     if horizon < 1:
         raise HTTPException(status_code=400, detail="horizon must be >= 1")
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
     if data.empty or len(data) < 10:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -681,8 +688,8 @@ async def get_breakeven(
     fator_conversao = float((config_row.data or {}).get("value", "1.12045"))
 
     # Fetch live prices
-    sugar_data = yf.download("SB=F", period="5d", progress=False, auto_adjust=True)
-    usd_data = yf.download("USDBRL=X", period="5d", progress=False, auto_adjust=True)
+    sugar_data = yf.download("SB=F", period="5d", progress=False, auto_adjust=True, session=_yf_session)
+    usd_data = yf.download("USDBRL=X", period="5d", progress=False, auto_adjust=True, session=_yf_session)
 
     if sugar_data.empty or usd_data.empty:
         raise HTTPException(status_code=503, detail="Could not fetch live prices from yfinance")
@@ -719,7 +726,7 @@ async def get_arima(
     if steps < 1 or steps > 365:
         raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
 
-    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
+    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True, session=_yf_session)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -773,7 +780,7 @@ async def get_stress(
     import numpy as np
     import pandas as pd
 
-    data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
+    data = yf.download(ticker, period="max", progress=False, auto_adjust=True, session=_yf_session)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
@@ -890,7 +897,7 @@ async def get_volatility(
     import numpy as np
     import pandas as pd
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
+    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
 
