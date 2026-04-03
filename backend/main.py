@@ -656,9 +656,11 @@ async def get_var(
         "ticker": ticker,
         "confidence": confidence,
         "horizon": horizon,
-        "var_historico": round(var_historico, 4),
-        "var_parametrico": round(var_parametrico, 4),
         "last_price": round(last_price, 4),
+        "var_historico_abs": round(var_historico, 4),
+        "var_historico_pct": round(var_historico / last_price, 6) if last_price else None,
+        "var_parametrico_abs": round(var_parametrico, 4),
+        "var_parametrico_pct": round(var_parametrico / last_price, 6) if last_price else None,
         "n_observations": len(returns),
     }
 
