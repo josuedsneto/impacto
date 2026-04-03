@@ -936,11 +936,16 @@ async def get_volatility(
                 "vol_30d_rolling": round(float(row_vol), 6),
             })
 
+    rolling_30d_list = [
+        {"date": h["date"], "vol": h["vol_30d_rolling"]}
+        for h in history
+    ]
+
     return {
         "ticker": ticker,
         "vol_30d": round(vol_30d, 6) if vol_30d is not None else None,
         "vol_90d": round(vol_90d, 6) if vol_90d is not None else None,
         "vol_1y": round(vol_1y, 6),
         "last_price": round(last_price, 4),
-        "history": history,
+        "rolling_30d": rolling_30d_list,
     }
