@@ -1,27 +1,57 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException
+import logging
+import os
+import re
+from uuid import UUID
+
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, Literal
 from datetime import date as date_type, timedelta
-import os
 import requests
 import yfinance as yf
 from supabase import create_client
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+logger = logging.getLogger(__name__)
 
 # Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
 _yf_session = requests.Session()
 _yf_session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 })
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
 
-app = FastAPI(title="Impacto API", version="2.0.0")
+# ── Ticker validation ─────────────────────────────────────────────────────────
+ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
+
+
+def validate_ticker(ticker: str) -> str:
+    t = ticker.strip().upper()
+    if not ALLOWED_TICKER_RE.match(t):
+        raise HTTPException(status_code=400, detail="Invalid ticker format")
+    return t
+
+
+app = FastAPI(
+    title="Impacto API",
+    version="2.0.0",
+    docs_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/docs",
+    redoc_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/redoc",
+)
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS — origins configured via env var; defaults to localhost for local dev
 cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -31,8 +61,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -117,8 +147,8 @@ async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
 class SimulationRequest(BaseModel):
     ticker: str
     preco_inicial: float
-    dias_simulados: int = 252
-    num_simulacoes: int = 10_000
+    dias_simulados: int = Field(default=252, ge=1, le=1000)
+    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
     pct_bound: float = 0.50
     label: str | None = None
 
@@ -143,6 +173,7 @@ async def market_prices(
     MKT-01: second call returns from DB without calling yfinance.
     MKT-02: only uncached dates are fetched from yfinance.
     """
+    ticker = validate_ticker(ticker)
     if end < start:
         raise HTTPException(status_code=400, detail="end must be >= start")
     rows = get_prices(ticker, start, end)
@@ -168,7 +199,8 @@ async def suggest_ticker(
     try:
         probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"yfinance error for '{ticker}': {exc}")
+        logger.error("yfinance error for '%s': %s", ticker, exc)
+        raise HTTPException(status_code=400, detail="Failed to fetch market data")
 
     if probe.empty:
         raise HTTPException(
@@ -208,6 +240,8 @@ async def suggest_ticker(
 async def admin_list_suggestions(
     user: Annotated[dict, Depends(require_admin)],
     status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
 ):
     """ADM-01: Return ticker suggestions. Optionally filter by status=pending|approved|rejected."""
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -216,6 +250,7 @@ async def admin_list_suggestions(
     ).order("created_at", desc=False)
     if status:
         query = query.eq("status", status)
+    query = query.range(offset, offset + limit - 1)
     result = query.execute()
     return {"suggestions": result.data}
 
@@ -227,7 +262,7 @@ class SuggestionReviewRequest(BaseModel):
 
 @app.patch("/api/admin/suggestions/{suggestion_id}")
 async def admin_review_suggestion(
-    suggestion_id: str,
+    suggestion_id: UUID,
     body: SuggestionReviewRequest,
     user: Annotated[dict, Depends(require_admin)],
 ):
@@ -245,7 +280,7 @@ async def admin_review_suggestion(
     existing = (
         client.table("tickers_catalog")
         .select("id,ticker,status")
-        .eq("id", suggestion_id)
+        .eq("id", str(suggestion_id))
         .execute()
     )
     if not existing.data:
@@ -267,9 +302,9 @@ async def admin_review_suggestion(
             "review_note": body.review_note or None,
         }
 
-    client.table("tickers_catalog").update(update_payload).eq("id", suggestion_id).execute()
+    client.table("tickers_catalog").update(update_payload).eq("id", str(suggestion_id)).execute()
 
-    return {"id": suggestion_id, "ticker": ticker, **update_payload}
+    return {"id": str(suggestion_id), "ticker": ticker, **update_payload}
 
 
 @app.post("/api/admin/market/backfill/{ticker}")
@@ -282,7 +317,8 @@ async def admin_backfill(
     Uses backfill_ticker() which handles tickers with history starting after 2013-01-01.
     Updates backfill_status in tickers_catalog on completion.
     """
-    result = backfill_ticker(ticker.upper())
+    ticker = validate_ticker(ticker)
+    result = backfill_ticker(ticker)
 
     # Update tickers_catalog backfill_status
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -296,7 +332,9 @@ async def admin_backfill(
 # ── Simulations ────────────────────────────────────────────────────────────────
 
 @app.post("/api/simulations", status_code=201)
+@limiter.limit("10/minute")
 async def create_simulation(
+    request: Request,
     body: SimulationRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -353,6 +391,8 @@ async def create_simulation(
 @app.get("/api/simulations")
 async def list_simulations(
     user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 50,
+    offset: int = 0,
 ):
     """
     SIM-02/SIM-04: List all simulations for the authenticated user only.
@@ -364,6 +404,7 @@ async def list_simulations(
         .select("id,ticker,label,preco_inicial,dias_simulados,p5,p50,p95,created_at")
         .eq("user_id", user["id"])
         .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     return {"simulations": result.data}
@@ -406,20 +447,20 @@ class PayoffRequest(BaseModel):
 
 
 class BSPriceRequest(BaseModel):
-    S: float          # current underlying price
-    K: float          # strike
-    T: float          # time to expiry in years
-    r: float          # risk-free rate (annualized)
-    sigma: float      # volatility (annualized)
+    S: float = Field(gt=0, le=100_000)       # current underlying price
+    K: float = Field(gt=0)                    # strike
+    T: float = Field(gt=0, le=30)            # time to expiry in years
+    r: float = Field(ge=0, le=5)             # risk-free rate (annualized)
+    sigma: float = Field(gt=0, le=10)        # volatility (annualized)
 
 
 class MCPriceRequest(BaseModel):
-    S: float
-    K: float
-    T: float
-    r: float
-    sigma: float
-    num_simulacoes: int = 10_000
+    S: float = Field(gt=0, le=100_000)
+    K: float = Field(gt=0)
+    T: float = Field(gt=0, le=30)
+    r: float = Field(ge=0, le=5)
+    sigma: float = Field(gt=0, le=10)
+    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
 
 
 @app.post("/api/options/payoff")
@@ -447,7 +488,9 @@ async def options_bs_price(
 
 
 @app.post("/api/options/mc-price")
+@limiter.limit("10/minute")
 async def options_mc_price(
+    request: Request,
     body: MCPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -465,9 +508,9 @@ async def options_mc_price(
 # ── User Parameters ────────────────────────────────────────────────────────────
 
 class UserParamsRequest(BaseModel):
-    volatilidade_custom: float | None = None   # 0–5
-    taxa_livre_risco: float | None = None       # -0.5–1
-    pct_bound_preferido: float | None = None    # 0.05–2
+    volatilidade_custom: float | None = Field(default=None, ge=0, le=5)
+    taxa_livre_risco: float | None = Field(default=None, ge=-0.5, le=1)
+    pct_bound_preferido: float | None = Field(default=None, ge=0.05, le=2)
 
 
 class WatchlistAddRequest(BaseModel):
@@ -527,6 +570,8 @@ async def upsert_params(
 @app.get("/api/watchlist")
 async def get_watchlist(
     user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 50,
+    offset: int = 0,
 ):
     """PARAM-03: Return all tickers in the user's watchlist."""
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -535,6 +580,7 @@ async def get_watchlist(
         .select("ticker,created_at")
         .eq("user_id", user["id"])
         .order("created_at", desc=False)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     return {"tickers": [row["ticker"] for row in result.data]}
@@ -615,7 +661,9 @@ async def admin_update_config(
 # ── VaR ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/var")
+@limiter.limit("10/minute")
 async def get_var(
+    request: Request,
     ticker: str = "SB=F",
     confidence: float = 0.95,
     horizon: int = 1,
@@ -631,6 +679,7 @@ async def get_var(
     from scipy.stats import norm
     import numpy as np
 
+    ticker = validate_ticker(ticker)
     if not (0 < confidence < 1):
         raise HTTPException(status_code=400, detail="confidence must be between 0 and 1")
     if horizon < 1:
@@ -713,7 +762,9 @@ async def get_breakeven(
 # ── ARIMA ──────────────────────────────────────────────────────────────────────
 
 @app.get("/api/arima/{ticker}")
+@limiter.limit("10/minute")
 async def get_arima(
+    request: Request,
     ticker: str,
     steps: int = 30,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -727,6 +778,7 @@ async def get_arima(
     from statsmodels.tsa.arima.model import ARIMA
     import pandas as pd
 
+    ticker = validate_ticker(ticker)
     if steps < 1 or steps > 365:
         raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
 
@@ -743,7 +795,8 @@ async def get_arima(
         forecast_mean = forecast_result.predicted_mean
         conf_int = forecast_result.conf_int(alpha=0.05)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"ARIMA fitting failed: {exc}")
+        logger.error("ARIMA fitting failed for '%s': %s", ticker, exc)
+        raise HTTPException(status_code=400, detail="ARIMA model fitting failed. Try a different ticker or period.")
 
     last_date = closes.index[-1]
     forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=steps, freq="B")
@@ -775,7 +828,9 @@ async def get_arima(
 # ── Stress Test ────────────────────────────────────────────────────────────────
 
 @app.get("/api/stress")
+@limiter.limit("10/minute")
 async def get_stress(
+    request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
@@ -790,6 +845,7 @@ async def get_stress(
     import numpy as np
     import pandas as pd
 
+    ticker = validate_ticker(ticker)
     data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
@@ -892,9 +948,10 @@ async def get_news(
         _news_cache["ts"] = now
         _news_cache["items"] = items
     except Exception as exc:
+        logger.error("Failed to fetch news: %s", exc)
         if _news_cache["items"]:
-            return {"items": _news_cache["items"], "cached": True, "warning": str(exc)}
-        raise HTTPException(status_code=503, detail=f"Failed to fetch news: {exc}")
+            return {"items": _news_cache["items"], "cached": True, "warning": "News fetch failed, showing cached data"}
+        raise HTTPException(status_code=503, detail="Failed to fetch news")
 
     return {"items": items, "cached": False}
 
@@ -902,7 +959,9 @@ async def get_news(
 # ── Volatility ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/volatility")
+@limiter.limit("10/minute")
 async def get_volatility(
+    request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
@@ -914,6 +973,7 @@ async def get_volatility(
     import numpy as np
     import pandas as pd
 
+    ticker = validate_ticker(ticker)
     data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
         raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
