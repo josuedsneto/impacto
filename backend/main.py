@@ -834,13 +834,20 @@ async def get_stress(
     covid = compute_drawdown_window(covid_series)
     covid["name"] = "COVID 2020"
 
-    worst_dd["name"] = "Pior drawdown histórico"
+    def to_scenario(d: dict, name: str) -> dict:
+        return {
+            "cenario": name,
+            "periodo_inicio": d.get("start") or "N/A",
+            "periodo_fim": d.get("end") or "N/A",
+            "drawdown_pct": round((d.get("drawdown_pct") or 0) / 100, 4),
+            "preco_final": d.get("last_price_after") or 0.0,
+        }
 
-    return {
-        "ticker": ticker,
-        "last_price": round(last_price, 4),
-        "scenarios": [worst_dd, crisis_2008, covid],
-    }
+    return [
+        to_scenario(worst_dd, "Pior drawdown histórico"),
+        to_scenario(crisis_2008, "Crise 2008"),
+        to_scenario(covid, "COVID 2020"),
+    ]
 
 
 # ── News ───────────────────────────────────────────────────────────────────────
