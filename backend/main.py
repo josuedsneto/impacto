@@ -746,21 +746,27 @@ async def get_arima(
     last_date = closes.index[-1]
     forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=steps, freq="B")
 
-    forecast_list = []
-    lower_list = []
-    upper_list = []
+    # Historical points — last 90 days for chart context
+    history = closes.iloc[-90:]
+    series = [
+        {"date": dt.strftime("%Y-%m-%d"), "value": round(float(v), 4)}
+        for dt, v in history.items()
+    ]
+
+    # Forecast points
     for i, dt in enumerate(forecast_dates):
         date_str = dt.strftime("%Y-%m-%d")
-        forecast_list.append({"date": date_str, "value": round(float(forecast_mean.iloc[i]), 4)})
-        lower_list.append({"date": date_str, "value": round(float(conf_int.iloc[i, 0]), 4)})
-        upper_list.append({"date": date_str, "value": round(float(conf_int.iloc[i, 1]), 4)})
+        series.append({
+            "date": date_str,
+            "forecast": round(float(forecast_mean.iloc[i]), 4),
+            "ci_lower": round(float(conf_int.iloc[i, 0]), 4),
+            "ci_upper": round(float(conf_int.iloc[i, 1]), 4),
+        })
 
     return {
         "ticker": ticker,
         "steps": steps,
-        "forecast": forecast_list,
-        "confidence_lower": lower_list,
-        "confidence_upper": upper_list,
+        "series": series,
     }
 
 
