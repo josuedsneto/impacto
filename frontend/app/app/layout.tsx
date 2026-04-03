@@ -24,7 +24,7 @@ const NAV_SECTIONS = [
   {
     label: "Análise",
     items: [
-      { href: "/app/news", label: "Notícias" },
+      { href: "/app/noticias", label: "Notícias" },
       { href: "/app/focus", label: "Focus BCB" },
       { href: "/app/arima", label: "ARIMA" },
     ],
@@ -138,7 +138,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
       </aside>
 
-      <main className="flex-1 overflow-auto" style={{ background: "#f4f6f9" }}>
+      <main
+        className="flex-1 overflow-auto"
+        style={{ background: "#f4f6f9", padding: pathname === "/app/dashboard" ? 0 : "32px 40px" }}
+      >
         {children}
       </main>
     </div>
