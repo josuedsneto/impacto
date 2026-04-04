@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 // Trusted backend origins — fall back to localhost for local dev.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -8,22 +10,31 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // Recompute if the script changes: printf '<script>' | openssl dgst -sha256 -binary | openssl base64
 const THEME_SCRIPT_HASH = "sha256-mJZHY/i9NucSrP9dUPMldBM/ANm6aguQIO345P3dGR4=";
 
-const csp = [
-  "default-src 'self'",
-  // Inline theme script allowed via hash only — no 'unsafe-inline'
-  `script-src 'self' '${THEME_SCRIPT_HASH}'`,
-  // Tailwind and shadcn inject styles at runtime
-  "style-src 'self' 'unsafe-inline'",
-  // next/font downloads font files from Google; data: for base64 fonts
-  "font-src 'self' data: https://fonts.gstatic.com",
-  // API calls, Supabase realtime/auth, and image optimisation
-  `connect-src 'self' ${supabaseUrl} ${apiUrl}`,
-  // Self-hosted images plus data URIs and blob for canvas/charts
-  "img-src 'self' data: blob:",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
+// In development Turbopack injects many dynamic inline scripts that cannot be
+// pre-hashed, so we allow 'unsafe-inline' + 'unsafe-eval' there.
+// In production only the known theme-script hash is allowed.
+const csp = isDev
+  ? [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      `connect-src 'self' ${supabaseUrl} ${apiUrl} ws://localhost:* http://localhost:*`,
+      "img-src 'self' data: blob:",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ")
+  : [
+      "default-src 'self'",
+      `script-src 'self' '${THEME_SCRIPT_HASH}'`,
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      `connect-src 'self' ${supabaseUrl} ${apiUrl}`,
+      "img-src 'self' data: blob:",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ");
 
 const nextConfig: NextConfig = {
   async headers() {

@@ -81,6 +81,8 @@ function ResultCards({ acucar, dolar, fator, breakeven }: {
 }
 
 export default function BreakevenPage() {
+  const [tab, setTab] = useState("live");
+
   // Live tab
   const [live, setLive] = useState<BreakevenResult | null>(null);
   const [liveFator, setLiveFator] = useState("");
@@ -176,11 +178,11 @@ export default function BreakevenPage() {
         <p className="text-sm text-muted-foreground mt-1">Preço mínimo de venda para cobrir custos de produção</p>
       </div>
 
-      <Tabs defaultValue="live">
+      <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "historico") handleTabHistory(); }}>
         <TabsList>
           <TabsTrigger value="live">Live</TabsTrigger>
           <TabsTrigger value="manual">Manual</TabsTrigger>
-          <TabsTrigger value="historico" onClick={handleTabHistory}>Histórico</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
 
         {/* ── Live ── */}
