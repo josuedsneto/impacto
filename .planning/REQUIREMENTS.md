@@ -49,8 +49,8 @@
 
 - [x] **SEC-01**: All `/api/*` endpoints that return user data enforce `user_id` isolation at query level (no cross-user data access)
 - [x] **SEC-02**: Error responses never expose stack traces, SQL statements, or internal system details
-- [ ] **SEC-03**: All API input parameters are validated (no injection vectors in ticker names, simulation params, alert thresholds)
-- [ ] **SEC-04**: Rate limiting is applied to simulation and market data endpoints
+- [x] **SEC-03**: All API input parameters are validated (no injection vectors in ticker names, simulation params, alert thresholds)
+- [x] **SEC-04**: Rate limiting is applied to simulation and market data endpoints
 
 ### Testing (TEST)
 
@@ -108,8 +108,8 @@
 | ALERT-04 | Phase 19 | Pending |
 | SEC-01 | Phase 13 | Complete |
 | SEC-02 | Phase 13 | Complete |
-| SEC-03 | Phase 13 | Pending |
-| SEC-04 | Phase 13 | Pending |
+| SEC-03 | Phase 13 | Complete |
+| SEC-04 | Phase 13 | Complete |
 | TEST-01 | Phase 20 | Pending |
 | TEST-02 | Phase 20 | Pending |
 | TEST-03 | Phase 20 | Pending |

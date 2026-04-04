@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 13 — Backend Error Handler + Security
-Plan: 01 (complete)
-Status: Phase 13 Plan 01 complete — ready for next plan
-Last activity: 2026-04-04 — 13-01: loguru + RequestIDMiddleware + exception handlers
+Plan: 02 (complete)
+Status: Phase 13 complete — SEC-03 and SEC-04 addressed; ready for next phase
+Last activity: 2026-04-04 — 13-02: model_validator + Query bounds + rate limit backfill
 
 ```
-v2.1 Progress: [█░░░░░░░] 1/8 phases in progress (Phase 13 Plan 01 of N complete)
+v2.1 Progress: [█░░░░░░░] 1/8 phases complete (Phase 13 all plans done)
 ```
 
 ## Performance Metrics
@@ -53,6 +53,7 @@ v2.1 Progress: [█░░░░░░░] 1/8 phases in progress (Phase 13 Plan 
 - v2.1 not started
 
 *Updated after each plan completion*
+| Phase 13-backend-error-handler-security P02 | 12 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Carried forward from v1.0 and v2.0:
 - [Phase 13-01]: RequestIDMiddleware registered last (LIFO = executes first) — request_id injected before rate-limit and CORS middleware
 - [Phase 13-01]: RateLimitExceeded handler registered before global Exception handler to ensure 429s are not caught as 500s
 - [Phase 13-01]: No traceback, str(exc), or repr(exc) in JSON response body — exception logged server-side only (SEC-02)
+- [Phase 13-02]: model_validator mode=after for RiscoSaveRequest dict size limits (10KB inputs, 50KB results); dict[str, Any] typed to close injection surface
+- [Phase 13-02]: request: Request added as first positional param to 9 unrated endpoints per SlowAPI IP extraction requirement; no REST semantic change
+- [Phase 13-02]: /api/health intentionally exempt from rate limiting; all other non-health endpoints now covered (38 total @limiter.limit)
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -118,8 +122,8 @@ Carried forward from v1.0 and v2.0:
 
 - Provision Oracle Cloud VM and run scripts/setup-vm.sh
 - Link Supabase CLI and run supabase db push
-- Phase 13 Plan 01 complete: loguru, RequestIDMiddleware, exception handlers
-- Begin Phase 13 Plan 02 (or next plan in phase 13)
+- Phase 13 complete: loguru, RequestIDMiddleware, exception handlers, model_validator dict size limits, Query-bounded params, rate limiting on all non-health endpoints
+- Begin next phase (Phase 14 or as defined in ROADMAP)
 
 ### Blockers/Concerns
 
@@ -128,5 +132,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 13-01-PLAN.md — loguru + RequestIDMiddleware + exception handlers
+Stopped at: Completed 13-02-PLAN.md — model_validator + Query bounds + rate limit backfill (Phase 13 complete)
 Resume file: None
