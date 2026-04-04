@@ -182,13 +182,15 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
 
 
 @app.get("/api/me")
-async def me(user: Annotated[dict, Depends(get_current_user)]):
+@limiter.limit("60/minute")
+async def me(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
     return {"id": user["id"], "email": user["email"], "role": user["role"]}
 
 
 @app.get("/api/admin/ping")
-async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
+@limiter.limit("30/minute")
+async def admin_ping(request: Request, user: Annotated[dict, Depends(require_admin)]):
     """Admin-only route — verifies role enforcement."""
     return {"message": "admin ok", "user": user["email"]}
 
@@ -307,7 +309,9 @@ async def suggest_ticker(
 
 
 @app.get("/api/admin/suggestions")
+@limiter.limit("30/minute")
 async def admin_list_suggestions(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
     status: str | None = None,
     limit: int = 50,
@@ -331,7 +335,9 @@ class SuggestionReviewRequest(BaseModel):
 
 
 @app.patch("/api/admin/suggestions/{suggestion_id}")
+@limiter.limit("10/minute")
 async def admin_review_suggestion(
+    request: Request,
     suggestion_id: UUID,
     body: SuggestionReviewRequest,
     user: Annotated[dict, Depends(require_admin)],
@@ -378,7 +384,9 @@ async def admin_review_suggestion(
 
 
 @app.post("/api/admin/market/backfill/{ticker}")
+@limiter.limit("5/minute")
 async def admin_backfill(
+    request: Request,
     ticker: str,
     user: Annotated[dict, Depends(require_admin)],
 ):
@@ -538,7 +546,9 @@ class MCPriceRequest(BaseModel):
 
 
 @app.post("/api/options/payoff")
+@limiter.limit("30/minute")
 async def options_payoff(
+    request: Request,
     body: PayoffRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -549,7 +559,9 @@ async def options_payoff(
 
 
 @app.post("/api/options/bs-price")
+@limiter.limit("60/minute")
 async def options_bs_price(
+    request: Request,
     body: BSPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -707,7 +719,9 @@ class AdminConfigUpdateRequest(BaseModel):
 
 
 @app.get("/api/admin/config")
+@limiter.limit("30/minute")
 async def admin_get_config(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Return all admin_config rows ordered by key."""
@@ -722,7 +736,9 @@ async def admin_get_config(
 
 
 @app.put("/api/admin/config/{key}")
+@limiter.limit("20/minute")
 async def admin_update_config(
+    request: Request,
     key: str,
     body: AdminConfigUpdateRequest,
     user: Annotated[dict, Depends(require_admin)],
