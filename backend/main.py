@@ -16,9 +16,9 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
 )
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Any
 from datetime import date as date_type, timedelta
 import requests
 import yfinance as yf
@@ -34,7 +34,7 @@ _yf_session = requests.Session()
 _yf_session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 })
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
@@ -896,12 +896,21 @@ async def list_breakeven_history(
 # ── Risco history ──────────────────────────────────────────────────────────────
 
 class RiscoSaveRequest(BaseModel):
-    inputs: dict
+    inputs: dict[str, Any] = Field(default_factory=dict)
     fat_media: float
     custo_media: float
     ebitda_media: float
-    results: dict
-    label: str | None = None
+    results: dict[str, Any] = Field(default_factory=dict)
+    label: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_dict_size(self) -> "RiscoSaveRequest":
+        import json
+        if len(json.dumps(self.inputs)) > 10_000:
+            raise ValueError("inputs payload too large (max 10KB)")
+        if len(json.dumps(self.results)) > 50_000:
+            raise ValueError("results payload too large (max 50KB)")
+        return self
 
 
 @app.post("/api/risco/save", status_code=201)
@@ -1255,7 +1264,7 @@ async def get_volatility(
 @limiter.limit("20/minute")
 async def get_metas(
     request: Request,
-    meta: float = 2600,
+    meta: float = Query(default=2600, ge=100, le=100_000),
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """MTM history and heatmap data for sugar price targets."""
