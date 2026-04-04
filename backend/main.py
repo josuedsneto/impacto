@@ -72,7 +72,8 @@ async def health():
 
 
 @app.get("/api/focus")
-async def get_focus(user: Annotated[dict, Depends(get_current_user)]):
+@limiter.limit("20/minute")
+async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """
     Returns latest BCB Focus report medians for IPCA, Câmbio, Selic, PIB Total
     for the current calendar year, plus the delta vs the reading from ~7 days ago.
@@ -149,7 +150,7 @@ class SimulationRequest(BaseModel):
     preco_inicial: float
     dias_simulados: int = Field(default=252, ge=1, le=1000)
     num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
-    pct_bound: float = 0.50
+    pct_bound: float = Field(default=0.50, gt=0, le=2)
     label: str | None = None
 
 
@@ -162,7 +163,9 @@ class TickerSuggestRequest(BaseModel):
 # ── Market data ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/market/prices")
+@limiter.limit("30/minute")
 async def market_prices(
+    request: Request,
     ticker: str,
     start: date_type,
     end: date_type,
@@ -181,7 +184,9 @@ async def market_prices(
 
 
 @app.post("/api/market/suggest")
+@limiter.limit("10/minute")
 async def suggest_ticker(
+    request: Request,
     body: TickerSuggestRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -191,9 +196,7 @@ async def suggest_ticker(
     Returns 400 with visible error if ticker is invalid or has no data.
     On success inserts row into tickers_catalog with status='pending'.
     """
-    ticker = body.ticker.strip().upper()
-    if not ticker:
-        raise HTTPException(status_code=400, detail="ticker cannot be empty")
+    ticker = validate_ticker(body.ticker)
 
     # Validate: attempt a minimal yfinance download (last 5 days)
     try:
@@ -389,7 +392,9 @@ async def create_simulation(
 
 
 @app.get("/api/simulations")
+@limiter.limit("60/minute")
 async def list_simulations(
+    request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
     offset: int = 0,
@@ -411,8 +416,10 @@ async def list_simulations(
 
 
 @app.get("/api/simulations/{sim_id}")
+@limiter.limit("60/minute")
 async def get_simulation(
-    sim_id: str,
+    request: Request,
+    sim_id: UUID,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """
@@ -423,7 +430,7 @@ async def get_simulation(
     result = (
         client.table("simulations")
         .select("*")
-        .eq("id", sim_id)
+        .eq("id", str(sim_id))
         .eq("user_id", user["id"])  # SIM-04: enforces user isolation at query level
         .execute()
     )
@@ -518,7 +525,9 @@ class WatchlistAddRequest(BaseModel):
 
 
 @app.get("/api/params/{ticker}")
+@limiter.limit("60/minute")
 async def get_params(
+    request: Request,
     ticker: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -537,7 +546,9 @@ async def get_params(
 
 
 @app.put("/api/params/{ticker}")
+@limiter.limit("30/minute")
 async def upsert_params(
+    request: Request,
     ticker: str,
     body: UserParamsRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -568,7 +579,9 @@ async def upsert_params(
 # ── Watchlist ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/watchlist")
+@limiter.limit("60/minute")
 async def get_watchlist(
+    request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
     offset: int = 0,
@@ -587,14 +600,14 @@ async def get_watchlist(
 
 
 @app.post("/api/watchlist", status_code=201)
+@limiter.limit("30/minute")
 async def add_to_watchlist(
+    request: Request,
     body: WatchlistAddRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
-    ticker = body.ticker.strip().upper()
-    if not ticker:
-        raise HTTPException(status_code=400, detail="ticker cannot be empty")
+    ticker = validate_ticker(body.ticker)
 
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     client.table("watchlist").upsert(
@@ -607,7 +620,9 @@ async def add_to_watchlist(
 
 
 @app.delete("/api/watchlist/{ticker}")
+@limiter.limit("30/minute")
 async def remove_from_watchlist(
+    request: Request,
     ticker: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -717,7 +732,9 @@ async def get_var(
 # ── Breakeven ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/breakeven")
+@limiter.limit("30/minute")
 async def get_breakeven(
+    request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """
@@ -917,7 +934,9 @@ _NEWS_TTL = 1800  # 30 minutes
 
 
 @app.get("/api/news")
+@limiter.limit("20/minute")
 async def get_news(
+    request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """

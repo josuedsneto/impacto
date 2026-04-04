@@ -2,8 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Use the configured site URL as the trusted origin; fall back to the request
+// origin only in local dev (where NEXT_PUBLIC_SITE_URL is typically unset).
+function getTrustedOrigin(requestOrigin: string): string {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? requestOrigin
+}
+
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams, origin: requestOrigin } = new URL(request.url)
+  const trustedOrigin = getTrustedOrigin(requestOrigin)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/app/dashboard'
   const safePath = next.startsWith('/app/') ? next : '/app/dashboard'
@@ -27,10 +34,10 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${safePath}`)
+      return NextResponse.redirect(`${trustedOrigin}${safePath}`)
     }
   }
 
   // Exchange failed — redirect to login with error indicator
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+  return NextResponse.redirect(`${trustedOrigin}/login?error=auth_callback_failed`)
 }
