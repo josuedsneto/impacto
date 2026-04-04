@@ -10,6 +10,8 @@ const NAV_SECTIONS = [
     label: "Mercado",
     items: [
       { href: "/app/simulation", label: "Monte Carlo" },
+      { href: "/app/jump-diffusion", label: "Jump Diffusion" },
+      { href: "/app/metas", label: "Metas" },
       { href: "/app/options", label: "Payoff Opções" },
       { href: "/app/volatilidade", label: "Volatilidade" },
     ],
@@ -20,6 +22,8 @@ const NAV_SECTIONS = [
       { href: "/app/var", label: "VaR" },
       { href: "/app/breakeven", label: "Breakeven" },
       { href: "/app/stress", label: "Stress Test" },
+      { href: "/app/risco", label: "Risco Operacional" },
+      { href: "/app/cenarios", label: "Cenários" },
     ],
   },
   {

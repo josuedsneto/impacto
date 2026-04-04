@@ -843,6 +843,106 @@ async def list_breakeven_history(
     return {"simulations": result.data}
 
 
+# ── Risco history ──────────────────────────────────────────────────────────────
+
+class RiscoSaveRequest(BaseModel):
+    inputs: dict
+    fat_media: float
+    custo_media: float
+    ebitda_media: float
+    results: dict
+    label: str | None = None
+
+
+@app.post("/api/risco/save", status_code=201)
+@limiter.limit("30/minute")
+async def save_risco(
+    request: Request,
+    body: RiscoSaveRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    saved = client.table("risco_simulations").insert({
+        "user_id": user["id"],
+        "inputs": body.inputs,
+        "fat_media": body.fat_media,
+        "custo_media": body.custo_media,
+        "ebitda_media": body.ebitda_media,
+        "results": body.results,
+        "label": body.label or None,
+    }).execute()
+    return saved.data[0]
+
+
+@app.get("/api/risco/history")
+@limiter.limit("60/minute")
+async def list_risco_history(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 50,
+):
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("risco_simulations")
+        .select("id,fat_media,custo_media,ebitda_media,label,created_at")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .range(0, limit - 1)
+        .execute()
+    )
+    return {"simulations": result.data}
+
+
+# ── Cenários history ───────────────────────────────────────────────────────────
+
+class CenariosSaveRequest(BaseModel):
+    opcao: str
+    ny: float | None = None
+    moagem: float | None = None
+    cambio: float | None = None
+    preco_etanol: float | None = None
+    breakeven: float
+    probabilidade_abaixo: float
+    media: float
+    std: float
+    label: str | None = None
+
+
+@app.post("/api/cenarios/save", status_code=201)
+@limiter.limit("30/minute")
+async def save_cenario(
+    request: Request,
+    body: CenariosSaveRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    saved = client.table("cenarios_simulations").insert({
+        "user_id": user["id"],
+        **body.model_dump(exclude={"label"}),
+        "label": body.label or None,
+    }).execute()
+    return saved.data[0]
+
+
+@app.get("/api/cenarios/history")
+@limiter.limit("60/minute")
+async def list_cenarios_history(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 50,
+):
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("cenarios_simulations")
+        .select("id,opcao,breakeven,probabilidade_abaixo,media,label,created_at")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .range(0, limit - 1)
+        .execute()
+    )
+    return {"simulations": result.data}
+
+
 # ── ARIMA ──────────────────────────────────────────────────────────────────────
 
 @app.get("/api/arima/{ticker}")
@@ -1096,4 +1196,249 @@ async def get_volatility(
         "vol_1y": round(vol_1y, 6),
         "last_price": round(last_price, 4),
         "rolling_30d": rolling_30d_list,
+    }
+
+
+# ── Metas ──────────────────────────────────────────────────────────────────────
+
+@app.get("/api/metas")
+@limiter.limit("20/minute")
+async def get_metas(
+    request: Request,
+    meta: float = 2600,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """MTM history and heatmap data for sugar price targets."""
+    FATOR = 22.0462 * 1.04
+    end = date_type.today()
+    start = date_type(2013, 1, 1)
+
+    sugar_rows = get_prices("SB=F", start, end)
+    fx_rows = get_prices("USDBRL=X", start, end)
+
+    if len(sugar_rows) < 10 or len(fx_rows) < 10:
+        raise HTTPException(status_code=503, detail="Dados insuficientes.")
+
+    sugar_map = {r["date"]: r["close"] for r in sugar_rows if r["close"]}
+    fx_map = {r["date"]: r["close"] for r in fx_rows if r["close"]}
+    common_dates = sorted(set(sugar_map) & set(fx_map))
+
+    mtm_series = [
+        {
+            "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+            "mtm": round(FATOR * sugar_map[d] * fx_map[d], 2),
+            "meta": meta,
+        }
+        for d in common_dates
+    ]
+
+    acucares = [round(24 - 0.5 * i, 2) for i in range(11)]
+    dolares = [round(4.8 + 0.05 * i, 2) for i in range(10)]
+    heatmap = [[round(FATOR * a * d - meta, 2) for d in dolares] for a in acucares]
+
+    return {
+        "meta": meta,
+        "mtm_series": mtm_series,
+        "heatmap": heatmap,
+        "acucares": acucares,
+        "dolares": dolares,
+    }
+
+
+# ── Jump Diffusion ─────────────────────────────────────────────────────────────
+
+class JumpDiffusionRequest(BaseModel):
+    ticker: str = "SB=F"
+    sigma: float | None = None
+    lambda_jumps: float = Field(default=0.1, ge=0, le=5)
+    mu_jump: float = Field(default=-0.02, ge=-1, le=1)
+    sigma_jump: float = Field(default=0.05, ge=0, le=1)
+    steps: int = Field(default=252, ge=10, le=1260)
+
+
+@app.post("/api/jump-diffusion")
+@limiter.limit("15/minute")
+async def jump_diffusion(
+    request: Request,
+    body: JumpDiffusionRequest,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Merton jump-diffusion price simulation."""
+    ticker = validate_ticker(body.ticker)
+    end = date_type.today()
+    start = end - timedelta(days=3 * 365)
+    rows = get_prices(ticker, start, end)
+
+    if len(rows) < 20:
+        raise HTTPException(status_code=400, detail="Dados históricos insuficientes.")
+
+    closes = np.array([r["close"] for r in rows if r["close"]], dtype=float)
+    log_returns = np.diff(np.log(closes))
+    mu = float(np.mean(log_returns))
+    sigma = float(body.sigma) if body.sigma is not None else float(np.std(log_returns, ddof=1))
+    s0 = float(closes[-1])
+
+    dt = 1.0 / body.steps
+    rng = np.random.default_rng()
+    prices = [s0]
+    for _ in range(body.steps):
+        n_jumps = int(rng.poisson(body.lambda_jumps * dt))
+        jump_mag = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, n_jumps))) if n_jumps > 0 else 0.0
+        diffusion = (mu - 0.5 * sigma ** 2) * dt + sigma * float(rng.normal()) * (dt ** 0.5)
+        prices.append(prices[-1] * float(np.exp(diffusion + jump_mag)))
+
+    return {
+        "ticker": ticker,
+        "s0": round(s0, 4),
+        "sigma": round(sigma, 6),
+        "mu": round(mu, 6),
+        "prices": [{"step": i, "price": round(p, 4)} for i, p in enumerate(prices)],
+        "mean": round(float(np.mean(prices)), 4),
+    }
+
+
+# ── Risco ──────────────────────────────────────────────────────────────────────
+
+class VariavelRisco(BaseModel):
+    media: float
+    p15: float
+    p85: float
+
+
+class RiscoRequest(BaseModel):
+    moagem: VariavelRisco = VariavelRisco(media=1300000, p15=1100000, p85=1500000)
+    atr: VariavelRisco = VariavelRisco(media=125, p15=120, p85=130)
+    vhp_total: VariavelRisco = VariavelRisco(media=97000, p15=94000, p85=100000)
+    ny: VariavelRisco = VariavelRisco(media=21, p15=18, p85=24)
+    cambio: VariavelRisco = VariavelRisco(media=5.1, p15=4.9, p85=5.3)
+    preco_cbios: VariavelRisco = VariavelRisco(media=90, p15=75, p85=105)
+    preco_etanol: VariavelRisco = VariavelRisco(media=3000, p15=2500, p85=3500)
+    num_simulacoes: int = Field(default=10000, ge=1000, le=50000)
+
+
+@app.post("/api/risco")
+@limiter.limit("10/minute")
+async def simular_risco(
+    request: Request,
+    body: RiscoRequest,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Monte Carlo simulation of revenue, cost and EBITDA."""
+    from scipy.stats import norm as _norm
+
+    def _std(v: VariavelRisco) -> float:
+        return (v.p85 - v.p15) / (2 * _norm.ppf(0.85))
+
+    rng = np.random.default_rng()
+    n = body.num_simulacoes
+
+    def _s(v: VariavelRisco) -> np.ndarray:
+        return rng.normal(v.media, _std(v), n)
+
+    moagem = _s(body.moagem)
+    atr = _s(body.atr)
+    vhp = _s(body.vhp_total)
+    ny = _s(body.ny)
+    cambio = _s(body.cambio)
+    cbios = _s(body.preco_cbios)
+    etanol = _s(body.preco_etanol)
+
+    fat = ((ny - 0.19) * 22.0462 * 1.04 * cambio) * vhp + 17283303 + etanol * 35524 + 24479549 + cbios * 31616
+    atr_mtm = 0.6 * (fat - cbios) / (moagem * atr)
+    custo = 109212811 + 32947347 + atr_mtm * moagem * atr
+    ebitda = fat - custo + 7219092
+
+    pcts = [1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 85, 90, 95, 99]
+
+    def _summarize(arr: np.ndarray) -> dict:
+        return {
+            "media": round(float(np.mean(arr)), 2),
+            "percentis": [{"p": p, "v": round(float(np.percentile(arr, p)), 2)} for p in pcts],
+        }
+
+    return {
+        "faturamento": _summarize(fat),
+        "custo": _summarize(custo),
+        "ebitda": _summarize(ebitda),
+    }
+
+
+# ── Cenários ──────────────────────────────────────────────────────────────────
+
+class CenariosRequest(BaseModel):
+    opcao: Literal["Moagem", "Câmbio", "NY", "Preço Etanol"]
+    ny: float = 20.0
+    moagem: float = 1300000.0
+    cambio: float = 5.25
+    preco_etanol: float = 2768.90
+
+
+@app.post("/api/cenarios")
+@limiter.limit("20/minute")
+async def simular_cenarios(
+    request: Request,
+    body: CenariosRequest,
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Breakeven analysis + probability distribution for operational variables."""
+    from scipy.stats import norm as _norm
+
+    def _ebitda(moagem: float, cambio: float, preco_etanol: float, ny: float) -> float:
+        vhp = (89.45 * 0.8346 * moagem) / 1000
+        eth = (0.1654 * 80.18 * moagem + 327.19 * 60075) / 1000
+        fat = (
+            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            + (eth - 1000) * (preco_etanol + 349.83) * 0.96
+            + 3227430 + 22061958
+            + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
+        )
+        custo = 0.6 * 0.93 * (
+            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            + (eth - 1000) * (preco_etanol + 349.83) * 0.96
+            + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
+        ) + 88704735 + 43732035 + 20286465
+        return fat - custo
+
+    step_map = {"Moagem": 1000.0, "Câmbio": 0.01, "NY": 0.01, "Preço Etanol": 0.01}
+    step = step_map[body.opcao]
+    ny, moagem, cambio, preco_etanol = body.ny, body.moagem, body.cambio, body.preco_etanol
+
+    for _ in range(100000):
+        if _ebitda(moagem, cambio, preco_etanol, ny) > 0:
+            break
+        if body.opcao == "Moagem":
+            moagem += step
+        elif body.opcao == "Câmbio":
+            cambio += step
+        elif body.opcao == "NY":
+            ny += step
+        else:
+            preco_etanol += step
+
+    breakeven = {"Moagem": moagem, "Câmbio": cambio, "NY": ny, "Preço Etanol": preco_etanol}[body.opcao]
+
+    dist_params: dict[str, dict] = {
+        "Moagem":       {"media": 1300000.0, "p80": 1400000.0},
+        "Câmbio":       {"media": 5.2504,    "p80": 5.4293},
+        "NY":           {"media": 20.5572,   "p80": 22.3796},
+        "Preço Etanol": {"media": 2768.90,   "p80": 3000.28},
+    }
+    dp = dist_params[body.opcao]
+    std = (dp["p80"] - dp["media"]) / _norm.ppf(0.8)
+    media = dp["media"]
+
+    prob = float(_norm.cdf(breakeven, loc=media, scale=std))
+    pcts = list(range(5, 101, 5))
+    percentis = [{"p": p, "v": round(float(_norm.ppf(p / 100, loc=media, scale=std)), 4)} for p in pcts]
+    x_vals = np.linspace(media - 3 * std, media + 3 * std, 200)
+    distribuicao = [{"x": round(float(xi), 4), "y": round(float(_norm.pdf(xi, loc=media, scale=std)), 8)} for xi in x_vals]
+
+    return {
+        "opcao": body.opcao,
+        "breakeven": round(breakeven, 4),
+        "probabilidade_abaixo": round(prob, 4),
+        "media": round(media, 4),
+        "std": round(std, 4),
+        "percentis": percentis,
+        "distribuicao": distribuicao,
     }
