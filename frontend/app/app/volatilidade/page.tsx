@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
   LineChart,
   Line,
@@ -156,26 +159,54 @@ function VolPanel({ ticker }: { ticker: string }) {
   );
 }
 
+const QUICK_TICKERS = [
+  { label: "Açúcar NY", value: "SB=F" },
+  { label: "USD/BRL", value: "USDBRL=X" },
+];
+
 export default function VolatilityPage() {
-  const [tab, setTab] = useState("acucar");
+  const [input, setInput] = useState("SB=F");
+  const [ticker, setTicker] = useState("SB=F");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const t = input.trim().toUpperCase();
+    if (t) setTicker(t);
+  }
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       <h1 className="text-2xl font-semibold">Volatilidade Realizada</h1>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="acucar">Açúcar NY</TabsTrigger>
-          <TabsTrigger value="dolar">USD/BRL</TabsTrigger>
-        </TabsList>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
+        <Label htmlFor="vol-ticker">
+          Ticker{" "}
+          <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F, USDBRL=X, PETR4.SA" />
+        </Label>
+        <div className="flex gap-2">
+          <Input
+            id="vol-ticker"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="SB=F"
+          />
+          <Button type="submit">Calcular</Button>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {QUICK_TICKERS.map(({ label, value }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => { setInput(value); setTicker(value); }}
+              className="text-xs px-2 py-1 rounded border border-input hover:bg-accent transition-colors"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </form>
 
-        <TabsContent value="acucar">
-          <VolPanel ticker="SB=F" />
-        </TabsContent>
-
-        <TabsContent value="dolar">
-          <VolPanel ticker="USDBRL=X" />
-        </TabsContent>
-      </Tabs>
+      <VolPanel ticker={ticker} />
     </div>
   );
 }

@@ -776,6 +776,56 @@ async def get_breakeven(
     }
 
 
+class BreakevenSaveRequest(BaseModel):
+    preco_acucar_cents_lb: float = Field(gt=0)
+    preco_dolar_brl: float = Field(gt=0)
+    fator_conversao: float = Field(gt=0)
+    label: str | None = None
+
+
+@app.post("/api/breakeven/save", status_code=201)
+@limiter.limit("30/minute")
+async def save_breakeven(
+    request: Request,
+    body: BreakevenSaveRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Save a manual breakeven simulation for the authenticated user."""
+    breakeven = round(body.preco_acucar_cents_lb * body.fator_conversao * body.preco_dolar_brl, 4)
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    saved = client.table("breakeven_simulations").insert({
+        "user_id": user["id"],
+        "preco_acucar_cents_lb": body.preco_acucar_cents_lb,
+        "preco_dolar_brl": body.preco_dolar_brl,
+        "fator_conversao": body.fator_conversao,
+        "breakeven_brl_saca": breakeven,
+        "label": body.label or None,
+    }).execute()
+    row = saved.data[0]
+    return {**row, "breakeven_brl_saca": breakeven}
+
+
+@app.get("/api/breakeven/history")
+@limiter.limit("60/minute")
+async def list_breakeven_history(
+    request: Request,
+    user: Annotated[dict, Depends(get_current_user)],
+    limit: int = 50,
+    offset: int = 0,
+):
+    """List saved breakeven simulations for the authenticated user."""
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = (
+        client.table("breakeven_simulations")
+        .select("id,preco_acucar_cents_lb,preco_dolar_brl,fator_conversao,breakeven_brl_saca,label,created_at")
+        .eq("user_id", user["id"])
+        .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
+        .execute()
+    )
+    return {"simulations": result.data}
+
+
 # ── ARIMA ──────────────────────────────────────────────────────────────────────
 
 @app.get("/api/arima/{ticker}")
