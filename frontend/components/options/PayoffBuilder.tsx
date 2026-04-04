@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 
 interface OptionLeg {
   id: string;
@@ -119,7 +120,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <Label>Tipo</Label>
+              <Label>Tipo <FieldTooltip text="Call = opção de compra; Put = opção de venda" /></Label>
               <select
                 value={leg.type}
                 onChange={(e) =>
@@ -133,7 +134,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             </div>
 
             <div className="space-y-1">
-              <Label>Posição</Label>
+              <Label>Posição <FieldTooltip text="Long = comprado (paga prêmio); Short = vendido (recebe prêmio)" /></Label>
               <select
                 value={leg.position}
                 onChange={(e) =>
@@ -151,7 +152,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             </div>
 
             <div className="space-y-1">
-              <Label>Strike</Label>
+              <Label>Strike <FieldTooltip text="Preço de exercício desta perna" /></Label>
               <Input
                 type="number"
                 step={0.5}
@@ -163,7 +164,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             </div>
 
             <div className="space-y-1">
-              <Label>Prêmio</Label>
+              <Label>Prêmio <FieldTooltip text="Prêmio pago (long) ou recebido (short) por contrato" /></Label>
               <Input
                 type="number"
                 step={0.01}
@@ -176,7 +177,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             </div>
 
             <div className="space-y-1">
-              <Label>Quantidade</Label>
+              <Label>Quantidade <FieldTooltip text="Número de contratos desta perna" /></Label>
               <Input
                 type="number"
                 min={1}

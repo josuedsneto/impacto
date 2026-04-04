@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const NAV_SECTIONS = [
   {
@@ -35,6 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="flex min-h-screen">
       <aside
         className="w-56 flex-shrink-0 flex flex-col"
@@ -49,7 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             className="font-extrabold tracking-[2.5px]"
             style={{ color: "#f9fafb", fontSize: 15 }}
           >
-            IMPACTO
+            SUGARCANE
           </p>
           <p
             className="mt-0.5"
@@ -145,5 +147,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+    </TooltipProvider>
   );
 }

@@ -5,6 +5,7 @@ import { NewsFeed } from "@/components/dashboard/NewsFeed";
 import { FocusWidget } from "@/components/dashboard/FocusWidget";
 import { AccountSummary } from "@/components/dashboard/AccountSummary";
 import { ToolGrid } from "@/components/dashboard/ToolGrid";
+import { UserMenu } from "@/components/dashboard/UserMenu";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -159,31 +160,7 @@ export default async function DashboardPage() {
             Mercado aberto
           </div>
           {/* User */}
-          <div
-            className="flex items-center gap-2.5 pl-4"
-            style={{ borderLeft: "1px solid #e5e7eb" }}
-          >
-            <div>
-              <p className="font-medium text-right" style={{ fontSize: 13, color: "#374151" }}>
-                {user.email?.split("@")[0]}
-              </p>
-              <p className="text-right" style={{ fontSize: 11, color: "#9ca3af" }}>
-                {user.email}
-              </p>
-            </div>
-            <div
-              className="flex items-center justify-center rounded-full font-bold flex-shrink-0"
-              style={{
-                width: 32,
-                height: 32,
-                background: "#1e3a5f",
-                color: "#93c5fd",
-                fontSize: 12,
-              }}
-            >
-              {initials}
-            </div>
-          </div>
+          <UserMenu email={user.email!} initials={initials} />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
   Select,
   SelectContent,
@@ -67,7 +68,7 @@ export function TickerSuggestForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
       <div className="space-y-1">
-        <Label htmlFor="ticker">Símbolo (ex: SB=F, PETR4.SA)</Label>
+        <Label htmlFor="ticker">Símbolo <FieldTooltip text="Código do ativo no Yahoo Finance. Ex: SB=F, PETR4.SA, USDBRL=X" /></Label>
         <Input
           id="ticker"
           value={ticker}
@@ -77,7 +78,7 @@ export function TickerSuggestForm() {
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="nome">Nome legível (opcional)</Label>
+        <Label htmlFor="nome">Nome legível (opcional) <FieldTooltip text="Nome amigável para exibição na plataforma" /></Label>
         <Input
           id="nome"
           value={nome}
@@ -87,7 +88,7 @@ export function TickerSuggestForm() {
         />
       </div>
       <div className="space-y-1">
-        <Label>Tipo</Label>
+        <Label>Tipo <FieldTooltip text="Categoria do ativo para organização" /></Label>
         <Select value={tipo} onValueChange={setTipo} disabled={loading}>
           <SelectTrigger>
             <SelectValue />

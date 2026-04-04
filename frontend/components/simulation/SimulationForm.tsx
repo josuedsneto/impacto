@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { createBrowserClient } from "@supabase/ssr";
 
 export interface SimulationResult {
@@ -111,7 +112,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
       <div className="space-y-1">
-        <Label htmlFor="ticker">Ticker</Label>
+        <Label htmlFor="ticker">Ticker <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F (açúcar NY #11), USDBRL=X (dólar/real)" /></Label>
         <Input
           id="ticker"
           value={ticker}
@@ -122,7 +123,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="preco_inicial">Preço inicial</Label>
+        <Label htmlFor="preco_inicial">Preço inicial <FieldTooltip text="Preço de entrada para a simulação, em centavos/libra (açúcar) ou reais (câmbio)" /></Label>
         <Input
           id="preco_inicial"
           type="number"
@@ -134,7 +135,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="dias_simulados">Dias simulados</Label>
+        <Label htmlFor="dias_simulados">Dias simulados <FieldTooltip text="Dias úteis a simular. 252 = 1 ano útil" /></Label>
         <Input
           id="dias_simulados"
           type="number"
@@ -147,7 +148,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="num_simulacoes">Número de simulações</Label>
+        <Label htmlFor="num_simulacoes">Número de simulações <FieldTooltip text="Quantidade de caminhos Monte Carlo. Mais = maior precisão, porém mais lento" /></Label>
         <Input
           id="num_simulacoes"
           type="number"
@@ -160,7 +161,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="pct_bound">Limite percentual (pct_bound)</Label>
+        <Label htmlFor="pct_bound">Limite percentual (pct_bound) <FieldTooltip text="Limite de variação diária máxima como fração do preço. 0.5 = ±50% por dia" /></Label>
         <Input
           id="pct_bound"
           type="number"
@@ -174,7 +175,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="label">Nome da simulação (opcional)</Label>
+        <Label htmlFor="label">Nome da simulação (opcional) <FieldTooltip text="Nome opcional para identificar esta simulação no histórico" /></Label>
         <Input
           id="label"
           value={label}
