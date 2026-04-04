@@ -1,10 +1,20 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import logging
 import os
 import re
+import sys
+import uuid
 from uuid import UUID
+from loguru import logger
+from starlette.middleware.base import BaseHTTPMiddleware
+
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="INFO",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+)
 
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +28,6 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-logger = logging.getLogger(__name__)
 
 # Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
 _yf_session = requests.Session()
