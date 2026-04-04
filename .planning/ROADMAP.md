@@ -60,7 +60,11 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
   3. An authenticated user requesting another user's simulation data receives a 403, not the data
   4. A request with a malformed ticker name (e.g., SQL injection payload) is rejected with a 422 validation error
   5. Exceeding the rate limit on the simulation endpoint returns a structured JSON 429 response, not a raw SlowAPI exception
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — loguru + RequestIDMiddleware + global exception handlers (REL-01, REL-02, SEC-01, SEC-02)
+- [ ] 13-02-PLAN.md — RiscoSaveRequest validation + rate limiting backfill on 9 endpoints (SEC-03, SEC-04)
 
 ### Phase 14: Mobile Responsiveness
 **Goal**: Every page of the app is fully usable on a 375px mobile viewport with no horizontal overflow
@@ -151,7 +155,7 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 | 10. CI/CD Artifacts + FOUC | v2.0 | 3/3 | Complete | 2026-04-01 |
 | 11. Login + Auth | v2.0 | 1/1 | Complete | 2026-04-01 |
 | 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |
-| 13. Backend Error Handler + Security | v2.1 | 0/? | Not started | - |
+| 13. Backend Error Handler + Security | v2.1 | 0/2 | Not started | - |
 | 14. Mobile Responsiveness | v2.1 | 0/? | Not started | - |
 | 15. Loading Skeletons + Error States | v2.1 | 0/? | Not started | - |
 | 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
