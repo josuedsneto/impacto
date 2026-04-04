@@ -47,6 +47,20 @@ async function fetchFocus(token: string) {
   }
 }
 
+async function fetchMarketStatus(token: string): Promise<{ open: boolean; state: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/market/status?ticker=SB%3DF`, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { open: false, state: "CLOSED" };
+    return res.json();
+  } catch {
+    return { open: false, state: "CLOSED" };
+  }
+}
+
 async function fetchAccountSummary(token: string) {
   try {
     const res = await fetch(`${BACKEND_URL}/api/simulations`, {
@@ -96,11 +110,12 @@ export default async function DashboardPage() {
   } = await supabase.auth.getSession();
   const token = session?.access_token ?? "";
 
-  const [sugarRows, fxRows, focusData, summary] = await Promise.all([
+  const [sugarRows, fxRows, focusData, summary, marketStatus] = await Promise.all([
     fetchPrices("SB=F", token),
     fetchPrices("USDBRL=X", token),
     fetchFocus(token),
     fetchAccountSummary(token),
+    fetchMarketStatus(token),
   ]);
 
   const sugarStats = getTickerStats(sugarRows);
@@ -146,18 +161,22 @@ export default async function DashboardPage() {
           {/* Live badge */}
           <div
             className="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold"
-            style={{ background: "#dcfce7", color: "#15803d", fontSize: 11 }}
+            style={{
+              background: marketStatus.open ? "#dcfce7" : "#fee2e2",
+              color: marketStatus.open ? "#15803d" : "#dc2626",
+              fontSize: 11,
+            }}
           >
             <span
               className="rounded-full"
               style={{
                 width: 6,
                 height: 6,
-                background: "#22c55e",
-                animation: "pulse 2s infinite",
+                background: marketStatus.open ? "#22c55e" : "#ef4444",
+                animation: marketStatus.open ? "pulse 2s infinite" : "none",
               }}
             />
-            Mercado aberto
+            {marketStatus.open ? "Mercado aberto" : "Mercado fechado"}
           </div>
           {/* User */}
           <UserMenu email={user.email!} initials={initials} />

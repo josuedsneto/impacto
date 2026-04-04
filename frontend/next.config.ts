@@ -6,13 +6,10 @@ const isDev = process.env.NODE_ENV === "development";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-// SHA-256 hash of the inline theme-detection script in app/layout.tsx.
-// Recompute if the script changes: printf '<script>' | openssl dgst -sha256 -binary | openssl base64
-const THEME_SCRIPT_HASH = "sha256-mJZHY/i9NucSrP9dUPMldBM/ANm6aguQIO345P3dGR4=";
-
-// In development Turbopack injects many dynamic inline scripts that cannot be
-// pre-hashed, so we allow 'unsafe-inline' + 'unsafe-eval' there.
-// In production only the known theme-script hash is allowed.
+// Next.js App Router injects dynamic inline scripts (RSC flight data) whose
+// content changes per request and cannot be pre-hashed. 'unsafe-inline' is
+// required. The other directives (connect-src, frame-ancestors, etc.) still
+// provide meaningful protection.
 const csp = isDev
   ? [
       "default-src 'self'",
@@ -26,7 +23,7 @@ const csp = isDev
     ].join("; ")
   : [
       "default-src 'self'",
-      `script-src 'self' '${THEME_SCRIPT_HASH}'`,
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data: https://fonts.gstatic.com",
       `connect-src 'self' ${supabaseUrl} ${apiUrl}`,

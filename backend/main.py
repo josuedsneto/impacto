@@ -183,6 +183,23 @@ async def market_prices(
     return {"ticker": ticker, "start": start.isoformat(), "end": end.isoformat(), "rows": rows}
 
 
+@app.get("/api/market/status")
+@limiter.limit("30/minute")
+async def market_status(
+    request: Request,
+    ticker: str = "SB=F",
+    user: Annotated[dict, Depends(get_current_user)] = None,
+):
+    """Return current market state for a ticker (REGULAR, PRE, POST, CLOSED)."""
+    ticker = validate_ticker(ticker)
+    try:
+        t = yf.Ticker(ticker, session=_yf_session)
+        state = getattr(t.fast_info, "market_state", None) or "CLOSED"
+    except Exception:
+        state = "CLOSED"
+    return {"ticker": ticker, "state": state, "open": state == "REGULAR"}
+
+
 @app.post("/api/market/suggest")
 @limiter.limit("10/minute")
 async def suggest_ticker(
