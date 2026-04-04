@@ -1431,7 +1431,7 @@ async def simular_cenarios(
     media = dp["media"]
 
     prob = float(_norm.cdf(breakeven, loc=media, scale=std))
-    pcts = list(range(5, 101, 5))
+    pcts = list(range(5, 100, 5))
     percentis = [{"p": p, "v": round(float(_norm.ppf(p / 100, loc=media, scale=std)), 4)} for p in pcts]
     x_vals = np.linspace(media - 3 * std, media + 3 * std, 200)
     distribuicao = [{"x": round(float(xi), 4), "y": round(float(_norm.pdf(xi, loc=media, scale=std)), 8)} for xi in x_vals]
