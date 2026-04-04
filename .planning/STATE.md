@@ -2,61 +2,64 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-20)
+See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 11 — Login + Auth (v2.0 Plataforma Escalável)
+**Current focus:** Phase 13 — Backend Error Handler + Security (v2.1 UX Polish & Reliability)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 — Backend Error Handler + Security
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-04 — Milestone v2.1 started (UX Polish & Reliability)
+Status: Roadmap ready — awaiting first plan
+Last activity: 2026-04-04 — v2.1 roadmap created (8 phases, 28 requirements mapped)
+
+```
+v2.1 Progress: [░░░░░░░░] 0/8 phases complete
+```
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 0 (v2.0)
-- Average duration: -
-- Total execution time: -
+**Velocity (v2.0 reference):**
+- Total plans completed: 29 (v2.0)
+- Average duration: ~7 min/plan
+- Total execution time: ~200 min
 
-**By Phase:**
+**By Phase (v2.0 historical):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-infra-schema | 3 | ~60 min | ~20 min |
+| 02-auth P01 | 8 | 2 tasks | 5 files |
+| 02-auth P03 | 20 | 2 tasks | 3 files |
+| 03-market-cache P01 | 5 | 1 tasks | 1 files |
+| 03-market-cache P02 | 5 | 1 tasks | 1 files |
+| 03-market-cache P03 | 15 | 3 tasks | 3 files |
+| 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
+| 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
+| 04-mc-simulation P03 | 8 | 1 tasks | 2 files |
+| 05-options-pricing P01 | 8 | 2 tasks | 2 files |
+| 05-options-pricing P02 | 10 | 2 tasks | 5 files |
+| 06-params-watchlist P01 | 10 | 1 tasks | 1 files |
+| 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
+| 06-params-watchlist P03 | 2 | 2 tasks | 2 files |
+| 09-fix-mkt03-param01 P01 | 5 | 2 tasks | 2 files |
+| 12-feature-pages P01 | 2 | 10 tasks | 3 files |
+| 12-feature-pages P02 | 2 | 4 tasks | 4 files |
+| 12-feature-pages P03 | 2 | 5 tasks | 6 files |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~10 min)
-- Trend: -
+- v2.0 shipped: 12 phases, 29 plans, all complete
+- v2.1 not started
 
 *Updated after each plan completion*
-| Phase 02-auth P01 | 8 | 2 tasks | 5 files |
-| Phase 02-auth P03 | 20 | 2 tasks | 3 files |
-| Phase 03-market-cache P01 | 5 | 1 tasks | 1 files |
-| Phase 03-market-cache P02 | 5 | 1 tasks | 1 files |
-| Phase 03-market-cache P03 | 15 | 3 tasks | 3 files |
-| Phase 04-mc-simulation P01 | 8 | 2 tasks | 2 files |
-| Phase 04-mc-simulation P02 | 8 | 2 tasks | 6 files |
-| Phase 04-mc-simulation P03 | 8 | 1 tasks | 2 files |
-| Phase 05-options-pricing P01 | 8 | 2 tasks | 2 files |
-| Phase 05-options-pricing P02 | 10 | 2 tasks | 5 files |
-| Phase 06-params-watchlist P01 | 10 | 1 tasks | 1 files |
-| Phase 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
-| Phase 06-params-watchlist P02 | 8 | 2 tasks | 2 files |
-| Phase 06-params-watchlist P03 | 2 | 2 tasks | 2 files |
-| Phase 09-fix-mkt03-param01 P01 | 5 | 2 tasks | 2 files |
-| Phase 12-feature-pages P01 | 2 | 10 tasks | 3 files |
-| Phase 12-feature-pages P02 | 2 | 4 tasks | 4 files |
-| Phase 12-feature-pages P03 | 2 | 5 tasks | 6 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Carried forward from v1.0:
+Carried forward from v1.0 and v2.0:
 
 - Audit-first then fix approach confirmed in v1.0
 - Risk-neutral drift for options MC (financially correct for derivatives)
@@ -75,9 +78,7 @@ Carried forward from v1.0:
 - FastAPI routes use full /api/health prefix — Nginx proxies without stripping prefix (proxy_pass no rewrite)
 - shadcn style locked to new-york/zinc per design spec
 - Nginx does NOT strip /api prefix — proxy_pass http://localhost:8000 with no rewrite (FastAPI routes include /api/)
-- setup-vm.sh accepts domain as ### Decisions
-
-; SSL setup skipped with warning if omitted
+- setup-vm.sh accepts domain as argument; SSL setup skipped with warning if omitted
 - PM2 ecosystem.config.js uses interpreter=none for uvicorn (it is the executable, not a Python script)
 - VM and Supabase provisioning deferred to infrastructure availability; all local artifacts validated
 - [Phase 02-auth]: Used @supabase/ssr factories for cookie-based session persistence across SSR and client renders
@@ -103,18 +104,24 @@ Carried forward from v1.0:
 - [Phase 12-feature-pages]: ARIMA CI rendered via stacked Area fill trick (ci_upper filled, ci_lower fills with background color)
 - [Phase 12-feature-pages]: AdminConfig extracted as client component — admin page stays server component for auth guard
 
+### v2.1 Research Flags (resolve before planning affected phase)
+
+- Phase 19 (Email Alerts): Verify Resend free tier limits at resend.com before committing; verify APScheduler + FastAPI 0.115 lifespan hook pattern; test Oracle Cloud port availability (SMTP 25 blocked; use Resend HTTP API)
+- Phase 20 (E2E Tests): Verify Playwright globalSetup storageState is shared across workers (not per-worker) to avoid Supabase free-tier login rate limit; verify Next.js 16.2 dev server startup time for webServer config
+- Phase 16 (Export PDF): Run `npm show @react-pdf/renderer@4.3.2 peerDependencies` before install to verify React 19 compatibility
+
 ### Pending Todos
 
 - Provision Oracle Cloud VM and run scripts/setup-vm.sh
 - Link Supabase CLI and run supabase db push
-- Phase 2 (Auth) COMPLETE — begin Phase 3 (Data API)
+- Begin Phase 13: Backend Error Handler + Security
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-21
-Stopped at: Completed 07-02-PLAN.md (admin panel frontend — SuggestionQueue + /app/admin page)
+Last session: 2026-04-04
+Stopped at: v2.1 roadmap created — Phase 13 ready to plan
 Resume file: None
