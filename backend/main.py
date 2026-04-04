@@ -1264,6 +1264,7 @@ async def jump_diffusion(
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """Merton jump-diffusion price simulation."""
+    import numpy as np
     ticker = validate_ticker(body.ticker)
     end = date_type.today()
     start = end - timedelta(days=3 * 365)
@@ -1324,6 +1325,7 @@ async def simular_risco(
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """Monte Carlo simulation of revenue, cost and EBITDA."""
+    import numpy as np
     from scipy.stats import norm as _norm
 
     def _std(v: VariavelRisco) -> float:
@@ -1381,6 +1383,7 @@ async def simular_cenarios(
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """Breakeven analysis + probability distribution for operational variables."""
+    import numpy as np
     from scipy.stats import norm as _norm
 
     def _ebitda(moagem: float, cambio: float, preco_etanol: float, ny: float) -> float:
