@@ -1,0 +1,75 @@
+<h2>Qual layout combina melhor com a plataforma?</h2>
+<p class="subtitle">Sugarcane — plataforma de simulações financeiras para cana-de-açúcar</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;height:240px;position:relative;">
+      <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=70" alt="sugarcane field" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.45);" />
+      <div style="position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;">
+        <div style="font-size:11px;color:#86efac;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">SUGARCANE</div>
+        <div style="font-size:22px;color:#fff;font-weight:800;line-height:1.2;margin-bottom:10px;">Simule o mercado.<br/>Precifique com precisão.</div>
+        <div style="font-size:12px;color:#d1d5db;margin-bottom:14px;">Monte Carlo · Opções · Câmbio · Risk</div>
+        <div style="display:inline-block;background:#16a34a;color:#fff;padding:8px 18px;border-radius:6px;font-size:12px;font-weight:700;">Entrar na plataforma →</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Hero full-bleed</h3>
+      <p>Imagem de cana ocupa a tela toda com overlay escuro. Headline e CTA em cima da foto. Impacto visual forte, estilo Bloomberg/Bloomberg Línea.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;height:240px;display:flex;background:#0f172a;">
+      <!-- Left half -->
+      <div style="flex:1;padding:24px 20px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:9px;color:#4ade80;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">SUGARCANE PLATFORM</div>
+        <div style="font-size:18px;color:#f9fafb;font-weight:800;line-height:1.3;margin-bottom:8px;">Análise de risco para o mercado de açúcar</div>
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:16px;">Simulações Monte Carlo, precificação de opções e análise cambial em um só lugar.</div>
+        <div style="background:#16a34a;color:#fff;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;display:inline-block;">Acessar →</div>
+      </div>
+      <!-- Right half: image -->
+      <div style="flex:1;overflow:hidden;position:relative;">
+        <img src="https://images.unsplash.com/photo-1611270629569-8b357cb88da9?w=400&q=70" alt="sugarcane" style="width:100%;height:100%;object-fit:cover;opacity:0.7;" />
+        <!-- stat overlay -->
+        <div style="position:absolute;bottom:14px;right:14px;background:rgba(0,0,0,0.7);border-radius:8px;padding:8px 12px;backdrop-filter:blur(4px);">
+          <div style="font-size:9px;color:#9ca3af;font-weight:600;">AÇÚCAR NY #11</div>
+          <div style="font-size:16px;color:#4ade80;font-weight:800;">18.42 ¢</div>
+          <div style="font-size:10px;color:#4ade80;">+0.83%</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Split layout</h3>
+      <p>Metade esquerda com texto e CTA (fundo escuro), metade direita com foto de cana. Live price card flutuando sobre a imagem. Moderno e equilibrado.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;height:240px;background:linear-gradient(135deg,#052e16 0%,#14532d 50%,#1a1a2e 100%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <!-- Subtle grid lines -->
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(74,222,128,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,0.04) 1px,transparent 1px);background-size:32px 32px;"></div>
+      <!-- Big number -->
+      <div style="position:absolute;top:12px;right:18px;font-size:9px;color:#4ade80;font-weight:700;letter-spacing:1.5px;">SB=F  18.42¢  +0.83%</div>
+      <div style="position:relative;text-align:center;padding:0 20px;">
+        <div style="font-size:11px;color:#4ade80;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;">SUGARCANE</div>
+        <div style="font-size:26px;color:#f9fafb;font-weight:900;line-height:1.1;margin-bottom:6px;">Decisões mais<br/>inteligentes</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:16px;">para o mercado de cana-de-açúcar</div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <div style="background:#16a34a;color:#fff;padding:7px 16px;border-radius:5px;font-size:11px;font-weight:700;">Entrar</div>
+          <div style="border:1px solid #374151;color:#9ca3af;padding:7px 16px;border-radius:5px;font-size:11px;">Saiba mais</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Dark gradient + grid</h3>
+      <p>Fundo escuro verde-floresta com linhas de grade sutis (estilo terminal/fintech). Tipografia grande, sem foto. Minimalista, tecno, focado em dados.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;font-size:12px;">Clique para selecionar · Todos podem ter seções adicionais abaixo (features, stats, etc.)</p>
