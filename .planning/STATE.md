@@ -9,13 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Milestone: v2.0 Plataforma Escalavel
-Phase: 11 of 12 (Login + Auth) — Ready to execute
-Plan: 1 of 1 — Complete
-Status: Phase 11 complete — ready to start Phase 12
-Last activity: 2026-04-01 — Phase 11 plan 01 complete (middleware verified + magic link tab added to login page)
-
-Progress: [██████████░░] 85%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-04 — Milestone v2.1 started (UX Polish & Reliability)
 
 ## Performance Metrics
 

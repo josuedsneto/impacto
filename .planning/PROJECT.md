@@ -8,6 +8,19 @@ Impacto é uma plataforma web multiusuário para análise de ativos brasileiros 
 
 Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos simultaneamente, com dados persistidos e autenticação robusta.
 
+## Current Milestone: v2.1 UX Polish & Reliability
+
+**Goal:** Tornar a plataforma mais usável em mobile, mais confiável em falhas, e com ferramentas de exportação e monitoramento para traders e gestores de usina.
+
+**Target features:**
+- Responsividade mobile e loading skeletons
+- Error states com retry em falhas de API
+- Exportação PDF/CSV de simulações, VaR e breakeven
+- Histórico completo de simulações
+- Alertas de preço configuráveis
+- Cenários comparativos lado a lado
+- Testes E2E automatizados + error handling global no backend
+
 ## Current State (v2.0 — shipped 2026-04-01)
 
 **Stack:** Next.js 16 (App Router, shadcn/ui new-york/zinc) + FastAPI + Supabase (PostgreSQL + Auth JWT RS256) + Oracle Cloud VM (Nginx + PM2 + GitHub Actions CI/CD)
@@ -48,13 +61,17 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 - ✓ Deploy automatizado via GitHub Actions na Oracle Cloud VM — v2.0
 - ✓ Páginas analíticas: Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade — v2.0
 
-### Active (v2.1 — candidates)
+### Active (v2.1 — UX Polish & Reliability)
 
-- [ ] Testes end-to-end automatizados (Playwright ou Cypress)
-- [ ] Rate limiting nas rotas de simulação (evitar abuso)
-- [ ] Notificações de preço via email (alertas configuráveis)
-- [ ] Exportação de relatório PDF por simulação
-- [ ] Onboarding: tela de boas-vindas para novos usuários
+- [ ] Responsividade mobile — layouts adaptam a telas pequenas
+- [ ] Loading skeletons — placeholders durante fetch de dados
+- [ ] Error states — mensagens de erro + botão de retry em falhas de API
+- [ ] Exportação PDF/CSV — resultados de simulação, VaR, breakeven
+- [ ] Histórico de simulações — página completa com replay de análises passadas
+- [ ] Alertas de preço — notificações email quando ativo cruza threshold
+- [ ] Cenários comparativos — visualização lado a lado de duas simulações
+- [ ] Testes E2E automatizados — smoke tests frontend + backend
+- [ ] Error handling global no backend — handler estruturado + logging
 
 ### Out of Scope
 
@@ -98,4 +115,4 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 | admin_config table para parâmetros globais | Admins ajustam fator de conversão sem redeploy | ✓ Good |
 
 ---
-*Last updated: 2026-04-01 after v2.0 milestone*
+*Last updated: 2026-04-04 after milestone v2.1 started*
