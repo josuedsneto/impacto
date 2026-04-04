@@ -51,6 +51,16 @@ def validate_ticker(ticker: str) -> str:
     return t
 
 
+# ── Request ID middleware ──────────────────────────────────────────────────────
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
 app = FastAPI(
     title="Impacto API",
     version="2.0.0",
@@ -73,6 +83,37 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(RequestIDMiddleware)
+
+from fastapi.responses import JSONResponse
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.warning(
+        "Rate limit exceeded | request_id={} path={}",
+        request_id, request.url.path
+    )
+    return JSONResponse(
+        status_code=429,
+        content={"error": "Muitas requisições. Aguarde e tente novamente.", "code": "RATE_LIMITED"},
+        headers={"X-Request-ID": request_id},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.opt(exception=exc).error(
+        "Unhandled exception | request_id={} path={} method={}",
+        request_id, request.url.path, request.method
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Erro interno do servidor.", "code": "INTERNAL_ERROR"},
+        headers={"X-Request-ID": request_id},
+    )
 
 
 @app.get("/api/health")
