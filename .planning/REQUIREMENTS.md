@@ -13,8 +13,8 @@
 
 ### Reliability (REL)
 
-- [ ] **REL-01**: Backend returns structured JSON `{"error": "...", "code": "..."}` on all 500 responses — never raw tracebacks
-- [ ] **REL-02**: All backend errors are logged via loguru with request ID for correlation
+- [x] **REL-01**: Backend returns structured JSON `{"error": "...", "code": "..."}` on all 500 responses — never raw tracebacks
+- [x] **REL-02**: All backend errors are logged via loguru with request ID for correlation
 - [ ] **REL-03**: User sees skeleton placeholders while data is fetching (no blank screen or "Carregando..." text)
 - [ ] **REL-04**: User sees error message + retry button when any API call fails
 - [ ] **REL-05**: Retry cancels the previous in-flight request (AbortController pattern)
@@ -47,8 +47,8 @@
 
 ### Security (SEC)
 
-- [ ] **SEC-01**: All `/api/*` endpoints that return user data enforce `user_id` isolation at query level (no cross-user data access)
-- [ ] **SEC-02**: Error responses never expose stack traces, SQL statements, or internal system details
+- [x] **SEC-01**: All `/api/*` endpoints that return user data enforce `user_id` isolation at query level (no cross-user data access)
+- [x] **SEC-02**: Error responses never expose stack traces, SQL statements, or internal system details
 - [ ] **SEC-03**: All API input parameters are validated (no injection vectors in ticker names, simulation params, alert thresholds)
 - [ ] **SEC-04**: Rate limiting is applied to simulation and market data endpoints
 
@@ -87,8 +87,8 @@
 | MOB-01 | Phase 14 | Pending |
 | MOB-02 | Phase 14 | Pending |
 | MOB-03 | Phase 14 | Pending |
-| REL-01 | Phase 13 | Pending |
-| REL-02 | Phase 13 | Pending |
+| REL-01 | Phase 13 | Complete |
+| REL-02 | Phase 13 | Complete |
 | REL-03 | Phase 15 | Pending |
 | REL-04 | Phase 15 | Pending |
 | REL-05 | Phase 15 | Pending |
@@ -106,8 +106,8 @@
 | ALERT-02 | Phase 19 | Pending |
 | ALERT-03 | Phase 19 | Pending |
 | ALERT-04 | Phase 19 | Pending |
-| SEC-01 | Phase 13 | Pending |
-| SEC-02 | Phase 13 | Pending |
+| SEC-01 | Phase 13 | Complete |
+| SEC-02 | Phase 13 | Complete |
 | SEC-03 | Phase 13 | Pending |
 | SEC-04 | Phase 13 | Pending |
 | TEST-01 | Phase 20 | Pending |

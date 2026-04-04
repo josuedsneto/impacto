@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 13 — Backend Error Handler + Security
-Plan: —
-Status: Roadmap ready — awaiting first plan
-Last activity: 2026-04-04 — v2.1 roadmap created (8 phases, 28 requirements mapped)
+Plan: 01 (complete)
+Status: Phase 13 Plan 01 complete — ready for next plan
+Last activity: 2026-04-04 — 13-01: loguru + RequestIDMiddleware + exception handlers
 
 ```
-v2.1 Progress: [░░░░░░░░] 0/8 phases complete
+v2.1 Progress: [█░░░░░░░] 1/8 phases in progress (Phase 13 Plan 01 of N complete)
 ```
 
 ## Performance Metrics
@@ -103,6 +103,10 @@ Carried forward from v1.0 and v2.0:
 - [Phase 12-feature-pages]: feedparser for Google News RSS — avoids XML parsing complexity
 - [Phase 12-feature-pages]: ARIMA CI rendered via stacked Area fill trick (ci_upper filled, ci_lower fills with background color)
 - [Phase 12-feature-pages]: AdminConfig extracted as client component — admin page stays server component for auth guard
+- [Phase 13-01]: loguru replaces stdlib logging; logger.remove() prevents duplicate output then adds single stderr sink
+- [Phase 13-01]: RequestIDMiddleware registered last (LIFO = executes first) — request_id injected before rate-limit and CORS middleware
+- [Phase 13-01]: RateLimitExceeded handler registered before global Exception handler to ensure 429s are not caught as 500s
+- [Phase 13-01]: No traceback, str(exc), or repr(exc) in JSON response body — exception logged server-side only (SEC-02)
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -114,7 +118,8 @@ Carried forward from v1.0 and v2.0:
 
 - Provision Oracle Cloud VM and run scripts/setup-vm.sh
 - Link Supabase CLI and run supabase db push
-- Begin Phase 13: Backend Error Handler + Security
+- Phase 13 Plan 01 complete: loguru, RequestIDMiddleware, exception handlers
+- Begin Phase 13 Plan 02 (or next plan in phase 13)
 
 ### Blockers/Concerns
 
@@ -123,5 +128,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: v2.1 roadmap created — Phase 13 ready to plan
+Stopped at: Completed 13-01-PLAN.md — loguru + RequestIDMiddleware + exception handlers
 Resume file: None
