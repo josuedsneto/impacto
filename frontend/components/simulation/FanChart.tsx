@@ -25,7 +25,8 @@ export default function FanChart({ series, dias_simulados }: FanChartProps) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <div className="h-[260px] md:h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
         <XAxis
           dataKey="dia"
@@ -80,5 +81,6 @@ export default function FanChart({ series, dias_simulados }: FanChartProps) {
         />
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 }

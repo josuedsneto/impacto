@@ -127,7 +127,8 @@ export default function MetasPage() {
               <CardTitle className="text-sm font-medium">MTM Histórico vs Meta</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={320}>
+              <div className="h-[240px] md:h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={result.mtm_series.filter((_, i) => i % 5 === 0)}
                   margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
@@ -143,6 +144,7 @@ export default function MetasPage() {
                   <Line type="monotone" dataKey="mtm" stroke="#3b82f6" dot={false} strokeWidth={1.5} name="mtm" />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </>

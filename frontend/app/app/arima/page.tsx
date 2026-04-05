@@ -132,7 +132,8 @@ function ArimaPanel({ ticker }: { ticker: string }) {
       )}
 
       {!loading && !error && data && (
-        <ResponsiveContainer width="100%" height={360}>
+        <div className="h-[240px] md:h-[360px]">
+          <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 16 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis
@@ -209,6 +210,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
             />
           </ComposedChart>
         </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

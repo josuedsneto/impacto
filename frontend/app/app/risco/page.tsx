@@ -73,7 +73,8 @@ function PercentilChart({ data, color, label }: { data: DistResult; color: strin
       </CardHeader>
       <CardContent>
         <p className="text-xl font-bold mb-3">{fmt(data.media)} <span className="text-sm font-normal text-muted-foreground">média</span></p>
-        <ResponsiveContainer width="100%" height={200}>
+        <div className="h-[180px] md:h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data.percentis} margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="p" tick={{ fontSize: 10 }} tickFormatter={(v) => `P${v}`} />
@@ -82,6 +83,7 @@ function PercentilChart({ data, color, label }: { data: DistResult; color: strin
             <Bar dataKey="v" fill={color} radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

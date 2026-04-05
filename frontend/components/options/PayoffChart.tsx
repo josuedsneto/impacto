@@ -22,7 +22,8 @@ export default function PayoffChart({ prices, payoff }: PayoffChartProps) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <div className="h-[240px] md:h-[350px]">
+      <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 30 }}>
         <XAxis
           dataKey="preco"
@@ -45,5 +46,6 @@ export default function PayoffChart({ prices, payoff }: PayoffChartProps) {
         />
       </LineChart>
     </ResponsiveContainer>
+    </div>
   );
 }

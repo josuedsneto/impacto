@@ -186,7 +186,8 @@ export default function CenariosPage() {
               <CardTitle className="text-sm font-medium">Distribuição de probabilidade — {result.opcao}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
+              <div className="h-[220px] md:h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={result.distribuicao} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <defs>
                     <linearGradient id="colorRisk" x1="0" y1="0" x2="1" y2="0">
@@ -212,6 +213,7 @@ export default function CenariosPage() {
                   <Area type="monotone" dataKey="y" stroke="#3b82f6" fill="url(#colorRisk)" strokeWidth={2} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 

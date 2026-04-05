@@ -160,7 +160,8 @@ export default function JumpDiffusionPage() {
               <span>σ usado: {(result.sigma * 100).toFixed(3)}%</span>
               <span>μ diário: {(result.mu * 100).toFixed(4)}%</span>
             </div>
-            <ResponsiveContainer width="100%" height={320}>
+            <div className="h-[240px] md:h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
               <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="step" tick={{ fontSize: 10 }} tickFormatter={(v) => `D${v}`} />
@@ -169,6 +170,7 @@ export default function JumpDiffusionPage() {
                 <Line type="monotone" dataKey="price" stroke="#8b5cf6" dot={false} strokeWidth={1.5} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -125,7 +125,8 @@ function VolPanel({ ticker }: { ticker: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
+          <div className="h-[200px] md:h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={result.rolling_30d}
               margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
@@ -153,6 +154,7 @@ function VolPanel({ ticker }: { ticker: string }) {
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>
