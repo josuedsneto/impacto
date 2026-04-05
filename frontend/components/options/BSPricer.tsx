@@ -5,6 +5,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { Download, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCsv, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -155,6 +158,37 @@ export default function BSPricer() {
           {loading ? "—" : price !== null ? price.toFixed(4) : "—"}
         </span>
       </p>
+
+      <div className="flex gap-2 no-print">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={price === null}
+          className="no-print"
+          onClick={() => {
+            if (price === null) return;
+            const rows = [
+              ["Spot_S", "Strike_K", "Tempo_T", "Taxa_r", "Sigma", "Preco_Call_BS"],
+              [
+                formatBrNumber(S),
+                formatBrNumber(K),
+                formatBrNumber(T),
+                formatBrNumber(r),
+                formatBrNumber(sigma),
+                formatBrNumber(price),
+              ],
+            ];
+            downloadCsv(rows, `opcoes_bs_${isoToday()}.csv`);
+          }}
+        >
+          <Download className="w-4 h-4 mr-1.5" />
+          Exportar CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

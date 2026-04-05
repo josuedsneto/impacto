@@ -21,6 +21,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { Download, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCsv, formatBrDate, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -30,6 +33,18 @@ interface StressScenario {
   periodo_fim: string;
   drawdown_pct: number;
   preco_final: number;
+}
+
+function buildStressRows(scenarios: StressScenario[]): string[][] {
+  const header = ["Cenario", "Periodo_Inicio", "Periodo_Fim", "Drawdown_Pct", "Preco_Final"];
+  const rows = scenarios.map(s => [
+    s.cenario,
+    formatBrDate(s.periodo_inicio),
+    formatBrDate(s.periodo_fim),
+    formatBrNumber(s.drawdown_pct * 100, 2),
+    formatBrNumber(s.preco_final),
+  ]);
+  return [header, ...rows];
 }
 
 async function getAccessToken(): Promise<string> {
@@ -161,6 +176,27 @@ export default function StressPage() {
       {!loading && !error && scenarios.length === 0 && (
         <p className="text-sm text-muted-foreground">Nenhum cenário disponível.</p>
       )}
+
+      <div className="flex gap-2 mt-4 no-print">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!scenarios || scenarios.length === 0}
+          className="no-print"
+          onClick={() => {
+            if (!scenarios || scenarios.length === 0) return;
+            const slug = ticker === "SB=F" ? "acucar" : "dolar";
+            downloadCsv(buildStressRows(scenarios), `${slug}_stress_${isoToday()}.csv`);
+          }}
+        >
+          <Download className="w-4 h-4 mr-1.5" />
+          Exportar CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

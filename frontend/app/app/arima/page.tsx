@@ -23,6 +23,10 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { Download, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { downloadCsv, formatBrDate, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -38,6 +42,18 @@ interface ArimaResponse {
   ticker: string;
   steps: number;
   series: ArimaPoint[];
+}
+
+function buildArimaRows(data: ArimaPoint[]): string[][] {
+  const header = ["Data", "Valor", "Forecast", "CI_Inferior", "CI_Superior"];
+  const rows = data.map(p => [
+    formatBrDate(p.date),
+    p.value    != null ? formatBrNumber(p.value)    : "",
+    p.forecast != null ? formatBrNumber(p.forecast) : "",
+    p.ci_lower != null ? formatBrNumber(p.ci_lower) : "",
+    p.ci_upper != null ? formatBrNumber(p.ci_upper) : "",
+  ]);
+  return [header, ...rows];
 }
 
 async function getAccessToken(): Promise<string> {
@@ -209,6 +225,36 @@ function ArimaPanel({ ticker }: { ticker: string }) {
         </ResponsiveContainer>
         </div>
       )}
+
+      <div className="flex gap-2 mt-4 no-print">
+        <TooltipProvider>
+          <UITooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!data}
+                  className="no-print"
+                  onClick={() => {
+                    if (!data) return;
+                    const slug = ticker === "SB=F" ? "arima-acucar" : "arima-dolar";
+                    downloadCsv(buildArimaRows(data), `${slug}_arima_${isoToday()}.csv`);
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Exportar CSV
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!data && <TooltipContent>Aguarde o carregamento</TooltipContent>}
+          </UITooltip>
+        </TooltipProvider>
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

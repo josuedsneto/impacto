@@ -12,6 +12,8 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { Download, Printer } from "lucide-react";
+import { downloadCsv, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -31,6 +33,12 @@ async function getToken(): Promise<string> {
   );
   const { data } = await sb.auth.getSession();
   return data.session?.access_token ?? "";
+}
+
+function buildJDRows(result: JDResult): string[][] {
+  const header = ["Step", "Preco"];
+  const rows = result.prices.map(p => [String(p.step), formatBrNumber(p.price)]);
+  return [header, ...rows];
 }
 
 const TICKERS = [
@@ -165,30 +173,50 @@ export default function JumpDiffusionPage() {
       {loading && <Skeleton className="h-80 w-full rounded-lg" />}
 
       {!loading && result && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Simulação · {result.ticker} · Preço inicial: {result.s0.toFixed(2)} · Média: {result.mean.toFixed(2)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6 text-sm text-muted-foreground mb-4">
-              <span>σ usado: {(result.sigma * 100).toFixed(3)}%</span>
-              <span>μ diário: {(result.mu * 100).toFixed(4)}%</span>
-            </div>
-            <div className="h-[240px] md:h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="step" tick={{ fontSize: 10 }} tickFormatter={(v) => `D${v}`} />
-                <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
-                <Tooltip formatter={(v: number) => [v.toFixed(4), "Preço"]} labelFormatter={(l) => `Step ${l}`} />
-                <Line type="monotone" dataKey="price" stroke="#8b5cf6" dot={false} strokeWidth={1.5} />
-              </LineChart>
-            </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">
+                Simulação · {result.ticker} · Preço inicial: {result.s0.toFixed(2)} · Média: {result.mean.toFixed(2)}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-6 text-sm text-muted-foreground mb-4">
+                <span>σ usado: {(result.sigma * 100).toFixed(3)}%</span>
+                <span>μ diário: {(result.mu * 100).toFixed(4)}%</span>
+              </div>
+              <div className="h-[240px] md:h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="step" tick={{ fontSize: 10 }} tickFormatter={(v) => `D${v}`} />
+                  <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
+                  <Tooltip formatter={(v: number) => [v.toFixed(4), "Preço"]} labelFormatter={(l) => `Step ${l}`} />
+                  <Line type="monotone" dataKey="price" stroke="#8b5cf6" dot={false} strokeWidth={1.5} />
+                </LineChart>
+              </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-2 no-print">
+            <Button
+              variant="outline"
+              size="sm"
+              className="no-print"
+              onClick={() => {
+                downloadCsv(buildJDRows(result), `${result.ticker}_jump-diffusion_${isoToday()}.csv`);
+              }}
+            >
+              <Download className="w-4 h-4 mr-1.5" />
+              Exportar CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+              <Printer className="w-4 h-4 mr-1.5" />
+              Imprimir PDF
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
