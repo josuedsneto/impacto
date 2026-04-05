@@ -85,7 +85,7 @@ function VolPanel({ ticker }: { ticker: string }) {
   if (loading) {
     return (
       <div className="space-y-4 mt-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
           ))}

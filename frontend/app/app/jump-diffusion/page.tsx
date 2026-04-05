@@ -103,7 +103,7 @@ export default function JumpDiffusionPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label htmlFor="jd-sigma">
                 Sigma (vol) <FieldTooltip text="Volatilidade diária. Deixe em branco para usar a histórica." />

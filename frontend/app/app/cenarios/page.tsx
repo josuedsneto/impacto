@@ -122,7 +122,7 @@ export default function CenariosPage() {
           </div>
 
           {/* Other inputs */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {otherInputs.map((key) => {
               const cfg = INPUT_LABELS[key];
               return (
@@ -221,7 +221,7 @@ export default function CenariosPage() {
               <CardTitle className="text-sm font-medium">Percentis — {result.opcao}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-1 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-sm">
                 {result.percentis.map(({ p, v }) => (
                   <div
                     key={p}

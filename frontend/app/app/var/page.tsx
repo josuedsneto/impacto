@@ -107,7 +107,7 @@ function VarPanel({ ticker }: { ticker: string }) {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
           ))}
@@ -115,7 +115,7 @@ function VarPanel({ ticker }: { ticker: string }) {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && !error && result && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <MetricCard
             label="Último Preço"
             value={result.last_price.toFixed(4)}
