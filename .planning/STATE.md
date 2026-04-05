@@ -62,6 +62,7 @@ v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Ph
 | Phase 16-export-csv-pdf P04 | 8 | 2 tasks | 1 files |
 | Phase 16 P01 | 3 | 2 tasks | 3 files |
 | Phase 16-export-csv-pdf P02 | 6 | 2 tasks | 3 files |
+| Phase 16-export-csv-pdf P03 | 18 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Carried forward from v1.0 and v2.0:
 - [Phase 16]: [Phase 16-01]: Local date methods (getDate/getMonth/getFullYear) used in formatBrDate — inputs represent local dates, UTC methods would produce off-by-one errors
 - [Phase 16-export-csv-pdf]: Breakeven live export uses displayed liveFatorNum (user-overridable) not raw live.fator_conversao
 - [Phase 16-export-csv-pdf]: VarResult.returns: number[] added with ?? [] fallback in buildVarRows for backward compat
+- [Phase 16-03]: ArimaPanel export lives inside child component (not lifted) to co-locate with data state
+- [Phase 16-03]: Stress page export uses ticker state for filename slug — ticker selector exists so dynamic slug is correct
+- [Phase 16-03]: Options page gets page-level print button in addition to BSPricer embedded button — covers Payoff and MC tabs
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -158,5 +162,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-05
-Stopped at: Completed 16-01-PLAN.md — lib/export.ts shared CSV/print utilities, @media print CSS, mobile-header class
+Stopped at: Completed 16-03-PLAN.md — CSV export for ARIMA/Stress/JD/BSPricer; print buttons for focus/volatilidade/noticias/options
 Resume file: None
