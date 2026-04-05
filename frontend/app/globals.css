@@ -128,3 +128,38 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  /* Hide desktop sidebar */
+  aside {
+    display: none !important;
+  }
+
+  /* Hide mobile navigation header */
+  .mobile-header {
+    display: none !important;
+  }
+
+  /* Hide all buttons and interactive controls marked no-print */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Full-width main content without sidebar gap */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent page break inside Recharts charts */
+  .recharts-wrapper {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Prevent table rows from splitting across pages */
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

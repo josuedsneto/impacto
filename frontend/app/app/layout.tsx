@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Mobile-only header with hamburger */}
           <div
-            className="flex md:hidden items-center px-4 py-3 flex-shrink-0"
+            className="flex md:hidden items-center px-4 py-3 flex-shrink-0 mobile-header"
             style={{ background: "#111827", borderBottom: "1px solid #1f2937" }}
           >
             <Sheet open={open} onOpenChange={setOpen}>
