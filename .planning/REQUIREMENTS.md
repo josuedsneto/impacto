@@ -9,7 +9,7 @@
 
 - [x] **MOB-01**: User can navigate the app on 375px viewport without horizontal scroll or overflow
 - [x] **MOB-02**: Sidebar collapses to Sheet drawer triggered by hamburger icon on mobile
-- [ ] **MOB-03**: All `/app/*` pages render content correctly at mobile viewport (no truncated text or charts)
+- [x] **MOB-03**: All `/app/*` pages render content correctly at mobile viewport (no truncated text or charts)
 
 ### Reliability (REL)
 
@@ -86,7 +86,7 @@
 |-------------|-------|--------|
 | MOB-01 | Phase 14 | Complete |
 | MOB-02 | Phase 14 | Complete |
-| MOB-03 | Phase 14 | Pending |
+| MOB-03 | Phase 14 | Complete |
 | REL-01 | Phase 13 | Complete |
 | REL-02 | Phase 13 | Complete |
 | REL-03 | Phase 15 | Pending |

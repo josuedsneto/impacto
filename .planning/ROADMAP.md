@@ -161,7 +161,7 @@ Plans:
 | 11. Login + Auth | v2.0 | 1/1 | Complete | 2026-04-01 |
 | 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
-| 14. Mobile Responsiveness | 1/3 | In Progress|  | - |
+| 14. Mobile Responsiveness | 2/3 | In Progress|  | - |
 | 15. Loading Skeletons + Error States | v2.1 | 0/? | Not started | - |
 | 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |

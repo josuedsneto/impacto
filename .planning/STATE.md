@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 14 — Mobile Responsiveness
-Plan: 01 (complete)
-Status: Phase 14 in progress — MOB-01 and MOB-02 addressed; responsive layout shell with Sheet drawer complete
-Last activity: 2026-04-05 — 14-01: responsive layout shell, NavContent, Sheet mobile drawer
+Plan: 02 (complete)
+Status: Phase 14 in progress — MOB-01, MOB-02, MOB-03 addressed; responsive layout shell, Sheet drawer, and dashboard inline grid fixes complete
+Last activity: 2026-04-05 — 14-02: removed inline gridTemplateColumns from dashboard/page.tsx and ToolGrid.tsx, replaced with Tailwind responsive grid classes
 
 ```
 v2.1 Progress: [██░░░░░░] 2/8 phases complete (Phase 13 done, Phase 14 plan 01 done)
@@ -55,6 +55,7 @@ v2.1 Progress: [██░░░░░░] 2/8 phases complete (Phase 13 done, Ph
 *Updated after each plan completion*
 | Phase 13-backend-error-handler-security P02 | 12 | 2 tasks | 1 files |
 | Phase 14-mobile-responsiveness P01 | 12 | 2 tasks | 3 files |
+| Phase 14-mobile-responsiveness P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Carried forward from v1.0 and v2.0:
 - [Phase 14-mobile-responsiveness]: NavContent accepts onNavigate prop; all Links call onClick={onNavigate} to close Sheet on mobile navigation
 - [Phase 14-mobile-responsiveness]: Desktop aside uses hidden md:flex so sidebar has display:none below md breakpoint (no layout space consumed on mobile)
 - [Phase 14-mobile-responsiveness]: min-w-0 on flex wrapper div and main element prevents horizontal overflow at 375px viewport
+- [Phase 14-mobile-responsiveness]: Inline gridTemplateColumns styles must be fully removed (not coexist) with Tailwind grid-cols-* to avoid specificity override on all breakpoints
+- [Phase 14-mobile-responsiveness]: Card hover onMouseEnter/onMouseLeave inline styles are acceptable (visual-only, not layout) — only layout-critical gridTemplateColumns needed replacement
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -136,5 +139,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-05
-Stopped at: Completed 14-01-PLAN.md — responsive layout shell with Sheet drawer mobile navigation (Phase 14 plan 01 complete)
+Stopped at: Completed 14-02-PLAN.md — dashboard inline grid styles replaced with Tailwind responsive classes (Phase 14 plan 02 complete)
 Resume file: None
