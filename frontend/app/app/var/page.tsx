@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -52,11 +54,15 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 function VarPanel({ ticker }: { ticker: string }) {
   const [confidence, setConfidence] = useState("0.95");
   const [result, setResult] = useState<VarResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchVar = useCallback(
     async (conf: string) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setLoading(true);
       setError(null);
       try {
@@ -64,17 +70,19 @@ function VarPanel({ ticker }: { ticker: string }) {
         const params = new URLSearchParams({ ticker, confidence: conf });
         const res = await fetch(`${API}/api/var?${params}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: controller.signal,
         });
         const data = await res.json();
         if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar VaR.");
+          setError((data as { detail?: string; error?: string }).detail ?? data.error ?? "Erro ao carregar VaR.");
           return;
         }
         setResult(data as VarResult);
-      } catch {
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         setError("Erro de conexão com o servidor.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     },
     [ticker]
@@ -82,6 +90,7 @@ function VarPanel({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     fetchVar(confidence);
+    return () => abortRef.current?.abort();
   }, [fetchVar, confidence]);
 
   function handleConfidenceChange(val: string) {
@@ -109,11 +118,14 @@ function VarPanel({ ticker }: { ticker: string }) {
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+            <Card key={i}>
+              <CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader>
+              <CardContent><Skeleton className="h-8 w-32" /></CardContent>
+            </Card>
           ))}
         </div>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState message={error} onRetry={() => fetchVar(confidence)} />}
       {!loading && !error && result && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <MetricCard

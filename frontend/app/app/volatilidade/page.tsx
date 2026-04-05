@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 import {
   LineChart,
   Line,
@@ -53,10 +55,14 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 
 function VolPanel({ ticker }: { ticker: string }) {
   const [result, setResult] = useState<VolatilityResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchVol = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
@@ -64,99 +70,103 @@ function VolPanel({ ticker }: { ticker: string }) {
       const params = new URLSearchParams({ ticker });
       const res = await fetch(`${API}/api/volatility?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar volatilidade.");
+        setError((data as { detail?: string; error?: string }).detail ?? data.error ?? "Erro ao carregar volatilidade.");
         return;
       }
       setResult(data as VolatilityResult);
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       setError("Erro de conexão com o servidor.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [ticker]);
 
   useEffect(() => {
-    fetchVol();
-  }, [fetchVol]);
-
-  if (loading) {
-    return (
-      <div className="space-y-4 mt-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
-        <div className="h-64 rounded-lg bg-muted animate-pulse" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return <p className="text-sm text-red-600 mt-4">{error}</p>;
-  }
-
-  if (!result) return null;
+    fetchData();
+    return () => abortRef.current?.abort();
+  }, [fetchData]);
 
   return (
-    <div className="space-y-6 mt-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard
-          label="Vol. Realizada 30d (a.a.)"
-          value={`${(result.vol_30d * 100).toFixed(2)}%`}
-        />
-        <MetricCard
-          label="Vol. Realizada 90d (a.a.)"
-          value={`${(result.vol_90d * 100).toFixed(2)}%`}
-        />
-        <MetricCard
-          label="Vol. Realizada 1 ano (a.a.)"
-          value={`${(result.vol_1y * 100).toFixed(2)}%`}
-        />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">
-            Volatilidade Rolante 30d
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[200px] md:h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={result.rolling_30d}
-              margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: string) => v.slice(0, 7)}
-              />
-              <YAxis
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-              />
-              <Tooltip
-                formatter={(v: number) => [`${(v * 100).toFixed(2)}%`, "Vol 30d"]}
-                labelFormatter={(l: string) => l}
-              />
-              <Line
-                type="monotone"
-                dataKey="vol"
-                stroke="#3b82f6"
-                dot={false}
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+    <div className="space-y-4 mt-4">
+      {loading && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader>
+                <CardContent><Skeleton className="h-8 w-32" /></CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </>
+      )}
+
+      {error && <ErrorState message={error} onRetry={fetchData} />}
+
+      {!loading && !error && result && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard
+              label="Vol. Realizada 30d (a.a.)"
+              value={`${(result.vol_30d * 100).toFixed(2)}%`}
+            />
+            <MetricCard
+              label="Vol. Realizada 90d (a.a.)"
+              value={`${(result.vol_90d * 100).toFixed(2)}%`}
+            />
+            <MetricCard
+              label="Vol. Realizada 1 ano (a.a.)"
+              value={`${(result.vol_1y * 100).toFixed(2)}%`}
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">
+                Volatilidade Rolante 30d
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px] md:h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={result.rolling_30d}
+                  margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v: string) => v.slice(0, 7)}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [`${(v * 100).toFixed(2)}%`, "Vol 30d"]}
+                    labelFormatter={(l: string) => l}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="vol"
+                    stroke="#3b82f6"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
@@ -25,21 +27,26 @@ async function getAccessToken(): Promise<string> {
 
 export default function NoticiasPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchNews = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
       const token = await getAccessToken();
       const res = await fetch(`${API}/api/news`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar notícias.");
+        setError((data as { detail?: string; error?: string }).detail ?? data.error ?? "Erro ao carregar notícias.");
         return;
       }
       setNews(data.items as NewsItem[]);
@@ -47,18 +54,22 @@ export default function NoticiasPage() {
       setLastUpdate(
         now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       );
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       setError("Erro de conexão com o servidor.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchNews();
-    const interval = setInterval(fetchNews, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchNews]);
+    fetchData();
+    const interval = setInterval(fetchData, REFRESH_INTERVAL_MS);
+    return () => {
+      clearInterval(interval);
+      abortRef.current?.abort();
+    };
+  }, [fetchData]);
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -73,13 +84,18 @@ export default function NoticiasPage() {
 
       {loading && (
         <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="pt-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState message={error} onRetry={fetchData} />}
 
       {!loading && !error && (
         <div className="space-y-3">
