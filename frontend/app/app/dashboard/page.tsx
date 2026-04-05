@@ -229,7 +229,7 @@ export default async function DashboardPage() {
           >
             Preços ao vivo
           </p>
-          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <PriceCard
               label="Açúcar NY #11"
               exchange="ICE Futures · SB=F"
@@ -255,7 +255,7 @@ export default async function DashboardPage() {
           >
             Informações em tempo real
           </p>
-          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <NewsFeed />
             <FocusWidget data={focusData} />
             <AccountSummary
