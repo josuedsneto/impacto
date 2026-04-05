@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 13 — Backend Error Handler + Security (v2.1 UX Polish & Reliability)
+**Current focus:** Phase 14 — Mobile Responsiveness (v2.1 UX Polish & Reliability)
 
 ## Current Position
 
-Phase: 13 — Backend Error Handler + Security
-Plan: 02 (complete)
-Status: Phase 13 complete — SEC-03 and SEC-04 addressed; ready for next phase
-Last activity: 2026-04-04 — 13-02: model_validator + Query bounds + rate limit backfill
+Phase: 14 — Mobile Responsiveness
+Plan: 01 (complete)
+Status: Phase 14 in progress — MOB-01 and MOB-02 addressed; responsive layout shell with Sheet drawer complete
+Last activity: 2026-04-05 — 14-01: responsive layout shell, NavContent, Sheet mobile drawer
 
 ```
-v2.1 Progress: [█░░░░░░░] 1/8 phases complete (Phase 13 all plans done)
+v2.1 Progress: [██░░░░░░] 2/8 phases complete (Phase 13 done, Phase 14 plan 01 done)
 ```
 
 ## Performance Metrics
@@ -54,6 +54,7 @@ v2.1 Progress: [█░░░░░░░] 1/8 phases complete (Phase 13 all plan
 
 *Updated after each plan completion*
 | Phase 13-backend-error-handler-security P02 | 12 | 2 tasks | 1 files |
+| Phase 14-mobile-responsiveness P01 | 12 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,9 @@ Carried forward from v1.0 and v2.0:
 - [Phase 13-02]: model_validator mode=after for RiscoSaveRequest dict size limits (10KB inputs, 50KB results); dict[str, Any] typed to close injection surface
 - [Phase 13-02]: request: Request added as first positional param to 9 unrated endpoints per SlowAPI IP extraction requirement; no REST semantic change
 - [Phase 13-02]: /api/health intentionally exempt from rate limiting; all other non-health endpoints now covered (38 total @limiter.limit)
+- [Phase 14-mobile-responsiveness]: NavContent accepts onNavigate prop; all Links call onClick={onNavigate} to close Sheet on mobile navigation
+- [Phase 14-mobile-responsiveness]: Desktop aside uses hidden md:flex so sidebar has display:none below md breakpoint (no layout space consumed on mobile)
+- [Phase 14-mobile-responsiveness]: min-w-0 on flex wrapper div and main element prevents horizontal overflow at 375px viewport
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -131,6 +135,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Completed 13-02-PLAN.md — model_validator + Query bounds + rate limit backfill (Phase 13 complete)
+Last session: 2026-04-05
+Stopped at: Completed 14-01-PLAN.md — responsive layout shell with Sheet drawer mobile navigation (Phase 14 plan 01 complete)
 Resume file: None
