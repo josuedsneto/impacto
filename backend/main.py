@@ -1355,22 +1355,54 @@ async def jump_diffusion(
     sigma = float(body.sigma) if body.sigma is not None else float(np.std(log_returns, ddof=1))
     s0 = float(closes[-1])
 
+    N = 1000
     dt = 1.0 / body.steps
     rng = np.random.default_rng()
-    prices = [s0]
-    for _ in range(body.steps):
-        n_jumps = int(rng.poisson(body.lambda_jumps * dt))
-        jump_mag = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, n_jumps))) if n_jumps > 0 else 0.0
-        diffusion = (mu - 0.5 * sigma ** 2) * dt + sigma * float(rng.normal()) * (dt ** 0.5)
-        prices.append(prices[-1] * float(np.exp(diffusion + jump_mag)))
+
+    # Diffusion component: shape (N, steps)
+    diffusion = (
+        (mu - 0.5 * sigma ** 2) * dt
+        + sigma * rng.normal(0, 1, (N, body.steps)) * (dt ** 0.5)
+    )
+
+    # Jump component: shape (N, steps)
+    n_jumps_mat = rng.poisson(body.lambda_jumps * dt, (N, body.steps))
+    # For each path/step, draw jump magnitudes and sum by n_jumps count
+    jump_mag_mat = np.zeros((N, body.steps))
+    for i in range(N):
+        for j in range(body.steps):
+            nj = n_jumps_mat[i, j]
+            if nj > 0:
+                jump_mag_mat[i, j] = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, nj)))
+
+    log_returns_mat = diffusion + jump_mag_mat  # shape (N, steps)
+
+    # Cumulative product to build price paths: shape (N, steps+1)
+    # First column is s0 for all paths
+    price_paths = np.empty((N, body.steps + 1))
+    price_paths[:, 0] = s0
+    price_paths[:, 1:] = s0 * np.exp(np.cumsum(log_returns_mat, axis=1))
+
+    # Single representative path (path index 0 for backward compat)
+    prices_single = price_paths[0].tolist()
+
+    # Percentile series across N paths at each step: shape (5, steps+1)
+    pcts = np.percentile(price_paths, [5, 25, 50, 75, 95], axis=0)
 
     return {
         "ticker": ticker,
         "s0": round(s0, 4),
         "sigma": round(sigma, 6),
         "mu": round(mu, 6),
-        "prices": [{"step": i, "price": round(p, 4)} for i, p in enumerate(prices)],
-        "mean": round(float(np.mean(prices)), 4),
+        "prices": [{"step": i, "price": round(p, 4)} for i, p in enumerate(prices_single)],
+        "mean": round(float(np.mean(price_paths[:, -1])), 4),
+        "percentile_series": {
+            "p5":  [round(float(v), 4) for v in pcts[0]],
+            "p25": [round(float(v), 4) for v in pcts[1]],
+            "p50": [round(float(v), 4) for v in pcts[2]],
+            "p75": [round(float(v), 4) for v in pcts[3]],
+            "p95": [round(float(v), 4) for v in pcts[4]],
+        },
     }
 
 
