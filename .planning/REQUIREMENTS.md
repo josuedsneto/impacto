@@ -15,9 +15,9 @@
 
 - [x] **REL-01**: Backend returns structured JSON `{"error": "...", "code": "..."}` on all 500 responses — never raw tracebacks
 - [x] **REL-02**: All backend errors are logged via loguru with request ID for correlation
-- [ ] **REL-03**: User sees skeleton placeholders while data is fetching (no blank screen or "Carregando..." text)
-- [ ] **REL-04**: User sees error message + retry button when any API call fails
-- [ ] **REL-05**: Retry cancels the previous in-flight request (AbortController pattern)
+- [x] **REL-03**: User sees skeleton placeholders while data is fetching (no blank screen or "Carregando..." text)
+- [x] **REL-04**: User sees error message + retry button when any API call fails
+- [x] **REL-05**: Retry cancels the previous in-flight request (AbortController pattern)
 
 ### Export (EXP)
 
@@ -89,9 +89,9 @@
 | MOB-03 | Phase 14 | Complete |
 | REL-01 | Phase 13 | Complete |
 | REL-02 | Phase 13 | Complete |
-| REL-03 | Phase 15 | Pending |
-| REL-04 | Phase 15 | Pending |
-| REL-05 | Phase 15 | Pending |
+| REL-03 | Phase 15 | Complete |
+| REL-04 | Phase 15 | Complete |
+| REL-05 | Phase 15 | Complete |
 | EXP-01 | Phase 16 | Pending |
 | EXP-02 | Phase 16 | Pending |
 | EXP-03 | Phase 16 | Pending |

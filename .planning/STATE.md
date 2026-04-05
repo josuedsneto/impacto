@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 14 — Mobile Responsiveness (v2.1 UX Polish & Reliability) — COMPLETE
+**Current focus:** Phase 15 — Loading Skeletons + Error States (v2.1 UX Polish & Reliability)
 
 ## Current Position
 
-Phase: 14 — Mobile Responsiveness
-Plan: 03 (complete — all plans done)
-Status: Phase 14 complete — MOB-01, MOB-02, MOB-03 all addressed; layout shell, dashboard grids, per-page grid fixes, and Recharts responsive chart heights all done; human-verified at 375px
-Last activity: 2026-04-05 — 14-03: fixed non-responsive grids on 4 pages, wrapped 8 Recharts charts with responsive height divs, human-verified mobile at 375px
+Phase: 15 — Loading Skeletons + Error States
+Plan: 01 (complete)
+Status: Phase 15 in progress — Plan 01 complete; skeleton.tsx installed, useApiCall hook and ErrorState component created; REL-03, REL-04, REL-05 shared infrastructure ready
+Last activity: 2026-04-05 — 15-01: installed shadcn Skeleton, created useApiCall (AbortController hook), created ErrorState component
 
 ```
-v2.1 Progress: [███░░░░░] 3/8 phases complete (Phase 13 done, Phase 14 complete)
+v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Phase 14 complete, Phase 15 P01 done)
 ```
 
 ## Performance Metrics
@@ -57,6 +57,7 @@ v2.1 Progress: [███░░░░░] 3/8 phases complete (Phase 13 done, Ph
 | Phase 14-mobile-responsiveness P01 | 12 | 2 tasks | 3 files |
 | Phase 14-mobile-responsiveness P02 | 5 | 2 tasks | 2 files |
 | Phase 14-mobile-responsiveness P03 | 15 | 2 tasks | 9 files |
+| Phase 15-loading-skeletons-error-states P01 | 5 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Carried forward from v1.0 and v2.0:
 - [Phase 14-mobile-responsiveness]: Card hover onMouseEnter/onMouseLeave inline styles are acceptable (visual-only, not layout) — only layout-critical gridTemplateColumns needed replacement
 - [Phase 14-mobile-responsiveness P03]: Responsive chart heights use wrapper div h-[Xpx] md:h-[Npx] with ResponsiveContainer height='100%' — avoids fixed pixel heights that collapse on mobile
 - [Phase 14-mobile-responsiveness P03]: Grid fixes use grid-cols-1 sm:grid-cols-N so single-column layout starts at 375px (sm: breakpoint), not 640px (md: breakpoint)
+- [Phase 15-01]: useApiCall checks !controller.signal.aborted before setData and setLoading(false) in finally — prevents stale state updates after intentional cancellation
+- [Phase 15-01]: AbortError silently ignored in catch block so user never sees an error flash during retry
+- [Phase 15-01]: fetcher receives AbortSignal as argument — each consuming page wires signal into its fetch() call
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -142,5 +146,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-05
-Stopped at: Completed 14-03-PLAN.md — per-page grid fixes and Recharts responsive chart heights, Phase 14 complete
+Stopped at: Completed 15-01-PLAN.md — skeleton primitive, useApiCall hook, ErrorState component created
 Resume file: None
