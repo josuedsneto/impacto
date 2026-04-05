@@ -3,11 +3,34 @@
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Printer } from "lucide-react";
+import { downloadCsv, formatBrNumber, isoToday, printPage } from "@/lib/export";
 import SimulationForm, {
   SimulationResult,
 } from "@/components/simulation/SimulationForm";
 import FanChart from "@/components/simulation/FanChart";
 import SimulationMetrics from "@/components/simulation/SimulationMetrics";
+
+function buildMonteCarloRows(result: SimulationResult): string[][] {
+  const header = ["Dia", "Preco_P5", "Preco_P25", "Preco_P50", "Preco_P75", "Preco_P95"];
+  const p5  = (result.percentiles_series["p5"]  ?? []) as number[];
+  const p25 = (result.percentiles_series["p25"] ?? []) as number[];
+  const p50 = (result.percentiles_series["p50"] ?? []) as number[];
+  const p75 = (result.percentiles_series["p75"] ?? []) as number[];
+  const p95 = (result.percentiles_series["p95"] ?? []) as number[];
+  if (!p50.length) return [header];
+  const rows = p50.map((_, i) => [
+    String(i + 1),
+    formatBrNumber(p5[i] ?? 0),
+    formatBrNumber(p25[i] ?? 0),
+    formatBrNumber(p50[i]),
+    formatBrNumber(p75[i] ?? 0),
+    formatBrNumber(p95[i] ?? 0),
+  ]);
+  return [header, ...rows];
+}
 
 interface HistorySummary {
   id: string;
@@ -124,6 +147,36 @@ export default function SimulationPage() {
               />
             </div>
           )}
+
+          <div className="flex gap-2 mt-6 no-print">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!activeResult}
+                      className="no-print"
+                      onClick={() => {
+                        if (!activeResult) return;
+                        const asset = activeResult.ticker ?? "simulacao";
+                        downloadCsv(buildMonteCarloRows(activeResult), `${asset}_montecarlo_${isoToday()}.csv`);
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-1.5" />
+                      Exportar CSV
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!activeResult && <TooltipContent>Rode a simulação primeiro</TooltipContent>}
+              </Tooltip>
+            </TooltipProvider>
+            <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+              <Printer className="w-4 h-4 mr-1.5" />
+              Imprimir PDF
+            </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="historico" className="mt-6">
