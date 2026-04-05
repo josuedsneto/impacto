@@ -40,7 +40,7 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 ### v2.1 UX Polish & Reliability
 
 - [x] **Phase 13: Backend Error Handler + Security** - Structured error responses, structured logging, and security hardening across all API endpoints (completed 2026-04-04)
-- [ ] **Phase 14: Mobile Responsiveness** - Responsive layout shell with collapsible sidebar drawer; all pages usable at 375px
+- [x] **Phase 14: Mobile Responsiveness** - Responsive layout shell with collapsible sidebar drawer; all pages usable at 375px (completed 2026-04-05)
 - [ ] **Phase 15: Loading Skeletons + Error States** - Skeleton placeholders during fetch and retry-capable error UI on all client pages
 - [ ] **Phase 16: Export CSV/PDF** - Download simulation, VaR, and breakeven results as CSV; print-to-PDF via browser
 - [ ] **Phase 17: Simulation History Page** - Paginated history list with replay and asset filter
@@ -161,7 +161,7 @@ Plans:
 | 11. Login + Auth | v2.0 | 1/1 | Complete | 2026-04-01 |
 | 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
-| 14. Mobile Responsiveness | 2/3 | In Progress|  | - |
+| 14. Mobile Responsiveness | 3/3 | Complete   | 2026-04-05 | - |
 | 15. Loading Skeletons + Error States | v2.1 | 0/? | Not started | - |
 | 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |
