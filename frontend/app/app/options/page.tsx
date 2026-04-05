@@ -6,6 +6,9 @@ import PayoffBuilder, { PayoffResult } from "@/components/options/PayoffBuilder"
 import PayoffChart from "@/components/options/PayoffChart";
 import BSPricer from "@/components/options/BSPricer";
 import MCPricer from "@/components/options/MCPricer";
+import { Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { printPage } from "@/lib/export";
 
 export default function OptionsPage() {
   const [payoffResult, setPayoffResult] = useState<PayoffResult | null>(null);
@@ -46,6 +49,13 @@ export default function OptionsPage() {
           </p>
         </TabsContent>
       </Tabs>
+
+      <div className="flex mt-6 no-print">
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

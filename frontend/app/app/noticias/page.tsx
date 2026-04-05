@@ -5,6 +5,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
@@ -123,6 +126,13 @@ export default function NoticiasPage() {
           )}
         </div>
       )}
+
+      <div className="flex mt-6 no-print">
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

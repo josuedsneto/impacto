@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { Printer } from "lucide-react";
+import { printPage } from "@/lib/export";
 import {
   LineChart,
   Line,
@@ -219,6 +221,13 @@ export default function VolatilityPage() {
       </form>
 
       <VolPanel ticker={ticker} />
+
+      <div className="flex mt-6 no-print">
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }
