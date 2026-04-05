@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 16 — Export CSV/PDF
-Plan: 01 (complete)
-Status: Phase 16 in progress — Plan 01 complete; lib/export.ts created with downloadCsv/formatBrDate/formatBrNumber/isoToday/printPage; @media print CSS and mobile-header class added
-Last activity: 2026-04-05 — 16-01: created shared export utilities and global print CSS
+Plan: 03 (complete)
+Status: Phase 16 in progress — Plans 01–03 complete; EXP-01 CSV export on 7 pages, EXP-04 print button on every page satisfied
+Last activity: 2026-04-05 — 16-03: CSV export for ARIMA/Stress/JD/BSPricer; print buttons for focus/volatilidade/noticias/options
 
 ```
 v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Phase 14 complete, Phase 15 P01 done)
@@ -61,6 +61,7 @@ v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Ph
 | Phase 15 P02 | 7 | 2 tasks | 7 files |
 | Phase 16-export-csv-pdf P04 | 8 | 2 tasks | 1 files |
 | Phase 16 P01 | 3 | 2 tasks | 3 files |
+| Phase 16-export-csv-pdf P02 | 6 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,8 @@ Carried forward from v1.0 and v2.0:
 - [Phase 16]: [Phase 16-01]: Semicolon delimiter and UTF-8 BOM chosen for Brazilian Excel compatibility
 - [Phase 16]: [Phase 16-01]: Semantic class names (mobile-header, no-print) used instead of Tailwind print: variants to avoid generated-class instability in @media print
 - [Phase 16]: [Phase 16-01]: Local date methods (getDate/getMonth/getFullYear) used in formatBrDate — inputs represent local dates, UTC methods would produce off-by-one errors
+- [Phase 16-export-csv-pdf]: Breakeven live export uses displayed liveFatorNum (user-overridable) not raw live.fator_conversao
+- [Phase 16-export-csv-pdf]: VarResult.returns: number[] added with ?? [] fallback in buildVarRows for backward compat
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
