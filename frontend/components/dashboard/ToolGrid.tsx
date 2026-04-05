@@ -62,7 +62,7 @@ const TOOLS = [
 
 export function ToolGrid() {
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {TOOLS.map(({ href, label, desc }) => (
         <Link
           key={href}
