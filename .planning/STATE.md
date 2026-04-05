@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 15 — Loading Skeletons + Error States (v2.1 UX Polish & Reliability)
+**Current focus:** Phase 16 — Export CSV/PDF (v2.1 UX Polish & Reliability)
 
 ## Current Position
 
-Phase: 15 — Loading Skeletons + Error States
+Phase: 16 — Export CSV/PDF
 Plan: 01 (complete)
-Status: Phase 15 in progress — Plan 01 complete; skeleton.tsx installed, useApiCall hook and ErrorState component created; REL-03, REL-04, REL-05 shared infrastructure ready
-Last activity: 2026-04-05 — 15-01: installed shadcn Skeleton, created useApiCall (AbortController hook), created ErrorState component
+Status: Phase 16 in progress — Plan 01 complete; lib/export.ts created with downloadCsv/formatBrDate/formatBrNumber/isoToday/printPage; @media print CSS and mobile-header class added
+Last activity: 2026-04-05 — 16-01: created shared export utilities and global print CSS
 
 ```
 v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Phase 14 complete, Phase 15 P01 done)
@@ -60,6 +60,7 @@ v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Ph
 | Phase 15-loading-skeletons-error-states P01 | 5 | 2 tasks | 3 files |
 | Phase 15 P02 | 7 | 2 tasks | 7 files |
 | Phase 16-export-csv-pdf P04 | 8 | 2 tasks | 1 files |
+| Phase 16 P01 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,9 @@ Carried forward from v1.0 and v2.0:
 - [Phase 15]: ARIMA lazy-load anti-pattern converted to proper useEffect with steps as dependency — StrictMode safe and eliminates render-phase side effects
 - [Phase 15]: VarPanel ErrorState onRetry uses () => fetchVar(confidence) closure to preserve current confidence selection on retry
 - [Phase 16-export-csv-pdf]: VaR returns rounded to 8dp; jump diffusion upgraded to N=1000 paths with percentile_series; mean computed across all final prices; prices field uses path index 0 for backward compat
+- [Phase 16]: [Phase 16-01]: Semicolon delimiter and UTF-8 BOM chosen for Brazilian Excel compatibility
+- [Phase 16]: [Phase 16-01]: Semantic class names (mobile-header, no-print) used instead of Tailwind print: variants to avoid generated-class instability in @media print
+- [Phase 16]: [Phase 16-01]: Local date methods (getDate/getMonth/getFullYear) used in formatBrDate — inputs represent local dates, UTC methods would produce off-by-one errors
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
@@ -151,5 +155,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-05
-Stopped at: Completed 16-04-PLAN.md — VaR returns field and Jump Diffusion percentile_series added to backend
+Stopped at: Completed 16-01-PLAN.md — lib/export.ts shared CSV/print utilities, @media print CSS, mobile-header class
 Resume file: None
