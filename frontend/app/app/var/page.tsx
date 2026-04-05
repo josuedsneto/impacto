@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Printer } from "lucide-react";
+import { downloadCsv, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -25,6 +29,26 @@ interface VarResult {
   var_parametrico_abs: number;
   var_parametrico_pct: number;
   n_observations: number;
+  returns: number[];
+}
+
+function buildVarRows(result: VarResult): string[][] {
+  const confLabel = `${(result.confidence * 100).toFixed(0)}%`;
+  const metricsHeader = ["Ticker", "Confianca", "Ultimo_Preco", "VaR_Historico_Abs", "VaR_Historico_Pct", "VaR_Parametrico_Abs", "VaR_Parametrico_Pct", "N_Observacoes"];
+  const metricsRow = [
+    result.ticker,
+    confLabel,
+    formatBrNumber(result.last_price),
+    formatBrNumber(result.var_historico_abs),
+    formatBrNumber(result.var_historico_pct * 100, 2),
+    formatBrNumber(result.var_parametrico_abs),
+    formatBrNumber(result.var_parametrico_pct * 100, 2),
+    String(result.n_observations),
+  ];
+  const blankRow: string[] = [];
+  const sectionHeader = ["## Retornos Históricos"];
+  const returnRows = (result.returns ?? []).map(r => [formatBrNumber(r, 8)]);
+  return [metricsHeader, metricsRow, blankRow, sectionHeader, ...returnRows];
 }
 
 async function getAccessToken(): Promise<string> {
@@ -154,6 +178,35 @@ function VarPanel({ ticker }: { ticker: string }) {
           />
         </div>
       )}
+
+      <div className="flex gap-2 mt-6 no-print">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!result}
+                  className="no-print"
+                  onClick={() => {
+                    if (!result) return;
+                    downloadCsv(buildVarRows(result), `${result.ticker}_var_${isoToday()}.csv`);
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Exportar CSV
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!result && <TooltipContent>Rode a simulação primeiro</TooltipContent>}
+          </Tooltip>
+        </TooltipProvider>
+        <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+          <Printer className="w-4 h-4 mr-1.5" />
+          Imprimir PDF
+        </Button>
+      </div>
     </div>
   );
 }

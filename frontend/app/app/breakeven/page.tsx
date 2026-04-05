@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Printer } from "lucide-react";
+import { downloadCsv, formatBrNumber, isoToday, printPage } from "@/lib/export";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -26,6 +29,18 @@ interface BreakevenSim {
   breakeven_brl_saca: number;
   label: string | null;
   created_at: string;
+}
+
+function buildBreakevenRows(r: BreakevenResult | BreakevenSim): string[][] {
+  return [
+    ["Preco_Acucar_cents_lb", "Preco_Dolar_BRL", "Fator_Conversao", "Breakeven_BRL_Saca"],
+    [
+      formatBrNumber(r.preco_acucar_cents_lb),
+      formatBrNumber(r.preco_dolar_brl),
+      formatBrNumber(r.fator_conversao),
+      formatBrNumber(r.breakeven_brl_saca),
+    ],
+  ];
 }
 
 async function getAccessToken(): Promise<string> {
@@ -212,12 +227,47 @@ export default function BreakevenPage() {
                 />
               </div>
               {liveBreakeven !== null && (
-                <ResultCards
-                  acucar={live.preco_acucar_cents_lb}
-                  dolar={live.preco_dolar_brl}
-                  fator={liveFatorNum}
-                  breakeven={liveBreakeven}
-                />
+                <>
+                  <ResultCards
+                    acucar={live.preco_acucar_cents_lb}
+                    dolar={live.preco_dolar_brl}
+                    fator={liveFatorNum}
+                    breakeven={liveBreakeven}
+                  />
+                  <div className="flex gap-2 mt-4 no-print">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="no-print"
+                              onClick={() => {
+                                downloadCsv(
+                                  buildBreakevenRows({
+                                    preco_acucar_cents_lb: live.preco_acucar_cents_lb,
+                                    preco_dolar_brl: live.preco_dolar_brl,
+                                    fator_conversao: liveFatorNum,
+                                    breakeven_brl_saca: liveBreakeven,
+                                  }),
+                                  `acucar_breakeven_${isoToday()}.csv`
+                                );
+                              }}
+                            >
+                              <Download className="w-4 h-4 mr-1.5" />
+                              Exportar CSV
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+                      <Printer className="w-4 h-4 mr-1.5" />
+                      Imprimir PDF
+                    </Button>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -261,12 +311,39 @@ export default function BreakevenPage() {
           </div>
 
           {manualBreakeven !== null && (
-            <ResultCards
-              acucar={manualAcucar}
-              dolar={manualDolar}
-              fator={manualFator}
-              breakeven={manualBreakeven}
-            />
+            <>
+              <ResultCards
+                acucar={manualAcucar}
+                dolar={manualDolar}
+                fator={manualFator}
+                breakeven={manualBreakeven}
+              />
+              <div className="flex gap-2 mt-4 no-print">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="no-print"
+                  onClick={() => {
+                    downloadCsv(
+                      buildBreakevenRows({
+                        preco_acucar_cents_lb: manualAcucar,
+                        preco_dolar_brl: manualDolar,
+                        fator_conversao: manualFator,
+                        breakeven_brl_saca: manualBreakeven,
+                      }),
+                      `acucar_breakeven_${isoToday()}.csv`
+                    );
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Exportar CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={printPage} className="no-print">
+                  <Printer className="w-4 h-4 mr-1.5" />
+                  Imprimir PDF
+                </Button>
+              </div>
+            </>
           )}
 
           <div className="flex items-center gap-4">
