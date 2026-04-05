@@ -41,7 +41,7 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 
 - [x] **Phase 13: Backend Error Handler + Security** - Structured error responses, structured logging, and security hardening across all API endpoints (completed 2026-04-04)
 - [x] **Phase 14: Mobile Responsiveness** - Responsive layout shell with collapsible sidebar drawer; all pages usable at 375px (completed 2026-04-05)
-- [ ] **Phase 15: Loading Skeletons + Error States** - Skeleton placeholders during fetch and retry-capable error UI on all client pages
+- [x] **Phase 15: Loading Skeletons + Error States** - Skeleton placeholders during fetch and retry-capable error UI on all client pages (completed 2026-04-05)
 - [ ] **Phase 16: Export CSV/PDF** - Download simulation, VaR, and breakeven results as CSV; print-to-PDF via browser
 - [ ] **Phase 17: Simulation History Page** - Paginated history list with replay and asset filter
 - [ ] **Phase 18: Comparative Scenarios** - Side-by-side fan chart comparison of two simulations with independent panel state
@@ -162,7 +162,7 @@ Plans:
 | 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
 | 14. Mobile Responsiveness | 3/3 | Complete    | 2026-04-05 | - |
-| 15. Loading Skeletons + Error States | 1/2 | In Progress|  | - |
+| 15. Loading Skeletons + Error States | 2/2 | Complete   | 2026-04-05 | - |
 | 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |
 | 18. Comparative Scenarios | v2.1 | 0/? | Not started | - |

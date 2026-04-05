@@ -58,6 +58,7 @@ v2.1 Progress: [████░░░░] 4/8 phases complete (Phase 13 done, Ph
 | Phase 14-mobile-responsiveness P02 | 5 | 2 tasks | 2 files |
 | Phase 14-mobile-responsiveness P03 | 15 | 2 tasks | 9 files |
 | Phase 15-loading-skeletons-error-states P01 | 5 | 2 tasks | 3 files |
+| Phase 15 P02 | 7 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ Carried forward from v1.0 and v2.0:
 - [Phase 15-01]: useApiCall checks !controller.signal.aborted before setData and setLoading(false) in finally — prevents stale state updates after intentional cancellation
 - [Phase 15-01]: AbortError silently ignored in catch block so user never sees an error flash during retry
 - [Phase 15-01]: fetcher receives AbortSignal as argument — each consuming page wires signal into its fetch() call
+- [Phase 15]: ARIMA lazy-load anti-pattern converted to proper useEffect with steps as dependency — StrictMode safe and eliminates render-phase side effects
+- [Phase 15]: VarPanel ErrorState onRetry uses () => fetchVar(confidence) closure to preserve current confidence selection on retry
 
 ### v2.1 Research Flags (resolve before planning affected phase)
 
