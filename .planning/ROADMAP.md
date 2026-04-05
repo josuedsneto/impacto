@@ -100,7 +100,12 @@ Plans:
   2. Clicking "Exportar CSV" on the VaR page downloads a file with the VaR analysis results
   3. Clicking "Exportar CSV" on the breakeven page downloads a file with the breakeven analysis results
   4. Using the browser print function on the simulation page renders a clean printable layout with the fan chart visible (no blank boxes or broken styles)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — lib/export.ts shared utilities + @media print CSS + mobile-header class (EXP-04)
+- [ ] 16-02-PLAN.md — CSV + print buttons on simulation, VaR, breakeven pages (EXP-01, EXP-02, EXP-03)
+- [ ] 16-03-PLAN.md — CSV + print buttons on ARIMA, stress, jump-diffusion, BSPricer + print-only buttons on remaining pages (EXP-01, EXP-04)
 
 ### Phase 17: Simulation History Page
 **Goal**: Users can browse all their past simulations and replay any fan chart without re-running the simulation
@@ -163,7 +168,7 @@ Plans:
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
 | 14. Mobile Responsiveness | 3/3 | Complete    | 2026-04-05 | - |
 | 15. Loading Skeletons + Error States | 2/2 | Complete    | 2026-04-05 | - |
-| 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
+| 16. Export CSV/PDF | v2.1 | 0/3 | Not started | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |
 | 18. Comparative Scenarios | v2.1 | 0/? | Not started | - |
 | 19. Email Alerts | v2.1 | 0/? | Not started | - |
