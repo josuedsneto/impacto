@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   Select,
@@ -18,6 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -58,33 +61,41 @@ function DrawdownBadge({ value }: { value: number }) {
 export default function StressPage() {
   const [ticker, setTicker] = useState("SB=F");
   const [scenarios, setScenarios] = useState<StressScenario[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchData = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      const params = new URLSearchParams({ ticker });
+      const res = await fetch(`${API}/api/stress?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError((data as { detail?: string; error?: string }).detail ?? data.error ?? "Erro ao carregar cenários.");
+        return;
+      }
+      setScenarios(data as StressScenario[]);
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setError("Erro de conexão com o servidor.");
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [ticker]);
 
   useEffect(() => {
-    async function fetchStress() {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = await getAccessToken();
-        const params = new URLSearchParams({ ticker });
-        const res = await fetch(`${API}/api/stress?${params}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar cenários.");
-          return;
-        }
-        setScenarios(data as StressScenario[]);
-      } catch {
-        setError("Erro de conexão com o servidor.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchStress();
-  }, [ticker]);
+    fetchData();
+    return () => abortRef.current?.abort();
+  }, [fetchData]);
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -105,13 +116,18 @@ export default function StressPage() {
 
       {loading && (
         <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="py-3">
+                <Skeleton className="h-4 w-1/2 mb-1" />
+                <Skeleton className="h-6 w-32" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState message={error} onRetry={fetchData} />}
 
       {!loading && !error && scenarios.length > 0 && (
         <div className="rounded-md border">

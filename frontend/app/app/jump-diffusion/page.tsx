@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -46,8 +48,12 @@ export default function JumpDiffusionPage() {
   const [result, setResult] = useState<JDResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function handleSimulate() {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
@@ -67,12 +73,20 @@ export default function JumpDiffusionPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
+      if (!res.ok) {
+        setError((data as { detail?: string; error?: string }).detail ?? data.error ?? "Erro.");
+        return;
+      }
       setResult(data as JDResult);
-    } catch { setError("Erro de conexão."); }
-    finally { setLoading(false); }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setError("Erro de conexão.");
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }
 
   return (
@@ -144,11 +158,13 @@ export default function JumpDiffusionPage() {
           <Button onClick={handleSimulate} disabled={loading} className="w-full">
             {loading ? "Simulando..." : "Simular"}
           </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <ErrorState message={error} onRetry={handleSimulate} />}
         </CardContent>
       </Card>
 
-      {result && (
+      {loading && <Skeleton className="h-80 w-full rounded-lg" />}
+
+      {!loading && result && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">

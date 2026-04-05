@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -21,6 +21,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -50,12 +52,15 @@ async function getAccessToken(): Promise<string> {
 function ArimaPanel({ ticker }: { ticker: string }) {
   const [steps, setSteps] = useState("30");
   const [data, setData] = useState<ArimaPoint[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchArima = useCallback(
+  const fetchData = useCallback(
     async (stepsVal: string) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setLoading(true);
       setError(null);
       try {
@@ -66,6 +71,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
           `${API}/api/arima/${encodedTicker}?${params}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
           }
         );
         const json = await res.json();
@@ -78,29 +84,28 @@ function ArimaPanel({ ticker }: { ticker: string }) {
         }
         if (!res.ok) {
           setError(
-            (json as { detail?: string }).detail ?? "Erro ao carregar ARIMA."
+            (json as { detail?: string; error?: string }).detail ?? json.error ?? "Erro ao carregar ARIMA."
           );
           return;
         }
         setData((json as ArimaResponse).series);
-        setLoaded(true);
-      } catch {
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         setError("Erro de conexão com o servidor.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     },
     [ticker]
   );
 
-  // Lazy load on first render of this panel
-  if (!loaded && !loading && !error) {
-    fetchArima(steps);
-  }
+  useEffect(() => {
+    fetchData(steps);
+    return () => abortRef.current?.abort();
+  }, [fetchData, steps]);
 
   function handleStepsChange(val: string) {
     setSteps(val);
-    fetchArima(val);
   }
 
   return (
@@ -119,17 +124,9 @@ function ArimaPanel({ ticker }: { ticker: string }) {
         </Select>
       </div>
 
-      {loading && (
-        <div className="h-80 rounded-lg bg-muted animate-pulse" />
-      )}
+      {loading && <Skeleton className="h-80 w-full rounded-lg" />}
 
-      {error && (
-        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-950 p-4">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            Aviso: {error}
-          </p>
-        </div>
-      )}
+      {error && <ErrorState message={error} onRetry={() => fetchData(steps)} />}
 
       {!loading && !error && data && (
         <div className="h-[240px] md:h-[360px]">
