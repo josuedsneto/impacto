@@ -74,7 +74,12 @@ Plans:
   1. On a 375px viewport, the page renders without a horizontal scrollbar on any `/app/*` route
   2. A hamburger icon is visible in the top bar on mobile; tapping it opens the navigation as a Sheet drawer
   3. All chart labels, table columns, and form inputs are fully visible at mobile viewport — no truncation or clipping
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Layout shell: Sheet drawer + NavContent (MOB-01, MOB-02)
+- [ ] 14-02-PLAN.md — Dashboard grids: inline gridTemplateColumns to responsive Tailwind classes (MOB-03)
+- [ ] 14-03-PLAN.md — Per-page grids + Recharts heights + visual verification (MOB-03)
 
 ### Phase 15: Loading Skeletons + Error States
 **Goal**: Users always see meaningful feedback during data fetches and can recover from API failures without a page reload
@@ -156,7 +161,7 @@ Plans:
 | 11. Login + Auth | v2.0 | 1/1 | Complete | 2026-04-01 |
 | 12. Feature Pages | v2.0 | 3/3 | Complete | 2026-04-01 |
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
-| 14. Mobile Responsiveness | v2.1 | 0/? | Not started | - |
+| 14. Mobile Responsiveness | v2.1 | 0/3 | Not started | - |
 | 15. Loading Skeletons + Error States | v2.1 | 0/? | Not started | - |
 | 16. Export CSV/PDF | v2.1 | 0/? | Not started | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |
