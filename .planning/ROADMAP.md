@@ -168,7 +168,7 @@ Plans:
 | 13. Backend Error Handler + Security | 2/2 | Complete    | 2026-04-04 | - |
 | 14. Mobile Responsiveness | 3/3 | Complete    | 2026-04-05 | - |
 | 15. Loading Skeletons + Error States | 2/2 | Complete    | 2026-04-05 | - |
-| 16. Export CSV/PDF | v2.1 | 0/3 | Not started | - |
+| 16. Export CSV/PDF | 1/4 | In Progress|  | - |
 | 17. Simulation History Page | v2.1 | 0/? | Not started | - |
 | 18. Comparative Scenarios | v2.1 | 0/? | Not started | - |
 | 19. Email Alerts | v2.1 | 0/? | Not started | - |

@@ -21,8 +21,8 @@
 
 ### Export (EXP)
 
-- [ ] **EXP-01**: User can download simulation results as CSV from the simulation page
-- [ ] **EXP-02**: User can download VaR analysis as CSV from the VaR page
+- [x] **EXP-01**: User can download simulation results as CSV from the simulation page
+- [x] **EXP-02**: User can download VaR analysis as CSV from the VaR page
 - [ ] **EXP-03**: User can download breakeven analysis as CSV from the breakeven page
 - [ ] **EXP-04**: User can print/save simulation page to PDF via browser print dialog (`@media print` strategy)
 
@@ -92,8 +92,8 @@
 | REL-03 | Phase 15 | Complete |
 | REL-04 | Phase 15 | Complete |
 | REL-05 | Phase 15 | Complete |
-| EXP-01 | Phase 16 | Pending |
-| EXP-02 | Phase 16 | Pending |
+| EXP-01 | Phase 16 | Complete |
+| EXP-02 | Phase 16 | Complete |
 | EXP-03 | Phase 16 | Pending |
 | EXP-04 | Phase 16 | Pending |
 | HIST-01 | Phase 17 | Pending |
