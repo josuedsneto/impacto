@@ -809,6 +809,7 @@ async def get_var(
         "var_parametrico_abs": round(var_parametrico, 4),
         "var_parametrico_pct": round(var_parametrico / last_price, 6) if last_price else None,
         "n_observations": len(returns),
+        "returns": [round(float(r), 8) for r in returns],
     }
 
 
