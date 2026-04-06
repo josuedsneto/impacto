@@ -50,6 +50,11 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 2. Acessar as URLs dessas páginas diretamente continua funcionando
 3. Nenhuma rota foi deletada — apenas removida do componente de navegação
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md — Audit and verify nav exclusions in layout.tsx + human sign-off
+
 ---
 
 ### Phase 14: Regressão Dólar
