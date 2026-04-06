@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 Milestone: v2.1 — Client Necessities
 Phase: Not started (defining requirements)
 Plan: —
-Status: Requirements defined — ready to create roadmap
+Status: Roadmap created — ready to plan Phase 13
 Last activity: 2026-04-06 — Milestone v2.1 started
 
 Progress: [░░░░░░░░░░░░] 0%

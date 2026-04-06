@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Streamlit Audit & Fix** — Phases v1-1 to v1-3 (shipped 2026-03-20)
 - ✅ **v2.0 Plataforma Escalável** — Phases 1–12 (shipped 2026-04-01)
-- 📋 **v2.1** — TBD (run `/gsd:new-milestone` to plan)
+- 📋 **v2.1 Client Necessities** — Phases 13–15 (in progress)
 
 ## Phases
 
@@ -37,7 +37,60 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
+## v2.1 Client Necessities
+
+### Phase 13: Navigation Cleanup
+
+**Goal:** Ocultar 9 páginas da navegação do sidebar Next.js, mantendo as rotas acessíveis via URL direta.
+
+**Requirements:** NAV-01, NAV-02
+
+**Success criteria:**
+1. Sidebar não exibe: Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar, Opções
+2. Acessar as URLs dessas páginas diretamente continua funcionando
+3. Nenhuma rota foi deletada — apenas removida do componente de navegação
+
+---
+
+### Phase 14: Regressão Dólar
+
+**Goal:** Endpoint FastAPI OLS com dados do BCB e FRED, tabela Supabase `regression_runs`, e página Next.js com inputs editáveis, resultados e histórico.
+
+**Requirements:** DOLAR-01, DOLAR-02, DOLAR-03, DOLAR-04, DOLAR-05
+
+**Success criteria:**
+1. `POST /api/regression/dolar/run` retorna `{ taxa_prevista, r2, rmse, coeficientes, correlacao }` com inputs do usuário
+2. `GET /api/regression/dolar/defaults` retorna os valores mais recentes das séries BCB + FRED
+3. Modelo OLS treinado em dados mensais históricos (mínimo 24 meses) via APIs externas
+4. Run salvo em `regression_runs` com user_id, tipo="dolar", inputs JSONB, resultado JSONB
+5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico real vs previsto, e lista de runs anteriores do usuário
+
+---
+
+### Phase 15: Regressão Açúcar
+
+**Goal:** Endpoint FastAPI Ridge/XGBoost com dados yfinance + defaults USDA, tabela Supabase reutilizada, e página Next.js com inputs editáveis, preço previsto com range e histórico.
+
+**Requirements:** ACUCAR-01, ACUCAR-02, ACUCAR-03, ACUCAR-04, ACUCAR-05, ACUCAR-06
+
+**Success criteria:**
+1. `POST /api/regression/acucar/run` aceita `model` ("ridge" | "xgboost") e inputs anuais, retorna `{ sb_f_previsto, sb_f_min, sb_f_max, r2, rmse }`
+2. `GET /api/regression/acucar/defaults` retorna preços yfinance mais recentes (SB=F, USDBRL=X, CL=F) + defaults USDA de oferta/demanda
+3. Modelo treinado em dados anuais históricos (yfinance 2014–hoje + defaults USDA embutidos)
+4. Run salvo em `regression_runs` com tipo="acucar"
+5. Página `/regressao-acucar` pré-preenche inputs, exibe preço previsto SB=F com intervalo (mín/máx), R², RMSE, gráfico e histórico de runs
+
+---
+
 ## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 13. Navigation Cleanup | v2.1 | 0/1 | Pending | — |
+| 14. Regressão Dólar | v2.1 | 0/2 | Pending | — |
+| 15. Regressão Açúcar | v2.1 | 0/2 | Pending | — |
+
+**v2.0 history:**
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
