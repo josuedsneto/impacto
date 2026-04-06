@@ -34,6 +34,7 @@ const csp = isDev
     ].join("; ");
 
 const nextConfig: NextConfig = {
+  turbopack: false,
   async headers() {
     return [
       {

@@ -16,10 +16,10 @@ export default async function HomePage() {
   if (user) redirect('/app/dashboard')
 
   return (
-    <div style={{ fontFamily: 'var(--font-geist-sans, sans-serif)', background: '#0f172a', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ fontFamily: 'var(--font-geist-sans, sans-serif)', background: '#f4f6f9', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Nav ── */}
-      <nav style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 32px' }}>
+      <nav style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <svg width="28" height="28" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
             <rect width="26" height="26" rx="7" fill="#16a34a"/>
@@ -31,7 +31,7 @@ export default async function HomePage() {
             <path d="M13 13 Q8 10 9 5" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
             <path d="M13 8 Q17 6 16 3" stroke="#86efac" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
           </svg>
-          <span style={{ color: '#f9fafb', fontWeight: 800, fontSize: 17, letterSpacing: '-0.3px' }}>Sugarcane</span>
+          <span style={{ color: '#111827', fontWeight: 800, fontSize: 17, letterSpacing: '-0.3px' }}>Sugarcane</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <Link
@@ -47,14 +47,14 @@ export default async function HomePage() {
       <div style={{ display: 'flex', flex: 1, minHeight: 420 }}>
 
         {/* Left — text */}
-        <div style={{ flex: 1, padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <p style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+        <div style={{ flex: 1, padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#fff' }}>
+          <p style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
             Plataforma de risco · mercado sucroenergético
           </p>
-          <h1 style={{ fontSize: 36, color: '#f9fafb', fontWeight: 900, lineHeight: 1.15, margin: '0 0 16px 0' }}>
+          <h1 style={{ fontSize: 36, color: '#111827', fontWeight: 900, lineHeight: 1.15, margin: '0 0 16px 0' }}>
             Análise de risco para o<br/>mercado de açúcar
           </h1>
-          <p style={{ fontSize: 14, color: '#9ca3af', lineHeight: 1.65, margin: '0 0 32px 0', maxWidth: 420 }}>
+          <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, margin: '0 0 32px 0', maxWidth: 420 }}>
             Simulações Monte Carlo, precificação de opções Black-Scholes, análise cambial e gestão de risco — tudo em um só lugar para usinas e traders.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -64,9 +64,6 @@ export default async function HomePage() {
             >
               Acessar plataforma →
             </Link>
-            <span style={{ color: '#4b5563', padding: '11px 26px', fontSize: 14, cursor: 'default' }}>
-              Ver funcionalidades
-            </span>
           </div>
         </div>
 
@@ -76,28 +73,28 @@ export default async function HomePage() {
             src="/sugarcane-field.jpg"
             alt="Foto aérea de fazenda de cana-de-açúcar"
             fill
-            style={{ objectFit: 'cover', opacity: 0.75 }}
+            style={{ objectFit: 'cover', opacity: 0.85 }}
             priority
           />
           {/* Left-blend gradient */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #0f172a 0%, transparent 30%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #fff 0%, transparent 20%)' }} />
 
           {/* Price card — top right: USD/BRL */}
-          <div style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(15,23,42,0.88)', border: '1px solid #1e293b', borderRadius: 10, padding: '12px 18px', backdropFilter: 'blur(8px)' }}>
+          <div style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.92)', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 18px', backdropFilter: 'blur(8px)' }}>
             <p style={{ fontSize: 9, color: '#6b7280', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px 0' }}>USD / BRL</p>
-            <p style={{ fontSize: 20, color: '#f9fafb', fontWeight: 800, margin: 0 }}>R$ 5.72</p>
-            <p style={{ fontSize: 11, color: '#f87171', fontWeight: 600, margin: '2px 0 0 0' }}>▼ −0.21%</p>
-            <p style={{ fontSize: 8, color: '#4b5563', margin: '4px 0 0 0', letterSpacing: '0.5px' }}>ILUSTRATIVO</p>
+            <p style={{ fontSize: 20, color: '#111827', fontWeight: 800, margin: 0 }}>R$ 5.72</p>
+            <p style={{ fontSize: 11, color: '#dc2626', fontWeight: 600, margin: '2px 0 0 0' }}>▼ −0.21%</p>
+            <p style={{ fontSize: 8, color: '#9ca3af', margin: '4px 0 0 0', letterSpacing: '0.5px' }}>ILUSTRATIVO</p>
           </div>
 
           {/* Price card — bottom right: Açúcar NY */}
-          <div style={{ position: 'absolute', bottom: 40, right: 24, background: 'rgba(15,23,42,0.92)', border: '1px solid #1e293b', borderRadius: 10, padding: '14px 20px', backdropFilter: 'blur(8px)', minWidth: 160 }}>
+          <div style={{ position: 'absolute', bottom: 40, right: 24, background: 'rgba(255,255,255,0.92)', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 20px', backdropFilter: 'blur(8px)', minWidth: 160 }}>
             <p style={{ fontSize: 9, color: '#6b7280', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px 0' }}>AÇÚCAR NY #11</p>
-            <p style={{ fontSize: 26, color: '#f9fafb', fontWeight: 800, margin: 0 }}>
-              18.42 <span style={{ fontSize: 13, color: '#9ca3af' }}>¢/lb</span>
+            <p style={{ fontSize: 26, color: '#111827', fontWeight: 800, margin: 0 }}>
+              18.42 <span style={{ fontSize: 13, color: '#6b7280' }}>¢/lb</span>
             </p>
-            <p style={{ fontSize: 11, color: '#4ade80', fontWeight: 600, margin: '2px 0 0 0' }}>▲ +0.83% hoje</p>
-            <p style={{ fontSize: 8, color: '#4b5563', margin: '4px 0 0 0', letterSpacing: '0.5px' }}>ILUSTRATIVO</p>
+            <p style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, margin: '2px 0 0 0' }}>▲ +0.83% hoje</p>
+            <p style={{ fontSize: 8, color: '#9ca3af', margin: '4px 0 0 0', letterSpacing: '0.5px' }}>ILUSTRATIVO</p>
           </div>
 
           {/* Photo credit */}
@@ -127,7 +124,7 @@ export default async function HomePage() {
       </div>
 
       {/* ── Stats bar ── */}
-      <div style={{ background: '#052e16', borderTop: '1px solid #14532d', borderBottom: '1px solid #14532d', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', textAlign: 'center' }}>
+      <div style={{ background: '#fff', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', textAlign: 'center' }}>
         {[
           { value: '10.000', label: 'simulações por análise' },
           { value: '20+',    label: 'ferramentas de análise' },
@@ -136,17 +133,17 @@ export default async function HomePage() {
         ].map((stat, i, arr) => (
           <div
             key={stat.label}
-            style={{ padding: '24px 16px', borderRight: i < arr.length - 1 ? '1px solid #14532d' : undefined }}
+            style={{ padding: '24px 16px', borderRight: i < arr.length - 1 ? '1px solid #e5e7eb' : undefined }}
           >
-            <p style={{ fontSize: 28, color: '#4ade80', fontWeight: 900, lineHeight: 1, margin: 0 }}>{stat.value}</p>
+            <p style={{ fontSize: 28, color: '#16a34a', fontWeight: 900, lineHeight: 1, margin: 0 }}>{stat.value}</p>
             <p style={{ fontSize: 11, color: '#6b7280', margin: '6px 0 0 0' }}>{stat.label}</p>
           </div>
         ))}
       </div>
 
       {/* ── Footer ── */}
-      <footer style={{ background: '#0f172a', padding: '18px 32px', textAlign: 'center' }}>
-        <span style={{ fontSize: 11, color: '#374151' }}>© {new Date().getFullYear()} Sugarcane · Plataforma sucroenergética</span>
+      <footer style={{ background: '#fff', borderTop: '1px solid #e5e7eb', padding: '18px 32px', textAlign: 'center' }}>
+        <span style={{ fontSize: 11, color: '#9ca3af' }}>© {new Date().getFullYear()} Sugarcane · Plataforma sucroenergética</span>
       </footer>
 
     </div>
