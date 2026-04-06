@@ -8,6 +8,15 @@ Impacto é uma plataforma web multiusuário para análise de ativos brasileiros 
 
 Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos simultaneamente, com dados persistidos e autenticação robusta.
 
+## Current Milestone: v2.1 — Client Necessities
+
+**Goal:** Atender demandas do cliente — ocultar módulos não utilizados da navegação e implementar módulos de regressão macroeconômica (Dólar e Açúcar) com dados de APIs reais e persistência no Supabase.
+
+**Target features:**
+- Ocultar 9 páginas do sidebar Next.js (sem deletar rotas)
+- Regressão Dólar: OLS com BCB + FRED APIs, persistência Supabase
+- Regressão Açúcar: Ridge/XGBoost com yfinance + inputs manuais, persistência Supabase
+
 ## Current State (v2.0 — shipped 2026-04-01)
 
 **Stack:** Next.js 16 (App Router, shadcn/ui new-york/zinc) + FastAPI + Supabase (PostgreSQL + Auth JWT RS256) + Oracle Cloud VM (Nginx + PM2 + GitHub Actions CI/CD)
@@ -48,13 +57,20 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 - ✓ Deploy automatizado via GitHub Actions na Oracle Cloud VM — v2.0
 - ✓ Páginas analíticas: Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade — v2.0
 
-### Active (v2.1 — candidates)
+### Active (v2.1 — Client Necessities)
 
-- [ ] Testes end-to-end automatizados (Playwright ou Cypress)
-- [ ] Rate limiting nas rotas de simulação (evitar abuso)
-- [ ] Notificações de preço via email (alertas configuráveis)
-- [ ] Exportação de relatório PDF por simulação
-- [ ] Onboarding: tela de boas-vindas para novos usuários
+- [ ] NAV-01: Ocultar 9 páginas da navegação (Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar, Opções) do sidebar Next.js
+- [ ] NAV-02: Rotas das páginas ocultas permanecem acessíveis via URL direta
+- [ ] REG-01: FastAPI endpoint para Regressão Dólar (OLS, inputs: Selic, Fed Funds, Prod. Industrial BR/EUA, M2 BR/EUA)
+- [ ] REG-02: Backend busca valores padrão de treino via BCB API (séries 432, 1837, 21859) e FRED API (FEDFUNDS, M2SL, INDPRO)
+- [ ] REG-03: Modelo OLS retorna taxa prevista USD/BRL, R², RMSE, coeficientes, matriz de correlação
+- [ ] REG-04: Runs de Regressão Dólar persistidos no Supabase (user_id, inputs, resultado, R²)
+- [ ] REG-05: Página Next.js Regressão Dólar com inputs editáveis (defaults via API), resultados, heatmap, gráfico real vs previsto
+- [ ] REG-06: FastAPI endpoint para Regressão Açúcar (Ridge/XGBoost selecionável, inputs: oferta/demanda, estoques, USDBRL, CL=F)
+- [ ] REG-07: Backend busca preços padrão via yfinance (SB=F, USDBRL=X, CL=F); dados de oferta/demanda via inputs manuais com defaults USDA aproximados
+- [ ] REG-08: Modelo retorna preço previsto SB=F com intervalo de incerteza, R², RMSE
+- [ ] REG-09: Runs de Regressão Açúcar persistidos no Supabase
+- [ ] REG-10: Página Next.js Regressão Açúcar com inputs editáveis, preço previsto com range, gráfico, histórico de runs
 
 ### Out of Scope
 
@@ -98,4 +114,4 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 | admin_config table para parâmetros globais | Admins ajustam fator de conversão sem redeploy | ✓ Good |
 
 ---
-*Last updated: 2026-04-01 after v2.0 milestone*
+*Last updated: 2026-04-06 after v2.1 milestone started — client necessities*
