@@ -105,7 +105,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 13. Navigation Cleanup | v2.1 | Complete    | 2026-04-07 | 2026-04-06 |
 | 14. Regressão Dólar | v2.1 | Complete    | 2026-04-07 | 2026-04-07 |
-| 15. Regressão Açúcar | 2/2 | Complete   | 2026-04-07 | — |
+| 15. Regressão Açúcar | 2/2 | Complete    | 2026-04-07 | — |
 
 **v2.0 history:**
 
