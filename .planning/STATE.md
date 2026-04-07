@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 Milestone: v2.1 — Client Necessities
 Phase: 15-regressao-acucar (IN PROGRESS)
-Plan: 15-01 (COMPLETE) — 15-02 (COMPLETE, awaiting Task 3 human-verify)
-Status: Frontend done (/regressao-acucar page + AcucarForm/Metrics/Charts components + nav link); checkpoint Task 3 awaiting user verification
-Last activity: 2026-04-07 — 15-02 tasks 1+2 complete, checkpoint reached
+Plan: 15-01 (COMPLETE) — 15-02 (COMPLETE)
+Status: Phase 15 complete — FastAPI sugar regression backend + Next.js /regressao-acucar page with AcucarForm/Metrics/Charts + nav link; user verified end-to-end
+Last activity: 2026-04-07 — 15-02 fully complete (Task 3 human-verify approved by user)
 
 Progress: [████████░░░░] 67% (2/3 phases)
 
@@ -134,5 +134,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-07
-Stopped at: Session resumed, proceeding to execute 15-02 (Next.js Regressão Açúcar frontend)
+Stopped at: Completed 15-02 (Regressão Açúcar frontend) — phase 15 fully done
 Resume file: None
