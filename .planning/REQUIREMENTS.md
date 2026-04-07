@@ -12,10 +12,10 @@
 
 ### Regressão Dólar
 
-- [ ] **DOLAR-01**: Backend expõe endpoint POST `/api/regression/dolar/run` que recebe inputs de projeção e retorna taxa prevista USD/BRL, R², RMSE, coeficientes e matriz de correlação
-- [ ] **DOLAR-02**: Backend busca séries históricas mensais automaticamente via BCB API (Selic 432, M2 1837, Prod. Industrial 21859) e FRED API (FEDFUNDS, M2SL, INDPRO) para treinar o modelo OLS
-- [ ] **DOLAR-03**: Endpoint GET `/api/regression/dolar/defaults` retorna os valores mais recentes das séries para pré-preencher os inputs do frontend
-- [ ] **DOLAR-04**: Resultado de cada run é persistido na tabela `regression_runs` do Supabase (user_id, tipo, inputs JSONB, resultado JSONB, timestamp)
+- [x] **DOLAR-01**: Backend expõe endpoint POST `/api/regression/dolar/run` que recebe inputs de projeção e retorna taxa prevista USD/BRL, R², RMSE, coeficientes e matriz de correlação
+- [x] **DOLAR-02**: Backend busca séries históricas mensais automaticamente via BCB API (Selic 432, M2 1837, Prod. Industrial 21859) e FRED API (FEDFUNDS, M2SL, INDPRO) para treinar o modelo OLS
+- [x] **DOLAR-03**: Endpoint GET `/api/regression/dolar/defaults` retorna os valores mais recentes das séries para pré-preencher os inputs do frontend
+- [x] **DOLAR-04**: Resultado de cada run é persistido na tabela `regression_runs` do Supabase (user_id, tipo, inputs JSONB, resultado JSONB, timestamp)
 - [ ] **DOLAR-05**: Página Next.js `/regressao-dolar` exibe inputs editáveis com defaults carregados da API, métricas do modelo (taxa prevista, R², RMSE), heatmap de correlação, gráfico real vs previsto e histórico de runs do usuário
 
 ### Regressão Açúcar
@@ -51,10 +51,10 @@
 |-------------|-------|--------|
 | NAV-01 | Phase 13 | Complete |
 | NAV-02 | Phase 13 | Complete |
-| DOLAR-01 | Phase 14 | Pending |
-| DOLAR-02 | Phase 14 | Pending |
-| DOLAR-03 | Phase 14 | Pending |
-| DOLAR-04 | Phase 14 | Pending |
+| DOLAR-01 | Phase 14 | Complete |
+| DOLAR-02 | Phase 14 | Complete |
+| DOLAR-03 | Phase 14 | Complete |
+| DOLAR-04 | Phase 14 | Complete |
 | DOLAR-05 | Phase 14 | Pending |
 | ACUCAR-01 | Phase 15 | Pending |
 | ACUCAR-02 | Phase 15 | Pending |

@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 13 — Navigation Cleanup (v2.1 Client Necessities)
+**Current focus:** Phase 14 — Regressão Dólar (v2.1 Client Necessities)
 
 ## Current Position
 
 Milestone: v2.1 — Client Necessities
-Phase: 13-navigation-cleanup (COMPLETE)
-Plan: 13-01 (COMPLETE — 1/1 plans)
-Status: Phase 13 complete — ready to plan Phase 14 (Regressão Dólar)
-Last activity: 2026-04-06 — Phase 13 nav cleanup completed
+Phase: 14-regressao-dolar (IN PROGRESS)
+Plan: 14-01 (COMPLETE — 1/2 plans)
+Status: Plan 14-01 complete — FastAPI OLS backend ready; Plan 14-02 (frontend) next
+Last activity: 2026-04-07 — Phase 14 plan 01 executed (migration + regression.py + API routes)
 
 Progress: [████░░░░░░░░] 33% (1/3 phases)
 
@@ -107,6 +107,9 @@ Carried forward from v1.0:
 - [Phase 12-feature-pages]: ARIMA CI rendered via stacked Area fill trick (ci_upper filled, ci_lower fills with background color)
 - [Phase 12-feature-pages]: AdminConfig extracted as client component — admin page stays server component for auth guard
 - [Phase 13-navigation-cleanup]: Comment out nav items (not delete) to satisfy NAV-01 (hidden from sidebar) and NAV-02 (routes remain accessible)
+- [Phase 14-regressao-dolar P01]: Lazy bcb import inside functions (matches /api/focus pattern; avoids top-level import side-effects)
+- [Phase 14-regressao-dolar P01]: regression_runs tipo CHECK includes 'acucar' now so Phase 15 reuses same table without a new migration
+- [Phase 14-regressao-dolar P01]: SUPABASE_SERVICE_ROLE_KEY used in dolar_run route (plan had SUPABASE_SERVICE_KEY — wrong var name)
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06
-Stopped at: Completed 13-01-PLAN.md (nav cleanup — 9 pages excluded from sidebar, routes intact, human verified)
+Last session: 2026-04-07
+Stopped at: Completed 14-01-PLAN.md (FastAPI OLS regression backend — migration, regression.py, API routes)
 Resume file: None
