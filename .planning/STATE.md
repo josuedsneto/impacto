@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 11 — Login + Auth (v2.0 Plataforma Escalável)
+**Current focus:** Phase 13 — Navigation Cleanup (v2.1 Client Necessities)
 
 ## Current Position
 
 Milestone: v2.1 — Client Necessities
-Phase: Not started (defining requirements)
-Plan: —
-Status: Roadmap created — ready to plan Phase 13
-Last activity: 2026-04-06 — Milestone v2.1 started
+Phase: 13-navigation-cleanup (COMPLETE)
+Plan: 13-01 (COMPLETE — 1/1 plans)
+Status: Phase 13 complete — ready to plan Phase 14 (Regressão Dólar)
+Last activity: 2026-04-06 — Phase 13 nav cleanup completed
 
-Progress: [░░░░░░░░░░░░] 0%
+Progress: [████░░░░░░░░] 33% (1/3 phases)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░░░] 0%
 | Phase 12-feature-pages P01 | 2 | 10 tasks | 3 files |
 | Phase 12-feature-pages P02 | 2 | 4 tasks | 4 files |
 | Phase 12-feature-pages P03 | 2 | 5 tasks | 6 files |
+| Phase 13-navigation-cleanup P01 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,7 @@ Carried forward from v1.0:
 - [Phase 12-feature-pages]: feedparser for Google News RSS — avoids XML parsing complexity
 - [Phase 12-feature-pages]: ARIMA CI rendered via stacked Area fill trick (ci_upper filled, ci_lower fills with background color)
 - [Phase 12-feature-pages]: AdminConfig extracted as client component — admin page stays server component for auth guard
+- [Phase 13-navigation-cleanup]: Comment out nav items (not delete) to satisfy NAV-01 (hidden from sidebar) and NAV-02 (routes remain accessible)
 
 ### Pending Todos
 
@@ -118,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21
-Stopped at: Completed 07-02-PLAN.md (admin panel frontend — SuggestionQueue + /app/admin page)
+Last session: 2026-04-06
+Stopped at: Completed 13-01-PLAN.md (nav cleanup — 9 pages excluded from sidebar, routes intact, human verified)
 Resume file: None

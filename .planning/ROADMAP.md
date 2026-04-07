@@ -50,10 +50,10 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 2. Acessar as URLs dessas páginas diretamente continua funcionando
 3. Nenhuma rota foi deletada — apenas removida do componente de navegação
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 13-01-PLAN.md — Audit and verify nav exclusions in layout.tsx + human sign-off
+- [x] 13-01-PLAN.md — Audit and verify nav exclusions in layout.tsx + human sign-off (completed 2026-04-06)
 
 ---
 
@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 13. Navigation Cleanup | v2.1 | 0/1 | Pending | — |
+| 13. Navigation Cleanup | v2.1 | 1/1 | Complete | 2026-04-06 |
 | 14. Regressão Dólar | v2.1 | 0/2 | Pending | — |
 | 15. Regressão Açúcar | v2.1 | 0/2 | Pending | — |
 

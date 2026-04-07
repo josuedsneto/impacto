@@ -7,8 +7,8 @@
 
 ### Navigation
 
-- [ ] **NAV-01**: Usuário não vê as páginas Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar e Opções no sidebar da navegação
-- [ ] **NAV-02**: As rotas das páginas ocultas continuam acessíveis via URL direta (rotas não deletadas)
+- [x] **NAV-01**: Usuário não vê as páginas Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar e Opções no sidebar da navegação
+- [x] **NAV-02**: As rotas das páginas ocultas continuam acessíveis via URL direta (rotas não deletadas)
 
 ### Regressão Dólar
 
@@ -49,8 +49,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 13 | Pending |
-| NAV-02 | Phase 13 | Pending |
+| NAV-01 | Phase 13 | Complete |
+| NAV-02 | Phase 13 | Complete |
 | DOLAR-01 | Phase 14 | Pending |
 | DOLAR-02 | Phase 14 | Pending |
 | DOLAR-03 | Phase 14 | Pending |
