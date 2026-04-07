@@ -91,6 +91,12 @@ Plans:
 4. Run salvo em `regression_runs` com tipo="acucar"
 5. Página `/regressao-acucar` pré-preenche inputs, exibe preço previsto SB=F com intervalo (mín/máx), R², RMSE, gráfico e histórico de runs
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — FastAPI backend: get_acucar_defaults + fetch_acucar_history + run_acucar_regression (Ridge/XGBoost) + two auth-guarded routes
+- [ ] 15-02-PLAN.md — Next.js page /regressao-acucar with AcucarForm, AcucarMetrics, AcucarCharts + nav link + human verify checkpoint
+
 ---
 
 ## Progress
