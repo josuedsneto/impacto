@@ -70,6 +70,12 @@ Plans:
 4. Run salvo em `regression_runs` com user_id, tipo="dolar", inputs JSONB, resultado JSONB
 5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico real vs previsto, e lista de runs anteriores do usuário
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Supabase migration (regression_runs) + FastAPI OLS backend (BCB/FRED data, run + defaults endpoints)
+- [ ] 14-02-PLAN.md — Next.js page /regressao-dolar with DolarForm, DolarMetrics, DolarCharts components + nav link
+
 ---
 
 ### Phase 15: Regressão Açúcar
