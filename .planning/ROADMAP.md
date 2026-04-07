@@ -68,7 +68,7 @@ Plans:
 2. `GET /api/regression/dolar/defaults` retorna os valores mais recentes das séries BCB + FRED
 3. Modelo OLS treinado em dados mensais históricos (mínimo 24 meses) via APIs externas
 4. Run salvo em `regression_runs` com user_id, tipo="dolar", inputs JSONB, resultado JSONB
-5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico real vs previsto, e lista de runs anteriores do usuário
+5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico de coeficientes do modelo OLS, e lista de runs anteriores do usuário
 
 **Plans:** 2 plans
 
