@@ -70,11 +70,11 @@ Plans:
 4. Run salvo em `regression_runs` com user_id, tipo="dolar", inputs JSONB, resultado JSONB
 5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico de coeficientes do modelo OLS, e lista de runs anteriores do usuário
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md — Supabase migration (regression_runs) + FastAPI OLS backend (BCB/FRED data, run + defaults endpoints)
-- [ ] 14-02-PLAN.md — Next.js page /regressao-dolar with DolarForm, DolarMetrics, DolarCharts components + nav link
+- [x] 14-01-PLAN.md — Supabase migration (regression_runs) + FastAPI OLS backend (BCB/FRED data, run + defaults endpoints) (completed 2026-04-07)
+- [x] 14-02-PLAN.md — Next.js page /regressao-dolar with DolarForm, DolarMetrics, DolarCharts components + nav link (completed 2026-04-07)
 
 ---
 
@@ -98,7 +98,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 13. Navigation Cleanup | v2.1 | Complete    | 2026-04-07 | 2026-04-06 |
-| 14. Regressão Dólar | 1/2 | In Progress|  | — |
+| 14. Regressão Dólar | v2.1 | 2/2 | Complete | 2026-04-07 |
 | 15. Regressão Açúcar | v2.1 | 0/2 | Pending | — |
 
 **v2.0 history:**

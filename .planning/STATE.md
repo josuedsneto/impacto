@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 ## Current Position
 
 Milestone: v2.1 — Client Necessities
-Phase: 14-regressao-dolar (IN PROGRESS)
-Plan: 14-01 (COMPLETE — 1/2 plans)
-Status: Plan 14-01 complete — FastAPI OLS backend ready; Plan 14-02 (frontend) next
-Last activity: 2026-04-07 — Phase 14 plan 01 executed (migration + regression.py + API routes)
+Phase: 14-regressao-dolar (COMPLETE)
+Plan: 14-02 (COMPLETE — 2/2 plans)
+Status: Phase 14 complete — OLS backend + Next.js frontend with Plotly charts fully wired to Supabase
+Last activity: 2026-04-07 — Phase 14 plan 02 executed (DolarForm, DolarMetrics, DolarCharts, /app/regressao-dolar page)
 
-Progress: [████░░░░░░░░] 33% (1/3 phases)
+Progress: [████████░░░░] 67% (2/3 phases)
 
 ## Performance Metrics
 
@@ -110,6 +110,9 @@ Carried forward from v1.0:
 - [Phase 14-regressao-dolar P01]: Lazy bcb import inside functions (matches /api/focus pattern; avoids top-level import side-effects)
 - [Phase 14-regressao-dolar P01]: regression_runs tipo CHECK includes 'acucar' now so Phase 15 reuses same table without a new migration
 - [Phase 14-regressao-dolar P01]: SUPABASE_SERVICE_ROLE_KEY used in dolar_run route (plan had SUPABASE_SERVICE_KEY — wrong var name)
+- [Phase 14-regressao-dolar P02]: react-plotly.js imported dynamically (next/dynamic ssr:false) to prevent SSR hydration mismatch with Plotly
+- [Phase 14-regressao-dolar P02]: History fetch deferred to first Histórico tab activation — avoids API call on every page load (same pattern as simulation page)
+- [Phase 14-regressao-dolar P02]: DolarForm owns DolarDefaults and DolarResult interface definitions — imported by DolarMetrics and DolarCharts to avoid duplication
 
 ### Pending Todos
 
@@ -124,5 +127,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-07
-Stopped at: Completed 14-01-PLAN.md (FastAPI OLS regression backend — migration, regression.py, API routes)
+Stopped at: Completed 14-02-PLAN.md (Next.js Regressão Dólar frontend — DolarForm, DolarMetrics, DolarCharts, /app/regressao-dolar page, history API route)
 Resume file: None
