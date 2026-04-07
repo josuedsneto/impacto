@@ -91,7 +91,7 @@ Plans:
 4. Run salvo em `regression_runs` com tipo="acucar"
 5. Página `/regressao-acucar` pré-preenche inputs, exibe preço previsto SB=F com intervalo (mín/máx), R², RMSE, gráfico e histórico de runs
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 15-01-PLAN.md — FastAPI backend: get_acucar_defaults + fetch_acucar_history + run_acucar_regression (Ridge/XGBoost) + two auth-guarded routes
@@ -105,7 +105,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 13. Navigation Cleanup | v2.1 | Complete    | 2026-04-07 | 2026-04-06 |
 | 14. Regressão Dólar | v2.1 | Complete    | 2026-04-07 | 2026-04-07 |
-| 15. Regressão Açúcar | 1/2 | In Progress|  | — |
+| 15. Regressão Açúcar | 2/2 | Complete   | 2026-04-07 | — |
 
 **v2.0 history:**
 

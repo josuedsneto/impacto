@@ -25,7 +25,7 @@
 - [x] **ACUCAR-03**: Backend busca preços padrão mais recentes via yfinance (SB=F, USDBRL=X, CL=F); dados anuais de oferta/demanda são defaults USDA aproximados embutidos no backend
 - [x] **ACUCAR-04**: Endpoint GET `/api/regression/acucar/defaults` retorna preços yfinance recentes e defaults de oferta/demanda
 - [x] **ACUCAR-05**: Resultado de cada run é persistido em `regression_runs` (mesmo schema de DOLAR-04, campo `tipo` = "acucar")
-- [ ] **ACUCAR-06**: Página Next.js `/regressao-acucar` exibe inputs editáveis com defaults carregados da API, preço previsto SB=F com range mín/máx, R², RMSE, gráfico de preço histórico vs previsto e histórico de runs do usuário
+- [x] **ACUCAR-06**: Página Next.js `/regressao-acucar` exibe inputs editáveis com defaults carregados da API, preço previsto SB=F com range mín/máx, R², RMSE, gráfico de preço histórico vs previsto e histórico de runs do usuário
 
 ## v2.2 Requirements (deferred)
 
@@ -61,7 +61,7 @@
 | ACUCAR-03 | Phase 15 | Complete |
 | ACUCAR-04 | Phase 15 | Complete |
 | ACUCAR-05 | Phase 15 | Complete |
-| ACUCAR-06 | Phase 15 | Pending |
+| ACUCAR-06 | Phase 15 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 13 total

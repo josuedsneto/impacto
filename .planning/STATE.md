@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 14 — Regressão Dólar (v2.1 Client Necessities)
+**Current focus:** Phase 15 — Regressão Açúcar (v2.1 Client Necessities)
 
 ## Current Position
 
 Milestone: v2.1 — Client Necessities
-Phase: 14-regressao-dolar (COMPLETE)
-Plan: 14-02 (COMPLETE — 2/2 plans)
-Status: Phase 14 complete — OLS backend + Next.js frontend with Plotly charts fully wired to Supabase
-Last activity: 2026-04-07 — Phase 14 plan 02 executed (DolarForm, DolarMetrics, DolarCharts, /app/regressao-dolar page)
+Phase: 15-regressao-acucar (IN PROGRESS)
+Plan: 15-01 (COMPLETE) — 15-02 (COMPLETE, awaiting Task 3 human-verify)
+Status: Frontend done (/regressao-acucar page + AcucarForm/Metrics/Charts components + nav link); checkpoint Task 3 awaiting user verification
+Last activity: 2026-04-07 — 15-02 tasks 1+2 complete, checkpoint reached
 
 Progress: [████████░░░░] 67% (2/3 phases)
 
@@ -55,6 +55,7 @@ Progress: [████████░░░░] 67% (2/3 phases)
 | Phase 12-feature-pages P03 | 2 | 5 tasks | 6 files |
 | Phase 13-navigation-cleanup P01 | 5 | 2 tasks | 1 files |
 | Phase 15-regressao-acucar P01 | 18 | 2 tasks | 3 files |
+| Phase 15-regressao-acucar P02 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Carried forward from v1.0:
 - [Phase 15-regressao-acucar]: XGBoost fixed hyperparameters (no grid search) — only 11 training rows, CV would overfit
 - [Phase 15-regressao-acucar]: historico returned in API response but excluded from DB resultado to keep Supabase payload lean
 - [Phase 15-regressao-acucar]: from __future__ import annotations added to main.py to fix pre-existing forward-reference NameError on Pydantic models defined after routes
+- [Phase 15-regressao-acucar]: AcucarForm owns all interface definitions (AcucarDefaults, AcucarResult, HistoricoPoint) — imported by AcucarMetrics and AcucarCharts to avoid duplication
+- [Phase 15-regressao-acucar]: Plotly imported via next/dynamic with ssr:false in AcucarCharts — prevents SSR hydration mismatch
 
 ### Pending Todos
 
@@ -131,5 +134,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-07
-Stopped at: Completed 14-02-PLAN.md (Next.js Regressão Dólar frontend — DolarForm, DolarMetrics, DolarCharts, /app/regressao-dolar page, history API route)
+Stopped at: Session resumed, proceeding to execute 15-02 (Next.js Regressão Açúcar frontend)
 Resume file: None
