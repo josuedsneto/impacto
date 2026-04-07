@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -30,7 +32,7 @@ from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
-from regression import run_dolar_regression, get_dolar_defaults
+from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -175,6 +177,57 @@ async def dolar_run(
     return resultado
 
 
+@app.get("/api/regression/acucar/defaults")
+@limiter.limit("20/minute")
+async def acucar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+    """Returns latest yfinance prices + USDA defaults to pre-fill sugar regression inputs."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    defaults = await loop.run_in_executor(None, get_acucar_defaults)
+    return defaults
+
+
+@app.post("/api/regression/acucar/run")
+@limiter.limit("10/minute")
+async def acucar_run(
+    request: Request,
+    body: AcucarRunRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Trains Ridge or XGBoost on annual yfinance+USDA data, predicts SB=F price,
+    persists run to regression_runs, returns prediction with uncertainty range.
+    """
+    import asyncio
+    loop = asyncio.get_event_loop()
+    inputs = body.model_dump(exclude={"model"})
+    try:
+        resultado = await loop.run_in_executor(
+            None, lambda: run_acucar_regression(inputs, model_type=body.model)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    supa = create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
+    supa.table("regression_runs").insert({
+        "user_id": str(user["sub"]),
+        "tipo": "acucar",
+        "inputs": {**inputs, "model": body.model},
+        "resultado": {
+            "sb_f_previsto": resultado["sb_f_previsto"],
+            "sb_f_min": resultado["sb_f_min"],
+            "sb_f_max": resultado["sb_f_max"],
+            "r2": resultado["r2"],
+            "rmse": resultado["rmse"],
+        },
+    }).execute()
+
+    return resultado
+
+
 @app.get("/api/regression/runs")
 @limiter.limit("20/minute")
 async def regression_runs_list(
@@ -234,6 +287,17 @@ class DolarRegressionRequest(BaseModel):
     fed_funds: float
     m2_fred: float
     indpro: float
+
+
+class AcucarRunRequest(BaseModel):
+    model: Literal["ridge", "xgboost"] = "ridge"
+    estoque_inicial: float
+    producao: float
+    demanda: float
+    estoque_final: float
+    estoque_uso_pct: float
+    usdbrl: float
+    cl_f: float
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
