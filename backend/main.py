@@ -175,6 +175,29 @@ async def dolar_run(
     return resultado
 
 
+@app.get("/api/regression/runs")
+@limiter.limit("20/minute")
+async def regression_runs_list(
+    request: Request,
+    tipo: str,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Returns the authenticated user's regression runs filtered by tipo."""
+    if tipo not in ("dolar", "acucar"):
+        raise HTTPException(status_code=400, detail="tipo must be 'dolar' or 'acucar'")
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    res = (
+        supa.table("regression_runs")
+        .select("id, tipo, inputs, resultado, created_at")
+        .eq("user_id", user["id"])
+        .eq("tipo", tipo)
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    return {"runs": res.data}
+
+
 @app.get("/api/me")
 async def me(user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
