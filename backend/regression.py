@@ -261,3 +261,178 @@ def run_dolar_regression(inputs: dict) -> dict:
         "coeficientes": named_coefs,
         "correlacao": correlacao,
     }
+
+
+# ── Sugar (Açúcar) regression ────────────────────────────────────────────────
+
+_USDA_DEFAULTS = {
+    "estoque_inicial": 46.5,     # million metric tons (MMT)
+    "producao": 186.0,           # MMT
+    "demanda": 178.5,            # MMT
+    "estoque_final": 47.0,       # MMT
+    "estoque_uso_pct": 26.3,     # estoque_final / demanda * 100
+}
+
+_USDA_ANNUAL = {
+    "year": [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+    "estoque_inicial": [35.2, 38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5],
+    "producao":        [178.4, 168.9, 172.6, 185.1, 185.5, 187.3, 176.8, 183.4, 183.8, 185.0, 186.0],
+    "demanda":         [166.5, 163.7, 165.4, 168.3, 171.4, 174.6, 172.9, 177.5, 179.5, 178.0, 178.5],
+    "estoque_final":   [38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0],
+}
+
+
+def get_acucar_defaults() -> dict:
+    """
+    Return latest yfinance prices for SB=F, USDBRL=X, CL=F plus USDA demand/supply defaults
+    to pre-fill frontend inputs.
+    Returns None for any ticker that fails to fetch.
+    """
+    result: dict = {}
+    tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
+    for key, ticker in tickers.items():
+        try:
+            data = yf.download(ticker, period="5d", interval="1d", progress=False, auto_adjust=True)
+            if data.empty:
+                result[key] = None
+            else:
+                close = data["Close"].dropna()
+                result[key] = float(close.iloc[-1]) if not close.empty else None
+        except Exception as exc:
+            logger.warning("yfinance fetch failed for %s (%s): %s", key, ticker, exc)
+            result[key] = None
+
+    result.update(_USDA_DEFAULTS)
+    return result
+
+
+def fetch_acucar_history() -> pd.DataFrame:
+    """
+    Download annual closes for SB=F, USDBRL=X, and CL=F (2014-today) and merge
+    with hardcoded USDA annual supply/demand data.
+
+    Returns DataFrame indexed by year (int) with columns:
+        sb_f, usdbrl, cl_f, estoque_inicial, producao, demanda, estoque_final, estoque_uso_pct
+
+    Raises ValueError if fewer than 6 rows remain after merge.
+    """
+    tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
+    price_data: dict[str, pd.Series] = {}
+
+    for key, ticker in tickers.items():
+        try:
+            raw = yf.download(
+                ticker,
+                start="2014-01-01",
+                interval="1y",
+                progress=False,
+                auto_adjust=True,
+            )
+            if raw.empty:
+                logger.warning("Empty yfinance response for %s", ticker)
+                price_data[key] = pd.Series(dtype=float)
+                continue
+            close = raw["Close"].dropna()
+            # Extract year from index
+            close.index = pd.DatetimeIndex(close.index).year
+            # Keep only one value per year (last in case of duplicates)
+            close = close.groupby(close.index).last()
+            price_data[key] = close
+        except Exception as exc:
+            logger.error("yfinance annual fetch failed for %s: %s", ticker, exc)
+            price_data[key] = pd.Series(dtype=float)
+
+    # Merge price series into a DataFrame indexed by year
+    price_df = pd.DataFrame(price_data)
+
+    # Build USDA DataFrame
+    usda_df = pd.DataFrame(_USDA_ANNUAL).set_index("year")
+    usda_df["estoque_uso_pct"] = (
+        usda_df["estoque_final"] / usda_df["demanda"] * 100
+    )
+
+    # Merge on year index
+    merged = price_df.join(usda_df, how="inner").dropna()
+
+    if len(merged) < 6:
+        raise ValueError(
+            f"Dados insuficientes: menos de 6 anos após merge (obtidos: {len(merged)})"
+        )
+
+    return merged
+
+
+def run_acucar_regression(inputs: dict, model_type: str = "ridge") -> dict:
+    """
+    Train Ridge or XGBoost model on annual yfinance+USDA data and predict
+    SB=F price for given inputs.
+
+    Args:
+        inputs: dict with keys estoque_inicial, producao, demanda, estoque_final,
+                estoque_uso_pct, usdbrl, cl_f
+        model_type: "ridge" (default) or "xgboost"
+
+    Returns:
+        dict with sb_f_previsto, sb_f_min, sb_f_max, r2, rmse, historico
+    """
+    from sklearn.linear_model import RidgeCV
+    from sklearn.metrics import r2_score, mean_squared_error as skl_mse
+
+    feature_cols = [
+        "estoque_inicial", "producao", "demanda", "estoque_final",
+        "estoque_uso_pct", "usdbrl", "cl_f",
+    ]
+
+    df = fetch_acucar_history()
+
+    y = df["sb_f"].values
+    X = df[feature_cols].values
+    years = df.index.tolist()
+
+    if model_type == "xgboost":
+        import xgboost as xgb
+        model = xgb.XGBRegressor(
+            n_estimators=100,
+            max_depth=3,
+            learning_rate=0.1,
+            random_state=42,
+            n_jobs=1,
+        )
+    else:
+        model = RidgeCV(alphas=[0.1, 1.0, 10.0, 100.0])
+
+    model.fit(X, y)
+
+    y_pred_train = model.predict(X)
+    residuals = y - y_pred_train
+    std_residuals = float(np.std(residuals))
+
+    input_array = np.array([[inputs[col] for col in feature_cols]])
+    sb_f_previsto = float(model.predict(input_array)[0])
+    sb_f_min = sb_f_previsto - 1.96 * std_residuals
+    sb_f_max = sb_f_previsto + 1.96 * std_residuals
+
+    r2 = float(r2_score(y, y_pred_train))
+    try:
+        rmse = float(skl_mse(y, y_pred_train, squared=False))
+    except TypeError:
+        # sklearn >= 1.4 removed squared parameter
+        rmse = float(np.sqrt(skl_mse(y, y_pred_train)))
+
+    historico = [
+        {
+            "year": int(year),
+            "sb_f_real": round(float(real), 4),
+            "sb_f_previsto": round(float(pred), 4),
+        }
+        for year, real, pred in zip(years, y, y_pred_train)
+    ]
+
+    return {
+        "sb_f_previsto": round(sb_f_previsto, 4),
+        "sb_f_min": round(sb_f_min, 4),
+        "sb_f_max": round(sb_f_max, 4),
+        "r2": round(r2, 4),
+        "rmse": round(rmse, 4),
+        "historico": historico,
+    }
