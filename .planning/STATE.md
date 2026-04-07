@@ -54,6 +54,7 @@ Progress: [████████░░░░] 67% (2/3 phases)
 | Phase 12-feature-pages P02 | 2 | 4 tasks | 4 files |
 | Phase 12-feature-pages P03 | 2 | 5 tasks | 6 files |
 | Phase 13-navigation-cleanup P01 | 5 | 2 tasks | 1 files |
+| Phase 15-regressao-acucar P01 | 18 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Carried forward from v1.0:
 - [Phase 14-regressao-dolar P02]: react-plotly.js imported dynamically (next/dynamic ssr:false) to prevent SSR hydration mismatch with Plotly
 - [Phase 14-regressao-dolar P02]: History fetch deferred to first Histórico tab activation — avoids API call on every page load (same pattern as simulation page)
 - [Phase 14-regressao-dolar P02]: DolarForm owns DolarDefaults and DolarResult interface definitions — imported by DolarMetrics and DolarCharts to avoid duplication
+- [Phase 15-regressao-acucar]: XGBoost fixed hyperparameters (no grid search) — only 11 training rows, CV would overfit
+- [Phase 15-regressao-acucar]: historico returned in API response but excluded from DB resultado to keep Supabase payload lean
+- [Phase 15-regressao-acucar]: from __future__ import annotations added to main.py to fix pre-existing forward-reference NameError on Pydantic models defined after routes
 
 ### Pending Todos
 
