@@ -91,7 +91,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 13. Navigation Cleanup | v2.1 | 1/1 | Complete | 2026-04-06 |
+| 13. Navigation Cleanup | v2.1 | Complete    | 2026-04-07 | 2026-04-06 |
 | 14. Regressão Dólar | v2.1 | 0/2 | Pending | — |
 | 15. Regressão Açúcar | v2.1 | 0/2 | Pending | — |
 
