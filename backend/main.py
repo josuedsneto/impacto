@@ -30,6 +30,7 @@ from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
+from regression import run_dolar_regression, get_dolar_defaults
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -131,6 +132,49 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
     return result
 
 
+@app.get("/api/regression/dolar/defaults")
+@limiter.limit("20/minute")
+async def dolar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+    """Returns latest BCB + FRED values to pre-fill the frontend inputs."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    defaults = await loop.run_in_executor(None, get_dolar_defaults)
+    return defaults
+
+
+@app.post("/api/regression/dolar/run")
+@limiter.limit("10/minute")
+async def dolar_run(
+    request: Request,
+    body: DolarRegressionRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Trains OLS on BCB+FRED history, predicts taxa_dolar for user inputs,
+    persists run to regression_runs, returns regression metrics.
+    """
+    import asyncio
+    loop = asyncio.get_event_loop()
+    try:
+        resultado = await loop.run_in_executor(None, run_dolar_regression, body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.error("dolar_run error: %s", exc)
+        raise HTTPException(status_code=500, detail="Erro ao executar regressão.")
+
+    # Persist to Supabase
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa.table("regression_runs").insert({
+        "user_id": user["id"],
+        "tipo": "dolar",
+        "inputs": body.model_dump(),
+        "resultado": resultado,
+    }).execute()
+
+    return resultado
+
+
 @app.get("/api/me")
 async def me(user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
@@ -158,6 +202,15 @@ class TickerSuggestRequest(BaseModel):
     ticker: str
     nome: str = ""        # human-readable name, optional
     tipo: Literal["commodity", "fx", "acao", "indice"] = "commodity"
+
+
+class DolarRegressionRequest(BaseModel):
+    selic: float
+    m2_bcb: float
+    prod_industrial: float
+    fed_funds: float
+    m2_fred: float
+    indpro: float
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
