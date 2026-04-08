@@ -126,7 +126,7 @@ Plans:
 | 16. Correções Pontuais | 2/2 | Complete   | 2026-04-08 | — |
 | 17. Validação MC + VaR | 2/2 | Complete    | 2026-04-08 | — |
 | 18. Fixações | 1/1 | Complete    | 2026-04-08 | — |
-| 19. Atualização Regressões | 2/2 | Complete   | 2026-04-08 | — |
+| 19. Atualização Regressões | 2/2 | Complete    | 2026-04-08 | — |
 | 20. ATR | v2.2 | 0/0 | Not started | — |
 
 **v2.0 history:**
