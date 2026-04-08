@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 15-regressao-acucar P02 | 4 | 2 tasks | 5 files |
 | Phase 16-correcoes-pontuais P01 | 8 | 1 tasks | 1 files |
 | Phase 16-correcoes-pontuais P02 | 15 | 2 tasks | 2 files |
+| Phase 17-simulation-history-page P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Carried forward from v1.0:
 - [Phase 16-correcoes-pontuais]: Breakeven gasto_fixo_total default 152723235 preserves prior hardcoded behavior
 - [Phase 16-correcoes-pontuais]: Black-Scholes SBK26 replaced with SBN26/SBV26; sigma exposed as editable input before Simular button
 - [Phase 16-correcoes-pontuais]: Anualização usa sqrt(252) — convencao de mercado; colunas calculadas dentro de get_historical_data para ficarem no cache e no Excel exportado
+- [Phase 17-simulation-history-page]: drift_gbm computed at call site — keeps simulacao_monte_carlo() generic; caller controls model assumptions
 
 ### Pending Todos
 

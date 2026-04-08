@@ -19,7 +19,7 @@
 
 ### Monte Carlo
 
-- [ ] **MC-01**: Revisar os bastidores do cálculo Monte Carlo: validar drift (histórico vs risk-neutral), bounds (PCT_BOUND), número de caminhos e parâmetros; confirmar ou corrigir se necessário
+- [x] **MC-01**: Revisar os bastidores do cálculo Monte Carlo: validar drift (histórico vs risk-neutral), bounds (PCT_BOUND), número de caminhos e parâmetros; confirmar ou corrigir se necessário
 
 ### VaR
 
