@@ -35,7 +35,7 @@
 ### Regressões (atualização)
 
 - [x] **REG-01**: Atualizar base de dados de treino da Regressão Dólar — revisar séries BCB/FRED, janela temporal e correlações do modelo OLS
-- [ ] **REG-02**: Atualizar base de dados de treino da Regressão Açúcar — revisar dados USDA embutidos, séries yfinance e correlações dos modelos Ridge/XGBoost
+- [x] **REG-02**: Atualizar base de dados de treino da Regressão Açúcar — revisar dados USDA embutidos, séries yfinance e correlações dos modelos Ridge/XGBoost
 
 ### ATR — Açúcar Total Recuperável
 

@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 17-simulation-history-page P02 | 5 | 1 tasks | 1 files |
 | Phase 18-fixacoes P01 | 5 | 2 tasks | 1 files |
 | Phase 19-atualizacao-regressoes P01 | 2 | 2 tasks | 2 files |
+| Phase 19-atualizacao-regressoes P02 | 18 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Carried forward from v1.0:
 - [Phase 17-02]: z_score = norm.ppf(1 - confianca/100) — left-tail documented explicitly; numerically identical to prior formula
 - [Phase 18-fixacoes]: Sidebar inputs defined before Calcular button to ensure variables are in scope inside the button block (Streamlit session flow)
 - [Phase 19-01]: FRED_API_KEY sourced from st.secrets.get() in Streamlit page; model degrades gracefully without it — feature_cols filtered to only present columns
+- [Phase 19-atualizacao-regressoes]: Local _USDA_ANNUAL duplicated in Streamlit page (not imported from backend) to keep pages self-contained per project pattern
+- [Phase 19-atualizacao-regressoes]: Inner join on year index between yfinance annual closes and USDA data naturally excludes 2025 if yfinance lacks a full-year close
 
 ### Pending Todos
 
