@@ -18,17 +18,34 @@ def faturamento(variavel_parametro, valor_parametro, outras_variaveis):
         return 22061958 + (373613190 * valor_parametro) / 1300000
 
 
-def custo(variavel_parametro, valor_parametro, outras_variaveis):
+def custo(variavel_parametro, valor_parametro, outras_variaveis, gasto_fixo_total, gasto_variavel_por_unidade):
     if variavel_parametro in ["Prod VHP", "NY", "Câmbio", "Prod Etanol", "Preço Etanol"]:
-        return 0.6 * ((outras_variaveis["Prod Etanol"] * outras_variaveis["Preço Etanol"]) + ((outras_variaveis["NY"] + 1) * 22.0462 * 0.75 * outras_variaveis["Câmbio"] * 12000) + ((outras_variaveis["NY"] - 0.19) * 22.0462 * 1.04 * outras_variaveis["Câmbio"] * outras_variaveis["Prod VHP"])) + 88704735 + 43732035 + 20286465
+        return 0.6 * ((outras_variaveis["Prod Etanol"] * outras_variaveis["Preço Etanol"]) + ((outras_variaveis["NY"] + 1) * 22.0462 * 0.75 * outras_variaveis["Câmbio"] * 12000) + ((outras_variaveis["NY"] - 0.19) * 22.0462 * 1.04 * outras_variaveis["Câmbio"] * outras_variaveis["Prod VHP"])) + gasto_fixo_total + gasto_variavel_por_unidade * valor_parametro
     elif variavel_parametro == "ATR":
-        return (0.6 * (380767714 * valor_parametro / 125)) + 88704735 + 43732035 + 20286465
+        return (0.6 * (380767714 * valor_parametro / 125)) + gasto_fixo_total + gasto_variavel_por_unidade * valor_parametro
     elif variavel_parametro == "Moagem":
-        return (0.6 * (380767714 * valor_parametro / 1300000)) + 88704735 + 43732035 + 20286465
+        return (0.6 * (380767714 * valor_parametro / 1300000)) + gasto_fixo_total + gasto_variavel_por_unidade * valor_parametro
 
 
 st.title("Break-even Analysis")
 variavel_parametro = st.selectbox("Variável:", ["Prod VHP", "NY", "Câmbio", "Prod Etanol", "Preço Etanol", "ATR", "Moagem"])
+
+st.subheader("Parâmetros de Custo")
+gasto_fixo_total = st.number_input(
+    "Gasto Fixo Total (R$):",
+    value=152723235.0,
+    step=1000000.0,
+    format="%.0f",
+    help="Soma dos custos fixos independentes do volume produzido"
+)
+gasto_variavel_por_unidade = st.number_input(
+    "Gasto Variável por Unidade (R$/unidade):",
+    value=0.0,
+    step=1000.0,
+    format="%.2f",
+    help="Custo adicional por unidade produzida (aplicado sobre a produção variável)"
+)
+
 outras_variaveis = {}
 for variavel in ["Prod VHP", "NY", "Câmbio", "Prod Etanol", "Preço Etanol", "ATR", "Moagem"]:
     if variavel != variavel_parametro:
@@ -57,7 +74,7 @@ if st.button("Gerar Gráfico"):
     for valor_parametro in valores_parametro:
         outras_variaveis[variavel_parametro] = valor_parametro
         faturamentos.append(faturamento(variavel_parametro, valor_parametro, outras_variaveis))
-        custos.append(custo(variavel_parametro, valor_parametro, outras_variaveis))
+        custos.append(custo(variavel_parametro, valor_parametro, outras_variaveis, gasto_fixo_total, gasto_variavel_por_unidade))
 
     idx_break_even = np.argmin(np.abs(np.array(faturamentos) - np.array(custos)))
     break_even_point = valores_parametro[idx_break_even]
