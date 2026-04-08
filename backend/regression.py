@@ -300,7 +300,11 @@ def get_acucar_defaults() -> dict:
                 result[key] = None
             else:
                 close = data["Close"].dropna()
-                result[key] = float(close.iloc[-1]) if not close.empty else None
+                if close.empty:
+                    result[key] = None
+                else:
+                    last = close.iloc[-1]
+                    result[key] = float(last.iloc[0]) if hasattr(last, "iloc") else float(last)
         except Exception as exc:
             logger.warning("yfinance fetch failed for %s (%s): %s", key, ticker, exc)
             result[key] = None
