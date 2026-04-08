@@ -112,7 +112,12 @@ Plans:
 
 **Requirements:** ATR-01, ATR-02, ATR-03, ATR-04, ATR-05
 
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Migration Supabase: tabelas usinas, user_usinas e atr_simulacoes com RLS
+- [ ] 20-02-PLAN.md — Backend FastAPI: módulo atr.py com calibração ATR + rotas /api/atr/* e /api/admin/usinas
+- [ ] 20-03-PLAN.md — Frontend Next.js: página /app/atr com formulário, métricas, histórico e admin de usinas
 
 ---
 
