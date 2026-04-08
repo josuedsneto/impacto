@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Milestone: v2.2 — Melhorias do Cliente
-Phase: 17-simulation-history-page
-Plan: 02 (complete)
-Status: Phase 17 Plan 02 complete — VaR cache, z-score left-tail, labels e abs(VaR) corrigidos
-Last activity: 2026-04-08 — 17-02 VaR corrections complete
+Phase: 18-fixacoes
+Plan: 01 (complete)
+Status: Phase 18 Plan 01 complete — Fixações page rename + configurable technical indicator params
+Last activity: 2026-04-08 — 18-01 Fixações rename and sidebar params complete
 
 Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 16-correcoes-pontuais P02 | 15 | 2 tasks | 2 files |
 | Phase 17-simulation-history-page P01 | 2 | 1 tasks | 1 files |
 | Phase 17-simulation-history-page P02 | 5 | 1 tasks | 1 files |
+| Phase 18-fixacoes P01 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,7 @@ Carried forward from v1.0:
 - [Phase 17-02]: abs(VaR_EWMA) for display — VaR is a loss estimate, shown as positive value for clarity
 - [Phase 17-02]: ewma_vol_final returned as 5th value from calcular_var() — keeps display and computation consistent, avoids recalculation
 - [Phase 17-02]: z_score = norm.ppf(1 - confianca/100) — left-tail documented explicitly; numerically identical to prior formula
+- [Phase 18-fixacoes]: Sidebar inputs defined before Calcular button to ensure variables are in scope inside the button block (Streamlit session flow)
 
 ### Pending Todos
 

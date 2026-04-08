@@ -27,10 +27,10 @@
 
 ### Fixações (ex-Mercado)
 
-- [ ] **FIX-01**: Renomear página "Mercado" para "Fixações" (rota, nav link, título)
-- [ ] **FIX-02**: Adicionar Estocástico Lento com períodos configuráveis pelo usuário (%K, %D)
-- [ ] **FIX-03**: Adicionar RSI com período configurável pelo usuário
-- [ ] **FIX-04**: Adicionar Bollinger Bands com períodos e desvio padrão configuráveis pelo usuário
+- [x] **FIX-01**: Renomear página "Mercado" para "Fixações" (rota, nav link, título)
+- [x] **FIX-02**: Adicionar Estocástico Lento com períodos configuráveis pelo usuário (%K, %D)
+- [x] **FIX-03**: Adicionar RSI com período configurável pelo usuário
+- [x] **FIX-04**: Adicionar Bollinger Bands com períodos e desvio padrão configuráveis pelo usuário
 
 ### Regressões (atualização)
 
