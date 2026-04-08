@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 
 from utils import require_login, show_logo
 
-st.set_page_config(page_title="Mercado", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Fixações", page_icon="📈", layout="wide")
 require_login()
 show_logo()
 
@@ -75,17 +75,33 @@ def enviar_alerta(email, ativo, cci_status, rsi_status, estocastico_status, bb_s
         st.error(f"Erro ao enviar o e-mail: {e}")
 
 
-st.title("Mercado")
+st.title("Fixações")
 ativo = st.selectbox("Selecione o ativo", ["SBK26.NYB", "USDBRL=X", "SB=F", "CL=F"])
 start_date = date(2014, 1, 1)
 today = date.today()
 data = yf.download(ativo, start=start_date, end=today.strftime('%Y-%m-%d'), auto_adjust=True, multi_level_index=False, progress=False)
 filtro_datas = st.date_input("Selecione um intervalo de datas:", value=[pd.to_datetime('2023-01-01'), pd.to_datetime('2025-01-01')])
 filtro_datas = [pd.Timestamp(d) for d in filtro_datas]
-indicador_selecionado = st.selectbox("Selecione o indicador", ["EWMA", "CCI", "Estocástico", "Bandas de Bollinger", "MACD", "RSI"])
+indicador_selecionado = st.selectbox("Selecione o indicador", ["EWMA", "CCI", "Estocástico Lento", "Bandas de Bollinger", "MACD", "RSI"])
 sobrecompra = 100
 if indicador_selecionado == "CCI":
     sobrecompra = st.slider("Nível de sobrecompra do CCI", 100, 250, step=50, value=100)
+
+# Parâmetros configuráveis por indicador
+if indicador_selecionado == "Estocástico Lento":
+    with st.sidebar:
+        st.subheader("Parâmetros — Estocástico Lento")
+        periodo_k = st.number_input("Período %K", min_value=1, max_value=100, value=14, step=1)
+        periodo_d = st.number_input("Período %D (suavização)", min_value=1, max_value=20, value=3, step=1)
+elif indicador_selecionado == "RSI":
+    with st.sidebar:
+        st.subheader("Parâmetros — RSI")
+        periodo_rsi = st.number_input("Período RSI", min_value=1, max_value=100, value=14, step=1)
+elif indicador_selecionado == "Bandas de Bollinger":
+    with st.sidebar:
+        st.subheader("Parâmetros — Bandas de Bollinger")
+        janela_bb = st.number_input("Janela (períodos)", min_value=2, max_value=200, value=20, step=1)
+        desvios_bb = st.number_input("Desvios padrão", min_value=0.5, max_value=5.0, value=2.0, step=0.5)
 
 if st.button("Calcular"):
     data_filtrado = data[(data.index >= filtro_datas[0]) & (data.index <= filtro_datas[1])].copy()
@@ -119,16 +135,16 @@ if st.button("Calcular"):
         fig.add_trace(go.Scatter(x=data_filtrado.index, y=data_filtrado['CCI'], mode='lines', name='CCI'))
         st.plotly_chart(fig)
 
-    elif indicador_selecionado == "Estocástico":
-        data_filtrado['Estocástico'] = calcular_estocastico_lento(data_filtrado)
-        data_filtrado['Entry Points'] = (data_filtrado['Estocástico'] > 80) & (data_filtrado['Estocástico'].shift(-1) < data_filtrado['Estocástico']) & (data_filtrado['Estocástico'].shift(1) < data_filtrado['Estocástico'])
+    elif indicador_selecionado == "Estocástico Lento":
+        data_filtrado['Estocástico Lento'] = calcular_estocastico_lento(data_filtrado, window=periodo_k, smooth_k=periodo_d)
+        data_filtrado['Entry Points'] = (data_filtrado['Estocástico Lento'] > 80) & (data_filtrado['Estocástico Lento'].shift(-1) < data_filtrado['Estocástico Lento']) & (data_filtrado['Estocástico Lento'].shift(1) < data_filtrado['Estocástico Lento'])
         quantidade_entradas = data_filtrado['Entry Points'].sum()
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=data_filtrado.index, y=data_filtrado['Estocástico'], mode='lines', name='Estocástico'))
+        fig.add_trace(go.Scatter(x=data_filtrado.index, y=data_filtrado['Estocástico Lento'], mode='lines', name='Estocástico Lento'))
         st.plotly_chart(fig)
 
     elif indicador_selecionado == "Bandas de Bollinger":
-        data_filtrado = calcular_bollinger_bands(data_filtrado)
+        data_filtrado = calcular_bollinger_bands(data_filtrado, window=janela_bb, num_std_dev=desvios_bb)
         data_filtrado['Entry Points'] = (data_filtrado['Close'] > data_filtrado['Bollinger High']) & (data_filtrado['Close'].shift(-1) < data_filtrado['Close'])
         quantidade_entradas = data_filtrado['Entry Points'].sum()
         fig = go.Figure(data=[go.Candlestick(x=data_filtrado.index, open=data_filtrado['Open'], high=data_filtrado['High'], low=data_filtrado['Low'], close=data_filtrado['Close'])])
@@ -146,7 +162,7 @@ if st.button("Calcular"):
         st.plotly_chart(fig)
 
     elif indicador_selecionado == "RSI":
-        data_filtrado['RSI'] = calcular_RSI(data_filtrado)
+        data_filtrado['RSI'] = calcular_RSI(data_filtrado, window=periodo_rsi)
         data_filtrado['Entry Points'] = (data_filtrado['RSI'] > 70) & (data_filtrado['RSI'].shift(-1) < data_filtrado['RSI'])
         quantidade_entradas = data_filtrado['Entry Points'].sum()
         fig = go.Figure()
