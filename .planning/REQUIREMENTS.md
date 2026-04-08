@@ -7,15 +7,15 @@
 
 ### Volatilidade
 
-- [ ] **VOL-01**: Verificar e documentar se o resultado exibido na página Volatilidade é diário ou anualizado; corrigir cálculo e label se necessário (cliente quer clareza sobre o parâmetro)
+- [x] **VOL-01**: Verificar e documentar se o resultado exibido na página Volatilidade é diário ou anualizado; corrigir cálculo e label se necessário (cliente quer clareza sobre o parâmetro)
 
 ### Breakeven
 
-- [ ] **BREAK-01**: Adicionar campos de input na página Breakeven: "Gasto Fixo Total" e "Gasto Variável por Unidade"; integrar esses valores ao cálculo existente
+- [x] **BREAK-01**: Adicionar campos de input na página Breakeven: "Gasto Fixo Total" e "Gasto Variável por Unidade"; integrar esses valores ao cálculo existente
 
 ### Black-Scholes
 
-- [ ] **BS-01**: Atualizar fonte de dados da página Black-Scholes (ticker/séries) para refletir base de dados atual do projeto
+- [x] **BS-01**: Atualizar fonte de dados da página Black-Scholes (ticker/séries) para refletir base de dados atual do projeto
 
 ### Monte Carlo
 

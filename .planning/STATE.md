@@ -56,6 +56,8 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 13-navigation-cleanup P01 | 5 | 2 tasks | 1 files |
 | Phase 15-regressao-acucar P01 | 18 | 2 tasks | 3 files |
 | Phase 15-regressao-acucar P02 | 4 | 2 tasks | 5 files |
+| Phase 16-correcoes-pontuais P01 | 8 | 1 tasks | 1 files |
+| Phase 16-correcoes-pontuais P02 | 15 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -120,6 +122,9 @@ Carried forward from v1.0:
 - [Phase 15-regressao-acucar]: from __future__ import annotations added to main.py to fix pre-existing forward-reference NameError on Pydantic models defined after routes
 - [Phase 15-regressao-acucar]: AcucarForm owns all interface definitions (AcucarDefaults, AcucarResult, HistoricoPoint) — imported by AcucarMetrics and AcucarCharts to avoid duplication
 - [Phase 15-regressao-acucar]: Plotly imported via next/dynamic with ssr:false in AcucarCharts — prevents SSR hydration mismatch
+- [Phase 16-correcoes-pontuais]: Breakeven gasto_fixo_total default 152723235 preserves prior hardcoded behavior
+- [Phase 16-correcoes-pontuais]: Black-Scholes SBK26 replaced with SBN26/SBV26; sigma exposed as editable input before Simular button
+- [Phase 16-correcoes-pontuais]: Anualização usa sqrt(252) — convencao de mercado; colunas calculadas dentro de get_historical_data para ficarem no cache e no Excel exportado
 
 ### Pending Todos
 
