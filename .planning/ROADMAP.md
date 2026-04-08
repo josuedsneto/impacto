@@ -112,7 +112,7 @@ Plans:
 
 **Requirements:** ATR-01, ATR-02, ATR-03, ATR-04, ATR-05
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 20-01-PLAN.md — Migration Supabase: tabelas usinas, user_usinas e atr_simulacoes com RLS
@@ -132,7 +132,7 @@ Plans:
 | 17. Validação MC + VaR | 2/2 | Complete    | 2026-04-08 | — |
 | 18. Fixações | 1/1 | Complete    | 2026-04-08 | — |
 | 19. Atualização Regressões | 2/2 | Complete    | 2026-04-08 | — |
-| 20. ATR | v2.2 | 0/0 | Not started | — |
+| 20. ATR | 1/3 | In Progress|  | — |
 
 **v2.0 history:**
 

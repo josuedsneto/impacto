@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Milestone: v2.2 — Melhorias do Cliente
-Phase: 18-fixacoes
+Phase: 20-atr-acucar-total-recuperavel
 Plan: 01 (complete)
-Status: Phase 18 Plan 01 complete — Fixações page rename + configurable technical indicator params
-Last activity: 2026-04-08 — 18-01 Fixações rename and sidebar params complete
+Status: Phase 20 Plan 01 complete — ATR migration SQL (usinas, user_usinas, atr_simulacoes) with RLS
+Last activity: 2026-04-08 — 20-01 ATR Supabase migration complete
 
 Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 18-fixacoes P01 | 5 | 2 tasks | 1 files |
 | Phase 19-atualizacao-regressoes P01 | 2 | 2 tasks | 2 files |
 | Phase 19-atualizacao-regressoes P02 | 18 | 2 tasks | 2 files |
+| Phase 20-atr-acucar-total-recuperavel P01 | 1 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Carried forward from v1.0:
 - [Phase 19-01]: FRED_API_KEY sourced from st.secrets.get() in Streamlit page; model degrades gracefully without it — feature_cols filtered to only present columns
 - [Phase 19-atualizacao-regressoes]: Local _USDA_ANNUAL duplicated in Streamlit page (not imported from backend) to keep pages self-contained per project pattern
 - [Phase 19-atualizacao-regressoes]: Inner join on year index between yfinance annual closes and USDA data naturally excludes 2025 if yfinance lacks a full-year close
+- [Phase 20-atr-acucar-total-recuperavel]: Admin-managed tables (usinas, user_usinas) use RLS read-only for authenticated users; service_role bypasses RLS for INSERT/UPDATE/DELETE — no write policies needed
+- [Phase 20-atr-acucar-total-recuperavel]: atr_simulacoes SELECT policy uses subquery on user_usinas to scope shared rows to same usina membership — prevents cross-usina data leakage
 
 ### Pending Todos
 
@@ -152,5 +155,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-08
-Stopped at: Completed 17-02 (VaR corrections — cache, z-score, labels)
+Stopped at: Completed 20-01 (ATR migration — usinas, user_usinas, atr_simulacoes tables with RLS)
 Resume file: None
