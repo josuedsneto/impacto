@@ -98,7 +98,11 @@ Plans:
 
 **Requirements:** REG-01, REG-02
 
-**Plans:** 0 plans
+**Plans:** 2 plans
+
+Plans:
+- [ ] 19-01-PLAN.md - Regressao Dolar: dados live BCB/FRED + janela 72 meses
+- [ ] 19-02-PLAN.md - Regressao Acucar: dados live yfinance + USDA 2025
 
 ---
 
