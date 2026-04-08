@@ -125,7 +125,7 @@ def get_dolar_defaults() -> dict:
     try:
         sgs = SGS()
         today = date.today()
-        start = today - timedelta(days=90)  # last 3 months to ensure we get a value
+        start = today - timedelta(days=120)  # last 4 months to ensure monthly series have a value
         data = sgs.get(list(_BCB_SERIES.values()), start=start, end=today)
         for key, code in _BCB_SERIES.items():
             try:
@@ -145,7 +145,8 @@ def get_dolar_defaults() -> dict:
     return result
 
 
-def fetch_dolar_history(months: int = 60) -> pd.DataFrame:
+# Janela padrão: 72 meses (~6 anos) para capturar ciclos de juros BR e EUA
+def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     """
     Fetch monthly BCB + FRED + USDBRL=X history for the past `months` months.
 
@@ -227,7 +228,7 @@ def run_dolar_regression(inputs: dict) -> dict:
     """
     feature_cols = ["selic", "m2_bcb", "prod_industrial", "fed_funds", "m2_fred", "indpro"]
 
-    df = fetch_dolar_history(months=60)
+    df = fetch_dolar_history(months=72)
 
     y = df["taxa_dolar"].values
     X = df[feature_cols].values
@@ -266,19 +267,21 @@ def run_dolar_regression(inputs: dict) -> dict:
 # ── Sugar (Açúcar) regression ────────────────────────────────────────────────
 
 _USDA_DEFAULTS = {
-    "estoque_inicial": 46.5,     # million metric tons (MMT)
-    "producao": 186.0,           # MMT
-    "demanda": 178.5,            # MMT
-    "estoque_final": 47.0,       # MMT
-    "estoque_uso_pct": 26.3,     # estoque_final / demanda * 100
+    "estoque_inicial": 48.5,     # million metric tons (MMT) — estoque_final de 2025
+    "producao": 190.0,           # MMT — projeção safra 2025/26
+    "demanda": 182.0,            # MMT
+    "estoque_final": 48.5,       # MMT
+    "estoque_uso_pct": 26.6,     # estoque_final / demanda * 100 ≈ 26.6
 }
 
 _USDA_ANNUAL = {
-    "year": [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
-    "estoque_inicial": [35.2, 38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5],
-    "producao":        [178.4, 168.9, 172.6, 185.1, 185.5, 187.3, 176.8, 183.4, 183.8, 185.0, 186.0],
-    "demanda":         [166.5, 163.7, 165.4, 168.3, 171.4, 174.6, 172.9, 177.5, 179.5, 178.0, 178.5],
-    "estoque_final":   [38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0],
+    "year": [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+    "estoque_inicial": [35.2, 38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0],
+    "producao":        [178.4, 168.9, 172.6, 185.1, 185.5, 187.3, 176.8, 183.4, 183.8, 185.0, 186.0, 188.0],
+    "demanda":         [166.5, 163.7, 165.4, 168.3, 171.4, 174.6, 172.9, 177.5, 179.5, 178.0, 178.5, 180.5],
+    "estoque_final":   [38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0, 48.5],
+    # Note: the inner join with yfinance annual data will naturally exclude year 2025
+    # if yfinance does not yet have a full-year closing price for SB=F (expected behavior).
 }
 
 
