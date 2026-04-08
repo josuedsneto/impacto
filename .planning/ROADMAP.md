@@ -27,7 +27,7 @@
 - [x] Phase 4: MC Simulation (3/3 plans) — completed 2026-03-21
 - [x] Phase 5: Options & Pricing (2/2 plans) — completed 2026-03-21
 - [x] Phase 6: Params & Watchlist (3/3 plans) — completed 2026-03-21
-- [x] Phase 7: Admin (2/2 plans) — completed 2026-03-21
+- [x] Phase 7: Admin (2/2 plans) — completed 2026-03-22
 - [x] Phase 8: CI/CD & Polish (1/1 plan) — completed 2026-03-22
 - [x] Phase 9: Fix MKT-03 + PARAM-01 (2/2 plans) — completed 2026-03-22
 - [x] Phase 10: CI/CD Artifacts + ADM-01 + FOUC Fix (3/3 plans) — completed 2026-04-01
@@ -85,7 +85,10 @@ Plans:
 
 **Requirements:** FIX-01, FIX-02, FIX-03, FIX-04
 
-**Plans:** 0 plans
+**Plans:** 1 plan
+
+Plans:
+- [ ] 18-01-PLAN.md — Renomear para Fixações e expor parâmetros configuráveis de Estocástico Lento, RSI e Bollinger Bands
 
 ---
 
@@ -118,7 +121,7 @@ Plans:
 | 15. Regressão Açúcar | v2.1 | 2/2 | Complete | 2026-04-07 |
 | 16. Correções Pontuais | 2/2 | Complete   | 2026-04-08 | — |
 | 17. Validação MC + VaR | 2/2 | Complete    | 2026-04-08 | — |
-| 18. Fixações | v2.2 | 0/0 | Not started | — |
+| 18. Fixações | v2.2 | 0/1 | Not started | — |
 | 19. Atualização Regressões | v2.2 | 0/0 | Not started | — |
 | 20. ATR | v2.2 | 0/0 | Not started | — |
 
@@ -132,7 +135,7 @@ Plans:
 | 4. MC Simulation | v2.0 | 3/3 | Complete | 2026-03-21 |
 | 5. Options & Pricing | v2.0 | 2/2 | Complete | 2026-03-21 |
 | 6. Params & Watchlist | v2.0 | 3/3 | Complete | 2026-03-21 |
-| 7. Admin | v2.0 | 2/2 | Complete | 2026-03-21 |
+| 7. Admin | v2.0 | 2/2 | Complete | 2026-03-22 |
 | 8. CI/CD & Polish | v2.0 | 1/1 | Complete | 2026-03-22 |
 | 9. Fix MKT-03 + PARAM-01 | v2.0 | 2/2 | Complete | 2026-03-22 |
 | 10. CI/CD Artifacts + FOUC | v2.0 | 3/3 | Complete | 2026-04-01 |
