@@ -4,7 +4,8 @@
 
 - ✅ **v1.0 Streamlit Audit & Fix** — Phases v1-1 to v1-3 (shipped 2026-03-20)
 - ✅ **v2.0 Plataforma Escalável** — Phases 1–12 (shipped 2026-04-01)
-- 📋 **v2.1 Client Necessities** — Phases 13–15 (in progress)
+- ✅ **v2.1 Client Necessities** — Phases 13–15 (shipped 2026-04-07)
+- 🚧 **v2.2 Melhorias do Cliente** — Phases 16+ (in progress)
 
 ## Phases
 
@@ -37,65 +38,66 @@ Full archive: `.planning/milestones/v2.0-ROADMAP.md`
 
 </details>
 
-## v2.1 Client Necessities
+<details>
+<summary>✅ v2.1 Client Necessities (Phases 13–15) — SHIPPED 2026-04-07</summary>
 
-### Phase 13: Navigation Cleanup
+- [x] Phase 13: Navigation Cleanup (1/1 plan) — completed 2026-04-06
+- [x] Phase 14: Regressão Dólar (2/2 plans) — completed 2026-04-07
+- [x] Phase 15: Regressão Açúcar (2/2 plans) — completed 2026-04-07
 
-**Goal:** Ocultar 9 páginas da navegação do sidebar Next.js, mantendo as rotas acessíveis via URL direta.
+See `.planning/milestones/v2.1-ROADMAP.md` for full details.
 
-**Requirements:** NAV-01, NAV-02
+</details>
 
-**Success criteria:**
-1. Sidebar não exibe: Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar, Opções
-2. Acessar as URLs dessas páginas diretamente continua funcionando
-3. Nenhuma rota foi deletada — apenas removida do componente de navegação
+## v2.2 Melhorias do Cliente
 
-**Plans:** 1/1 plans complete
+### Phase 16: Correções Pontuais
 
-Plans:
-- [x] 13-01-PLAN.md — Audit and verify nav exclusions in layout.tsx + human sign-off (completed 2026-04-06)
+**Goal:** Corrigir Volatilidade (verificar diária vs anualizada), Breakeven (adicionar campos de custo), e Black-Scholes (atualizar base de dados).
 
----
+**Requirements:** VOL-01, BREAK-01, BS-01
 
-### Phase 14: Regressão Dólar
-
-**Goal:** Endpoint FastAPI OLS com dados do BCB e FRED, tabela Supabase `regression_runs`, e página Next.js com inputs editáveis, resultados e histórico.
-
-**Requirements:** DOLAR-01, DOLAR-02, DOLAR-03, DOLAR-04, DOLAR-05
-
-**Success criteria:**
-1. `POST /api/regression/dolar/run` retorna `{ taxa_prevista, r2, rmse, coeficientes, correlacao }` com inputs do usuário
-2. `GET /api/regression/dolar/defaults` retorna os valores mais recentes das séries BCB + FRED
-3. Modelo OLS treinado em dados mensais históricos (mínimo 24 meses) via APIs externas
-4. Run salvo em `regression_runs` com user_id, tipo="dolar", inputs JSONB, resultado JSONB
-5. Página `/regressao-dolar` pré-preenche inputs com defaults, exibe taxa prevista + R² + RMSE, heatmap de correlação, gráfico de coeficientes do modelo OLS, e lista de runs anteriores do usuário
-
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 14-01-PLAN.md — Supabase migration (regression_runs) + FastAPI OLS backend (BCB/FRED data, run + defaults endpoints) (completed 2026-04-07)
-- [x] 14-02-PLAN.md — Next.js page /regressao-dolar with DolarForm, DolarMetrics, DolarCharts components + nav link (completed 2026-04-07)
+**Plans:** 0 plans
 
 ---
 
-### Phase 15: Regressão Açúcar
+### Phase 17: Validação Monte Carlo e VaR
 
-**Goal:** Endpoint FastAPI Ridge/XGBoost com dados yfinance + defaults USDA, tabela Supabase reutilizada, e página Next.js com inputs editáveis, preço previsto com range e histórico.
+**Goal:** Revisar os bastidores do cálculo do Monte Carlo (drift, bounds, paths) e validar a implementação atual do VaR.
 
-**Requirements:** ACUCAR-01, ACUCAR-02, ACUCAR-03, ACUCAR-04, ACUCAR-05, ACUCAR-06
+**Requirements:** MC-01, VAR-01
 
-**Success criteria:**
-1. `POST /api/regression/acucar/run` aceita `model` ("ridge" | "xgboost") e inputs anuais, retorna `{ sb_f_previsto, sb_f_min, sb_f_max, r2, rmse }`
-2. `GET /api/regression/acucar/defaults` retorna preços yfinance mais recentes (SB=F, USDBRL=X, CL=F) + defaults USDA de oferta/demanda
-3. Modelo treinado em dados anuais históricos (yfinance 2014–hoje + defaults USDA embutidos)
-4. Run salvo em `regression_runs` com tipo="acucar"
-5. Página `/regressao-acucar` pré-preenche inputs, exibe preço previsto SB=F com intervalo (mín/máx), R², RMSE, gráfico e histórico de runs
+**Plans:** 0 plans
 
-**Plans:** 2/2 plans complete
+---
 
-Plans:
-- [ ] 15-01-PLAN.md — FastAPI backend: get_acucar_defaults + fetch_acucar_history + run_acucar_regression (Ridge/XGBoost) + two auth-guarded routes
-- [ ] 15-02-PLAN.md — Next.js page /regressao-acucar with AcucarForm, AcucarMetrics, AcucarCharts + nav link + human verify checkpoint
+### Phase 18: Fixações (ex-Mercado)
+
+**Goal:** Renomear página "Mercado" para "Fixações" e adicionar indicadores de análise técnica: Estocástico Lento, RSI e Bollinger Bands com parâmetros configuráveis pelo usuário.
+
+**Requirements:** FIX-01, FIX-02, FIX-03, FIX-04
+
+**Plans:** 0 plans
+
+---
+
+### Phase 19: Atualização Regressões
+
+**Goal:** Atualizar base de dados de treino e revisar correlações dos modelos de Regressão Dólar e Regressão Açúcar.
+
+**Requirements:** REG-01, REG-02
+
+**Plans:** 0 plans
+
+---
+
+### Phase 20: ATR — Açúcar Total Recuperável
+
+**Goal:** Nova feature: simular ATR em função de Chuva e Impureza da cana, com histórico por usina persistido no Supabase, endpoint de regressão FastAPI e página Next.js completa.
+
+**Requirements:** ATR-01, ATR-02, ATR-03, ATR-04, ATR-05
+
+**Plans:** 0 plans
 
 ---
 
@@ -103,9 +105,14 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 13. Navigation Cleanup | v2.1 | Complete    | 2026-04-07 | 2026-04-06 |
-| 14. Regressão Dólar | v2.1 | Complete    | 2026-04-07 | 2026-04-07 |
-| 15. Regressão Açúcar | 2/2 | Complete    | 2026-04-07 | — |
+| 13. Navigation Cleanup | v2.1 | 1/1 | Complete | 2026-04-06 |
+| 14. Regressão Dólar | v2.1 | 2/2 | Complete | 2026-04-07 |
+| 15. Regressão Açúcar | v2.1 | 2/2 | Complete | 2026-04-07 |
+| 16. Correções Pontuais | v2.2 | 0/0 | Not started | — |
+| 17. Validação MC + VaR | v2.2 | 0/0 | Not started | — |
+| 18. Fixações | v2.2 | 0/0 | Not started | — |
+| 19. Atualização Regressões | v2.2 | 0/0 | Not started | — |
+| 20. ATR | v2.2 | 0/0 | Not started | — |
 
 **v2.0 history:**
 

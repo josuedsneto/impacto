@@ -2,20 +2,20 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-20)
+See: .planning/PROJECT.md (updated 2026-04-07)
 
-**Core value:** Correct, trustworthy simulation outputs accessible to 20-100 internal users simultaneously, with persisted data and robust authentication.
-**Current focus:** Phase 15 — Regressão Açúcar (v2.1 Client Necessities)
+**Core value:** Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos, com dados persistidos e autenticação robusta.
+**Current focus:** Milestone v2.2 — Melhorias do Cliente (Phase 16 próxima)
 
 ## Current Position
 
-Milestone: v2.1 — Client Necessities
-Phase: 15-regressao-acucar (IN PROGRESS)
-Plan: 15-01 (COMPLETE) — 15-02 (COMPLETE)
-Status: Phase 15 complete — FastAPI sugar regression backend + Next.js /regressao-acucar page with AcucarForm/Metrics/Charts + nav link; user verified end-to-end
-Last activity: 2026-04-07 — 15-02 fully complete (Task 3 human-verify approved by user)
+Milestone: v2.2 — Melhorias do Cliente
+Phase: 16-correcoes-pontuais (NOT STARTED)
+Plan: —
+Status: v2.1 arquivado. Próximo: Phase 16 (Volatilidade, Breakeven, Black-Scholes)
+Last activity: 2026-04-07 — v2.1 completo e arquivado; v2.2 iniciado
 
-Progress: [████████░░░░] 67% (2/3 phases)
+Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
 ## Performance Metrics
 

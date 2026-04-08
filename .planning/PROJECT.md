@@ -8,18 +8,25 @@ Impacto é uma plataforma web multiusuário para análise de ativos brasileiros 
 
 Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos simultaneamente, com dados persistidos e autenticação robusta.
 
-## Current Milestone: v2.1 — Client Necessities
+## Current Milestone: v2.2 — Melhorias do Cliente
 
-**Goal:** Atender demandas do cliente — ocultar módulos não utilizados da navegação e implementar módulos de regressão macroeconômica (Dólar e Açúcar) com dados de APIs reais e persistência no Supabase.
+**Goal:** Atender segunda rodada de feedback do cliente — corrigir módulos existentes (Volatilidade, Breakeven, Black-Scholes), validar MC e VaR, evoluir Mercado→Fixações com indicadores técnicos, atualizar regressões e implementar nova feature ATR.
 
 **Target features:**
-- Ocultar 9 páginas do sidebar Next.js (sem deletar rotas)
-- Regressão Dólar: OLS com BCB + FRED APIs, persistência Supabase
-- Regressão Açúcar: Ridge/XGBoost com yfinance + inputs manuais, persistência Supabase
+- Correções pontuais: Volatilidade (diária/anual), Breakeven (custos), Black-Scholes (base)
+- Validação: Monte Carlo (bastidores), VaR (metodologia)
+- Fixações: rename + Estocástico Lento, RSI, Bollinger Bands
+- Regressões: atualização de dados e correlações
+- ATR: nova feature completa (Açúcar Total Recuperável por usina)
 
-## Current State (v2.0 — shipped 2026-04-01)
+## Current State (v2.1 — shipped 2026-04-07)
 
 **Stack:** Next.js 16 (App Router, shadcn/ui new-york/zinc) + FastAPI + Supabase (PostgreSQL + Auth JWT RS256) + Oracle Cloud VM (Nginx + PM2 + GitHub Actions CI/CD)
+
+**Shipped in v2.1:**
+- 9 páginas ocultadas do sidebar (rotas preservadas): Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar, Opções
+- Regressão Dólar: OLS com BCB + FRED, tabela `regression_runs`, página com heatmap e histórico
+- Regressão Açúcar: Ridge/XGBoost com yfinance + USDA defaults, página com range e histórico
 
 **Shipped in v2.0:**
 - Autenticação completa: email+senha + magic link, JWT RS256, middleware route guard, roles admin/user
@@ -30,7 +37,6 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 - Admin: aprovação/rejeição de tickers com backfill assíncrono + config de sistema
 - Deploy automatizado via GitHub Actions → Oracle Cloud VM
 - 7 páginas analíticas: Focus/BCB, VaR, Breakeven, ARIMA, Stress Test, Notícias, Volatilidade
-- ~6.900 LOC (TypeScript/Python), 12 fases, 29 planos
 
 ## Requirements
 
