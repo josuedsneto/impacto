@@ -23,7 +23,7 @@
 
 ### VaR
 
-- [ ] **VAR-01**: Validar a implementação atual do VaR: revisar metodologia (histórico/paramétrico), horizonte de tempo, nível de confiança e apresentação dos resultados
+- [x] **VAR-01**: Validar a implementação atual do VaR: revisar metodologia (histórico/paramétrico), horizonte de tempo, nível de confiança e apresentação dos resultados
 
 ### Fixações (ex-Mercado)
 

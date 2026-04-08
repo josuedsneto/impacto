@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Milestone: v2.2 — Melhorias do Cliente
-Phase: 16-correcoes-pontuais (NOT STARTED)
-Plan: —
-Status: v2.1 arquivado. Próximo: Phase 16 (Volatilidade, Breakeven, Black-Scholes)
-Last activity: 2026-04-07 — v2.1 completo e arquivado; v2.2 iniciado
+Phase: 17-simulation-history-page
+Plan: 02 (complete)
+Status: Phase 17 Plan 02 complete — VaR cache, z-score left-tail, labels e abs(VaR) corrigidos
+Last activity: 2026-04-08 — 17-02 VaR corrections complete
 
 Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 16-correcoes-pontuais P01 | 8 | 1 tasks | 1 files |
 | Phase 16-correcoes-pontuais P02 | 15 | 2 tasks | 2 files |
 | Phase 17-simulation-history-page P01 | 2 | 1 tasks | 1 files |
+| Phase 17-simulation-history-page P02 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,9 @@ Carried forward from v1.0:
 - [Phase 16-correcoes-pontuais]: Black-Scholes SBK26 replaced with SBN26/SBV26; sigma exposed as editable input before Simular button
 - [Phase 16-correcoes-pontuais]: Anualização usa sqrt(252) — convencao de mercado; colunas calculadas dentro de get_historical_data para ficarem no cache e no Excel exportado
 - [Phase 17-simulation-history-page]: drift_gbm computed at call site — keeps simulacao_monte_carlo() generic; caller controls model assumptions
+- [Phase 17-02]: abs(VaR_EWMA) for display — VaR is a loss estimate, shown as positive value for clarity
+- [Phase 17-02]: ewma_vol_final returned as 5th value from calcular_var() — keeps display and computation consistent, avoids recalculation
+- [Phase 17-02]: z_score = norm.ppf(1 - confianca/100) — left-tail documented explicitly; numerically identical to prior formula
 
 ### Pending Todos
 
@@ -140,6 +144,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-07
-Stopped at: Completed 15-02 (Regressão Açúcar frontend) — phase 15 fully done
+Last session: 2026-04-08
+Stopped at: Completed 17-02 (VaR corrections — cache, z-score, labels)
 Resume file: None
