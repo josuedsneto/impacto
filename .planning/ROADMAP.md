@@ -71,7 +71,11 @@ Plans:
 
 **Requirements:** MC-01, VAR-01
 
-**Plans:** 0 plans
+**Plans:** 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Monte Carlo: corrigir drift GBM (mu - 0.5*sigma^2) e alinhar métricas P5/P50/P95
+- [ ] 17-02-PLAN.md — VaR: adicionar cache yfinance, corrigir labels e exibir VaR como perda absoluta
 
 ---
 
@@ -113,7 +117,7 @@ Plans:
 | 14. Regressão Dólar | v2.1 | 2/2 | Complete | 2026-04-07 |
 | 15. Regressão Açúcar | v2.1 | 2/2 | Complete | 2026-04-07 |
 | 16. Correções Pontuais | 2/2 | Complete   | 2026-04-08 | — |
-| 17. Validação MC + VaR | v2.2 | 0/0 | Not started | — |
+| 17. Validação MC + VaR | v2.2 | 0/2 | Not started | — |
 | 18. Fixações | v2.2 | 0/0 | Not started | — |
 | 19. Atualização Regressões | v2.2 | 0/0 | Not started | — |
 | 20. ATR | v2.2 | 0/0 | Not started | — |
