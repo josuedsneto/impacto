@@ -24,18 +24,32 @@ def black_scholes(S, K, T, r, sigma, option_type):
         raise ValueError("Tipo de opção inválido. Use 'call' ou 'put'.")
 
 
-assets = {'SBK26.NYB': datetime(2026, 4, 30)}
-volatilities = {'SBK26.NYB': 0.2573}
+assets = {
+    'SBN26.NYB': datetime(2026, 6, 30),
+    'SBV26.NYB': datetime(2026, 9, 30),
+}
+volatilities = {
+    'SBN26.NYB': 0.2573,
+    'SBV26.NYB': 0.2573,
+}
 risk_free_rate = 0.053
 
 st.title("Simulador de Preços de Opções - Modelo Black-Scholes")
 asset = st.selectbox("Selecione o ativo subjacente", list(assets.keys()))
 option_type = st.selectbox("Selecione o tipo de opção", ["call", "put"])
 strike_price = st.number_input("Digite o preço de exercício (strike): ", min_value=1.0, value=20.0, step=0.5)
+sigma = st.number_input(
+    "Volatilidade implícita (anualizada):",
+    value=volatilities[asset],
+    min_value=0.01,
+    max_value=2.0,
+    step=0.01,
+    format="%.4f",
+    help="Volatilidade anualizada usada no modelo Black-Scholes. Padrão: 25.73%"
+)
 
 if st.button("Simular"):
     expiration_date = assets[asset]
-    sigma = volatilities[asset]
     current_date = datetime.now()
     days_to_expiration = (expiration_date - current_date).days
     T = days_to_expiration / 365
@@ -49,7 +63,7 @@ if st.button("Simular"):
     S = hist['Close'].iloc[-1]
     option_price = black_scholes(S, strike_price, T, risk_free_rate, sigma, option_type)
     st.write(f"O preço da {option_type} é: {option_price:.2f}")
-    strikes = np.arange(16, 22.25, 0.25)
+    strikes = np.arange(14, 24.25, 0.25)
     call_prices = [black_scholes(S, k, T, risk_free_rate, sigma, 'call') for k in strikes]
     put_prices = [black_scholes(S, k, T, risk_free_rate, sigma, 'put') for k in strikes]
     df_options = pd.DataFrame({'Strike': strikes, 'Call Prices': call_prices, 'Put Prices': put_prices})
