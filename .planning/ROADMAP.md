@@ -57,7 +57,11 @@ See `.planning/milestones/v2.1-ROADMAP.md` for full details.
 
 **Requirements:** VOL-01, BREAK-01, BS-01
 
-**Plans:** 0 plans
+**Plans:** 2 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Volatilidade: adicionar labels diária/anualizada com sqrt(252)
+- [ ] 16-02-PLAN.md — Breakeven: campos de gasto fixo/variável; Black-Scholes: atualizar contrato SBK26 → SBN26/SBV26
 
 ---
 
@@ -108,7 +112,7 @@ See `.planning/milestones/v2.1-ROADMAP.md` for full details.
 | 13. Navigation Cleanup | v2.1 | 1/1 | Complete | 2026-04-06 |
 | 14. Regressão Dólar | v2.1 | 2/2 | Complete | 2026-04-07 |
 | 15. Regressão Açúcar | v2.1 | 2/2 | Complete | 2026-04-07 |
-| 16. Correções Pontuais | v2.2 | 0/0 | Not started | — |
+| 16. Correções Pontuais | v2.2 | 0/2 | Not started | — |
 | 17. Validação MC + VaR | v2.2 | 0/0 | Not started | — |
 | 18. Fixações | v2.2 | 0/0 | Not started | — |
 | 19. Atualização Regressões | v2.2 | 0/0 | Not started | — |
