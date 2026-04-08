@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 from datetime import date as date_type, timedelta
 import requests
 import yfinance as yf
@@ -33,6 +33,7 @@ from market_cache import get_prices, backfill_ticker
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
+from atr import calibrate_atr, predict_atr, get_sector_defaults
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -298,6 +299,21 @@ class AcucarRunRequest(BaseModel):
     estoque_uso_pct: float
     usdbrl: float
     cl_f: float
+
+
+class AtrSimulateBody(BaseModel):
+    usina_id: str
+    chuva_mm: float = Field(gt=0)
+    impureza_pct: float = Field(gt=0, lt=100)
+    volume_moagem: Optional[float] = Field(None, gt=0)
+
+
+class AtrUsinaCreateBody(BaseModel):
+    nome: str = Field(min_length=2, max_length=100)
+
+
+class AtrShareBody(BaseModel):
+    compartilhado: bool
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
@@ -828,6 +844,147 @@ async def admin_update_config(
         payload["description"] = body.description
     client.table("admin_config").upsert(payload, on_conflict="key").execute()
     return {"key": key, "value": body.value, "saved": True}
+
+
+# ── ATR (Açúcar Total Recuperável) ────────────────────────────────────────────
+
+@app.get("/api/atr/usinas")
+@limiter.limit("30/minute")
+async def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+    """ATR-02: Lista usinas associadas ao usuário autenticado."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    rows = (
+        supa.table("user_usinas")
+        .select("usina_id, usinas(id, nome)")
+        .eq("user_id", user["id"])
+        .execute()
+    ).data
+    return {"usinas": [{"id": r["usinas"]["id"], "nome": r["usinas"]["nome"]} for r in rows]}
+
+
+@app.post("/api/atr/simulate")
+@limiter.limit("20/minute")
+async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
+    """ATR-03: Simula ATR com IC 90% e persiste no Supabase."""
+    import asyncio
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    # Verificar que usuário pertence à usina
+    assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).eq("usina_id", body.usina_id).execute()
+    if not assoc.data:
+        raise HTTPException(status_code=403, detail="Usuário não associado a esta usina.")
+    # Buscar simulações anteriores da usina como proxy para calibração
+    hist_rows = (
+        supa.table("atr_simulacoes")
+        .select("chuva_mm, impureza_pct, atr_esperado")
+        .eq("usina_id", body.usina_id)
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    ).data
+    history = [{"chuva_mm": r["chuva_mm"], "impureza_pct": r["impureza_pct"], "atr_real": r["atr_esperado"]} for r in hist_rows]
+    loop = asyncio.get_running_loop()
+    params = await loop.run_in_executor(None, calibrate_atr, history)
+    result = await loop.run_in_executor(None, lambda: predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem))
+    # Persistir
+    supa.table("atr_simulacoes").insert({
+        "user_id": user["id"],
+        "usina_id": body.usina_id,
+        "chuva_mm": body.chuva_mm,
+        "impureza_pct": body.impureza_pct,
+        "atr_min": result["atr_min"],
+        "atr_esperado": result["atr_esperado"],
+        "atr_max": result["atr_max"],
+        "producao_total": result.get("producao_total"),
+        "compartilhado": False,
+    }).execute()
+    return result
+
+
+@app.get("/api/atr/historico")
+@limiter.limit("30/minute")
+async def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends(get_current_user)]):
+    """ATR-04: Histórico de simulações do usuário para uma usina (próprias + compartilhadas da usina)."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    # Verificar que o usuário está associado à usina
+    user_assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).execute().data
+    user_usina_ids = {r["usina_id"] for r in user_assoc}
+    if usina_id not in user_usina_ids:
+        raise HTTPException(status_code=403, detail="Não autorizado para esta usina.")
+    # Buscar todas as simulações da usina via service_role; filtrar por regra de negócio
+    rows = (
+        supa.table("atr_simulacoes")
+        .select("id, user_id, chuva_mm, impureza_pct, atr_min, atr_esperado, atr_max, producao_total, compartilhado, created_at")
+        .eq("usina_id", usina_id)
+        .order("created_at", desc=True)
+        .limit(200)
+        .execute()
+    ).data
+    visible = [r for r in rows if r["user_id"] == user["id"] or r["compartilhado"]]
+    return {"historico": visible}
+
+
+@app.patch("/api/atr/simulacoes/{sim_id}/compartilhar")
+@limiter.limit("20/minute")
+async def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, user: Annotated[dict, Depends(get_current_user)]):
+    """Publica ou despublica uma simulação ATR para outros membros da mesma usina."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    result = supa.table("atr_simulacoes").update({"compartilhado": body.compartilhado}).eq("id", sim_id).eq("user_id", user["id"]).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Simulação não encontrada.")
+    return {"ok": True}
+
+
+# ── Admin — Usinas ──────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/usinas")
+@limiter.limit("20/minute")
+async def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: lista todas as usinas cadastradas."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    rows = supa.table("usinas").select("id, nome, created_at").order("nome").execute().data
+    return {"usinas": rows}
+
+
+@app.post("/api/admin/usinas")
+@limiter.limit("10/minute")
+async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: cria uma nova usina."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    try:
+        row = supa.table("usinas").insert({"nome": body.nome}).execute().data[0]
+    except Exception:
+        raise HTTPException(status_code=409, detail="Usina com este nome já existe.")
+    return {"id": row["id"], "nome": row["nome"]}
+
+
+@app.delete("/api/admin/usinas/{usina_id}")
+@limiter.limit("10/minute")
+async def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: deleta uma usina pelo ID."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa.table("usinas").delete().eq("id", usina_id).execute()
+    return {"ok": True}
+
+
+@app.post("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
+@limiter.limit("10/minute")
+async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: associa um usuário a uma usina."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    try:
+        supa.table("user_usinas").insert({"usina_id": usina_id, "user_id": user_id_target}).execute()
+    except Exception:
+        raise HTTPException(status_code=409, detail="Associação já existe.")
+    return {"ok": True}
+
+
+@app.delete("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
+@limiter.limit("10/minute")
+async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: remove associação de usuário com usina."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa.table("user_usinas").delete().eq("usina_id", usina_id).eq("user_id", user_id_target).execute()
+    return {"ok": True}
 
 
 # ── VaR ────────────────────────────────────────────────────────────────────────
