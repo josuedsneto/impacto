@@ -63,20 +63,24 @@ Simulações corretas e confiáveis, acessíveis a 20–100 usuários internos s
 - ✓ Deploy automatizado via GitHub Actions na Oracle Cloud VM — v2.0
 - ✓ Páginas analíticas: Focus, VaR, Breakeven, ARIMA, Stress, Notícias, Volatilidade — v2.0
 
-### Active (v2.1 — Client Necessities)
+### Validated (v2.1 — Client Necessities)
 
-- [ ] NAV-01: Ocultar 9 páginas da navegação (Metas, Jump Diffusion, Payoff Opções, Risco, Cenários, Relatório Focus, ARIMA Açúcar, ARIMA Dólar, Opções) do sidebar Next.js
-- [ ] NAV-02: Rotas das páginas ocultas permanecem acessíveis via URL direta
-- [ ] REG-01: FastAPI endpoint para Regressão Dólar (OLS, inputs: Selic, Fed Funds, Prod. Industrial BR/EUA, M2 BR/EUA)
-- [ ] REG-02: Backend busca valores padrão de treino via BCB API (séries 432, 1837, 21859) e FRED API (FEDFUNDS, M2SL, INDPRO)
-- [ ] REG-03: Modelo OLS retorna taxa prevista USD/BRL, R², RMSE, coeficientes, matriz de correlação
-- [ ] REG-04: Runs de Regressão Dólar persistidos no Supabase (user_id, inputs, resultado, R²)
-- [ ] REG-05: Página Next.js Regressão Dólar com inputs editáveis (defaults via API), resultados, heatmap, gráfico real vs previsto
-- [ ] REG-06: FastAPI endpoint para Regressão Açúcar (Ridge/XGBoost selecionável, inputs: oferta/demanda, estoques, USDBRL, CL=F)
-- [ ] REG-07: Backend busca preços padrão via yfinance (SB=F, USDBRL=X, CL=F); dados de oferta/demanda via inputs manuais com defaults USDA aproximados
-- [ ] REG-08: Modelo retorna preço previsto SB=F com intervalo de incerteza, R², RMSE
-- [ ] REG-09: Runs de Regressão Açúcar persistidos no Supabase
-- [ ] REG-10: Página Next.js Regressão Açúcar com inputs editáveis, preço previsto com range, gráfico, histórico de runs
+- ✓ NAV-01: 9 páginas ocultas do sidebar Next.js — v2.1
+- ✓ NAV-02: Rotas das páginas ocultas acessíveis via URL — v2.1
+- ✓ REG-01 a REG-10: Regressão Dólar (OLS + BCB/FRED) e Regressão Açúcar (Ridge/XGBoost + yfinance/USDA) com histórico Supabase e páginas Next.js — v2.1
+
+### Validated (v2.2 — Melhorias do Cliente)
+
+- ✓ VOL-01: Volatilidade exibe EWMA e GARCH diária e anualizada (sqrt(252)) com labels claros — v2.2
+- ✓ BREAK-01: Breakeven com campos configuráveis Gasto Fixo Total e Gasto Variável por Unidade — v2.2
+- ✓ BS-01: Black-Scholes atualizado para SBN26/SBV26 (contratos não expirados) com sigma editável — v2.2
+- ✓ MC-01: Monte Carlo validado — drift GBM correto (mu - 0.5*sigma^2), PCT_BOUND=0.50, 10k paths — v2.2
+- ✓ VAR-01: VaR paramétrico EWMA validado — z-score left-tail, cache yfinance, VaR exibido como perda positiva — v2.2
+- ✓ FIX-01 a FIX-04: Página Mercado renomeada para Fixações com Estocástico Lento, RSI e Bollinger Bands configuráveis — v2.2
+- ✓ REG-01 a REG-02 (v2.2): Regressões atualizadas com dados live BCB/FRED/yfinance + USDA 2025 — v2.2
+- ✓ ATR-01 a ATR-05: Feature ATR completa — Supabase (usinas/atr_simulacoes + RLS), FastAPI (OLS calibration + 5 rotas), Next.js (/app/atr com form, métricas, histórico, admin) — v2.2
+
+### Active (v2.3 — next milestone)
 
 ### Out of Scope
 
