@@ -13,7 +13,7 @@ Milestone: v2.2 — Melhorias do Cliente
 Phase: 20-atr-acucar-total-recuperavel
 Plan: 03 (complete)
 Status: Phase 20 all plans complete — ATR migration, backend routes, and frontend page done
-Last activity: 2026-04-08 — 20-03 ATR frontend complete (approved)
+Last activity: 2026-04-09 — Completed quick task 1: fix ATR integration bugs INT-01, INT-02, INT-03
 
 Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
@@ -153,6 +153,12 @@ Carried forward from v1.0:
 ### Blockers/Concerns
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | fix ATR integration bugs INT-01, INT-02, INT-03 in frontend/app/app/atr/page.tsx and frontend/components/admin/AtrUsinasAdmin.tsx | 2026-04-09 | 448fd82 | [1-fix-atr-integration-bugs-int-01-int-02-i](.planning/quick/1-fix-atr-integration-bugs-int-01-int-02-i/) |
 
 ## Session Continuity
 
