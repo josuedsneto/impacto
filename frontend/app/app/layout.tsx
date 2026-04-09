@@ -32,6 +32,7 @@ const NAV_SECTIONS = [
       { href: "/app/noticias", label: "Notícias" },
       { href: "/app/regressao-dolar", label: "Regressão Dólar" },
       { href: "/app/regressao-acucar", label: "Regressão Açúcar" },
+      { href: "/app/atr", label: "ATR" },
       // { href: "/app/focus", label: "Focus BCB" },
       // { href: "/app/arima", label: "ARIMA" },
     ],

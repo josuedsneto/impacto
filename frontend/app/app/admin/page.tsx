@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SuggestionQueue } from '@/components/admin/SuggestionQueue'
 import { AdminConfig } from '@/components/admin/AdminConfig'
+import { AtrUsinasAdmin } from '@/components/admin/AtrUsinasAdmin'
 
 export default async function AdminPage() {
   const supabase = await createServerSupabaseClient()
@@ -21,6 +22,7 @@ export default async function AdminPage() {
       <h1 className="text-2xl font-semibold mb-6">Painel do Administrador</h1>
       <SuggestionQueue />
       <AdminConfig />
+      <AtrUsinasAdmin />
     </main>
   )
 }
