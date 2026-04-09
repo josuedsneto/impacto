@@ -55,7 +55,7 @@ export default function AtrPage() {
         if (!res.ok) {
           setUsinasError((data as { detail?: string }).detail ?? "Erro ao carregar usinas.");
         } else {
-          setUsinas(data as Usina[]);
+          setUsinas((data as { usinas: Usina[] }).usinas);
         }
       } catch {
         setUsinasError("Erro de conexão com o servidor.");
@@ -66,16 +66,24 @@ export default function AtrPage() {
     init();
   }, []);
 
+  useEffect(() => {
+    setHistoricoLoaded(false);
+    setHistoricoError(null);
+  }, [selectedUsinaId]);
+
   async function handleTabChange(value: string) {
     setActiveTab(value);
     if (value === "historico" && !historicoLoaded) {
+      if (!selectedUsinaId) {
+        // Cannot load historico without a selected usina
+        setHistoricoError("Selecione uma usina na aba Simular para ver o histórico.");
+        return;
+      }
       setHistoricoLoading(true);
       setHistoricoError(null);
       try {
         const token = await getAccessToken();
-        const url = selectedUsinaId
-          ? `${API}/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`
-          : `${API}/api/atr/historico`;
+        const url = `${API}/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`;
         const res = await fetch(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -83,7 +91,7 @@ export default function AtrPage() {
         if (!res.ok) {
           setHistoricoError((data as { detail?: string }).detail ?? "Erro ao carregar histórico.");
         } else {
-          setHistorico(data as HistoricoItem[]);
+          setHistorico((data as { historico: HistoricoItem[] }).historico);
           setHistoricoLoaded(true);
         }
       } catch {
