@@ -61,7 +61,7 @@ export function AtrUsinasAdmin() {
         setError((data as { detail?: string }).detail ?? "Erro ao carregar usinas.");
         return;
       }
-      setUsinas(data as Usina[]);
+      setUsinas((data as { usinas: Usina[] }).usinas);
     } catch {
       setError("Erro de conexão com o servidor.");
     } finally {
@@ -131,14 +131,13 @@ export function AtrUsinasAdmin() {
     setError(null);
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas/${encodeURIComponent(selectedUsinaId)}/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ user_id: targetUserId.trim() }),
-      });
+      const res = await fetch(
+        `${API}/api/admin/usinas/${encodeURIComponent(selectedUsinaId)}/usuarios/${encodeURIComponent(targetUserId.trim())}`,
+        {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
       const data = await res.json();
       if (!res.ok) {
         setError((data as { detail?: string }).detail ?? "Erro ao associar usuário.");
