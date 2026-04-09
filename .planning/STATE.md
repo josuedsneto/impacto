@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 Milestone: v2.2 — Melhorias do Cliente
 Phase: 20-atr-acucar-total-recuperavel
-Plan: 01 (complete)
-Status: Phase 20 Plan 01 complete — ATR migration SQL (usinas, user_usinas, atr_simulacoes) with RLS
-Last activity: 2026-04-08 — 20-01 ATR Supabase migration complete
+Plan: 03 (complete)
+Status: Phase 20 all plans complete — ATR migration, backend routes, and frontend page done
+Last activity: 2026-04-08 — 20-03 ATR frontend complete (approved)
 
 Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 
@@ -64,6 +64,8 @@ Progress: [░░░░░░░░░░░░] 0% (0/5 phases)
 | Phase 19-atualizacao-regressoes P01 | 2 | 2 tasks | 2 files |
 | Phase 19-atualizacao-regressoes P02 | 18 | 2 tasks | 2 files |
 | Phase 20-atr-acucar-total-recuperavel P01 | 1 | 1 tasks | 1 files |
+| Phase 20-atr-acucar-total-recuperavel P02 | 4 | 2 tasks | 2 files |
+| Phase 20-atr-acucar-total-recuperavel P03 | 3 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -155,5 +157,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-08
-Stopped at: Completed 20-01 (ATR migration — usinas, user_usinas, atr_simulacoes tables with RLS)
+Stopped at: Phase 20 complete, all 3 plans done (20-01 migration, 20-02 backend, 20-03 frontend)
 Resume file: None
