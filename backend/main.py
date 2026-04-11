@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, Literal, Optional
-from datetime import date as date_type, timedelta
+from datetime import date, timedelta
 import requests
 import yfinance as yf
 from supabase import create_client
@@ -86,8 +86,8 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
     import asyncio
     from bcb import Expectativas
 
-    current_year = str(date_type.today().year)
-    today = date_type.today()
+    current_year = str(date.today().year)
+    today = date.today()
     week_ago = today - timedelta(days=9)  # buffer for weekends
 
     indicators = ["IPCA", "Câmbio", "Selic", "PIB Total"]
@@ -323,8 +323,8 @@ class AtrShareBody(BaseModel):
 async def market_prices(
     request: Request,
     ticker: str,
-    start: date_type,
-    end: date_type,
+    start: date,
+    end: date,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """
@@ -738,7 +738,7 @@ async def upsert_params(
     if not update_dict:
         raise HTTPException(status_code=400, detail="No params provided")
 
-    update_dict["updated_at"] = date_type.today().isoformat()
+    update_dict["updated_at"] = date.today().isoformat()
 
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     client.table("user_parameters").upsert(
@@ -838,7 +838,7 @@ async def admin_update_config(
     payload = {
         "key": key,
         "value": body.value,
-        "updated_at": date_type.today().isoformat(),
+        "updated_at": date.today().isoformat(),
     }
     if body.description is not None:
         payload["description"] = body.description
@@ -1070,7 +1070,7 @@ async def get_breakeven(
     fator_conversao = float((config_row.data[0] if config_row.data else {}).get("value", "1.12045"))
 
     # Fetch latest prices from Supabase cache
-    today = date_type.today()
+    today = date.today()
     start = today - timedelta(days=7)
     sugar_rows = get_prices("SB=F", start, today)
     usd_rows = get_prices("USDBRL=X", start, today)
@@ -1507,8 +1507,8 @@ async def get_metas(
 ):
     """MTM history and heatmap data for sugar price targets."""
     FATOR = 22.0462 * 1.04
-    end = date_type.today()
-    start = date_type(2013, 1, 1)
+    end = date.today()
+    start = date(2013, 1, 1)
 
     sugar_rows = get_prices("SB=F", start, end)
     fx_rows = get_prices("USDBRL=X", start, end)
@@ -1563,7 +1563,7 @@ async def jump_diffusion(
     """Merton jump-diffusion price simulation."""
     import numpy as np
     ticker = validate_ticker(body.ticker)
-    end = date_type.today()
+    end = date.today()
     start = end - timedelta(days=3 * 365)
     rows = get_prices(ticker, start, end)
 
