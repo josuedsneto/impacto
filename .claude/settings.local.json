@@ -8,7 +8,17 @@
       "Skill(gsd:pause-work)",
       "Bash(ls supabase/migrations/*.sql)",
       "Bash(node C:/Users/netin/.claude/get-shit-done/bin/gsd-tools.cjs state advance-plan)",
-      "Bash(node C:/Users/netin/.claude/get-shit-done/bin/gsd-tools.cjs requirements mark-complete INFRA-02)"
+      "Bash(node C:/Users/netin/.claude/get-shit-done/bin/gsd-tools.cjs requirements mark-complete INFRA-02)",
+      "Bash(node:*)",
+      "Bash([ -f \"C:/Users/netin/OneDrive/Documentos/Code/impacto/.planning/phases/13-navigation-cleanup/13-01-SUMMARY.md\" ])",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Skill(gsd:execute-phase)",
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('pages/06_Volatilidade.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(git commit -m 'docs\\(16-02\\): complete correcoes-pontuais-02 plan:*)",
+      "Bash(ls .planning/phases/16-export-csv-pdf/*SUMMARY*)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('Goal:', d['goal']\\); print\\('Reqs:', d['section']\\)\")",
+      "Skill(gsd:plan-phase)"
     ]
   }
 }
