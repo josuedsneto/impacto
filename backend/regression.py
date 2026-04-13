@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # BCB SGS series codes
 _BCB_SERIES = {
     "selic": 432,          # Selic meta rate (% a.a.)
-    "m2_bcb": 1837,        # M2 monetary aggregate (R$ bi)
+    "m2_bcb": 27839,       # M2 monetary aggregate — 27839 is the current active series
     "prod_industrial": 21859,  # Industrial Production index
 }
 
@@ -225,9 +225,14 @@ def run_dolar_regression(inputs: dict) -> dict:
     Returns:
         dict with taxa_prevista, r2, rmse, coeficientes, correlacao
     """
-    feature_cols = ["selic", "m2_bcb", "prod_industrial", "fed_funds", "m2_fred", "indpro"]
+    all_feature_cols = ["selic", "m2_bcb", "prod_industrial", "fed_funds", "m2_fred", "indpro"]
 
     df = fetch_dolar_history(months=72)
+
+    # Use only features that are actually present in the history DataFrame
+    feature_cols = [c for c in all_feature_cols if c in df.columns]
+    if len(feature_cols) < 2:
+        raise ValueError(f"Dados insuficientes: apenas {len(feature_cols)} features disponíveis após merge")
 
     y = df["taxa_dolar"].values
     X = df[feature_cols].values
@@ -237,8 +242,8 @@ def run_dolar_regression(inputs: dict) -> dict:
 
     rmse = float(np.sqrt(mean_squared_error(y, fitted.fittedvalues)))
 
-    # Predict using user inputs
-    input_row = pd.DataFrame([{col: inputs[col] for col in feature_cols}])
+    # Predict using user inputs — use 0 for any feature missing from inputs
+    input_row = pd.DataFrame([{col: inputs.get(col, 0) for col in feature_cols}])
     input_with_const = sm.add_constant(input_row, has_constant="add")
     taxa_prevista = float(fitted.predict(input_with_const)[0])
 
@@ -246,8 +251,7 @@ def run_dolar_regression(inputs: dict) -> dict:
     corr_df = df[["taxa_dolar"] + feature_cols]
     correlacao = corr_df.corr().round(4).to_dict()
 
-    # Coefficient dict — rename const to intercept for clarity
-    coef_dict = fitted.params.to_dict()
+    # Coefficient dict
     params_names = ["const"] + feature_cols
     named_coefs = {
         params_names[i] if i < len(params_names) else f"x{i}": float(v)
