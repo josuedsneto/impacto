@@ -117,12 +117,11 @@ def get_dolar_defaults() -> dict:
     Keys: selic, m2_bcb, prod_industrial, fed_funds, m2_fred, indpro
     Returns None for any key that fails to fetch — frontend tolerates nulls.
     """
-    from bcb import SGS  # lazy import — matches pattern in main.py
-
     result: dict = {}
 
     # BCB latest values
     try:
+        from bcb import SGS  # lazy import inside try so ImportError is caught
         sgs = SGS()
         today = date.today()
         start = today - timedelta(days=120)  # last 4 months to ensure monthly series have a value
@@ -155,8 +154,6 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
 
     Raises ValueError if fewer than 24 rows remain after merging all series.
     """
-    from bcb import SGS  # lazy import
-
     today = date.today()
     start = today - timedelta(days=months * 31)
     start_str = start.strftime("%Y-%m-%d")
@@ -164,6 +161,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     # ── BCB monthly data ──────────────────────────────────────────────────────
     bcb_df = pd.DataFrame()
     try:
+        from bcb import SGS  # lazy import inside try so ImportError is caught
         sgs = SGS()
         raw = sgs.get(list(_BCB_SERIES.values()), start=start, end=today)
         # Resample to month-end and forward-fill (some series are daily)
