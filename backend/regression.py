@@ -121,14 +121,13 @@ def get_dolar_defaults() -> dict:
 
     # BCB latest values
     try:
-        from bcb import SGS  # lazy import inside try so ImportError is caught
-        sgs = SGS()
+        from bcb import sgs  # lazy import inside try so ImportError is caught
         today = date.today()
         start = today - timedelta(days=120)  # last 4 months to ensure monthly series have a value
-        data = sgs.get(list(_BCB_SERIES.values()), start=start, end=today)
-        for key, code in _BCB_SERIES.items():
+        data = sgs.get({key: code for key, code in _BCB_SERIES.items()}, start=start, end=today)
+        for key in _BCB_SERIES:
             try:
-                col = data[code].dropna()
+                col = data[key].dropna()
                 result[key] = float(col.iloc[-1]) if not col.empty else None
             except Exception:
                 result[key] = None
@@ -161,13 +160,12 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     # ── BCB monthly data ──────────────────────────────────────────────────────
     bcb_df = pd.DataFrame()
     try:
-        from bcb import SGS  # lazy import inside try so ImportError is caught
-        sgs = SGS()
-        raw = sgs.get(list(_BCB_SERIES.values()), start=start, end=today)
-        # Resample to month-end and forward-fill (some series are daily)
-        for key, code in _BCB_SERIES.items():
-            if code in raw.columns:
-                series = raw[code].dropna().resample("ME").last()
+        from bcb import sgs  # lazy import inside try so ImportError is caught
+        raw = sgs.get({key: code for key, code in _BCB_SERIES.items()}, start=start, end=today)
+        # Resample to month-end (some series are daily)
+        for key in _BCB_SERIES:
+            if key in raw.columns:
+                series = raw[key].dropna().resample("ME").last()
                 series.index = series.index.strftime("%Y-%m")
                 bcb_df[key] = series
     except Exception as exc:
@@ -329,7 +327,7 @@ def fetch_acucar_history() -> pd.DataFrame:
             raw = yf.download(
                 ticker,
                 start="2014-01-01",
-                interval="1y",
+                interval="1mo",  # "1y" removed in yfinance 1.2+; resample to annual below
                 progress=False,
                 auto_adjust=True,
             )
@@ -337,10 +335,10 @@ def fetch_acucar_history() -> pd.DataFrame:
                 logger.warning("Empty yfinance response for %s", ticker)
                 price_data[key] = pd.Series(dtype=float)
                 continue
-            close = raw["Close"].dropna()
-            # Extract year from index
+            close = raw["Close"].squeeze().dropna()
+            # Resample monthly → annual year-end, then extract year as index
+            close = close.resample("YE").last().dropna()
             close.index = pd.DatetimeIndex(close.index).year
-            # Keep only one value per year (last in case of duplicates)
             close = close.groupby(close.index).last()
             price_data[key] = close
         except Exception as exc:
