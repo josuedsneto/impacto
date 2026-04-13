@@ -119,20 +119,21 @@ def get_dolar_defaults() -> dict:
     """
     result: dict = {}
 
-    # BCB latest values
+    # BCB latest values — fetch each series individually so one failure doesn't kill the rest
     try:
         from bcb import sgs  # lazy import inside try so ImportError is caught
         today = date.today()
         start = today - timedelta(days=120)  # last 4 months to ensure monthly series have a value
-        data = sgs.get({key: code for key, code in _BCB_SERIES.items()}, start=start, end=today)
-        for key in _BCB_SERIES:
+        for key, code in _BCB_SERIES.items():
             try:
-                col = data[key].dropna()
+                data = sgs.get(code, start=start, end=today)
+                col = data.dropna() if isinstance(data, pd.Series) else data.iloc[:, 0].dropna()
                 result[key] = float(col.iloc[-1]) if not col.empty else None
-            except Exception:
+            except Exception as exc:
+                logger.warning("BCB defaults fetch failed for %s (%s): %s", key, code, exc)
                 result[key] = None
     except Exception as exc:
-        logger.warning("BCB defaults fetch failed: %s", exc)
+        logger.warning("BCB import failed: %s", exc)
         for key in _BCB_SERIES:
             result[key] = None
 
@@ -157,19 +158,21 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     start = today - timedelta(days=months * 31)
     start_str = start.strftime("%Y-%m-%d")
 
-    # ── BCB monthly data ──────────────────────────────────────────────────────
+    # ── BCB monthly data — fetch each series individually ─────────────────────
     bcb_df = pd.DataFrame()
     try:
         from bcb import sgs  # lazy import inside try so ImportError is caught
-        raw = sgs.get({key: code for key, code in _BCB_SERIES.items()}, start=start, end=today)
-        # Resample to month-end (some series are daily)
-        for key in _BCB_SERIES:
-            if key in raw.columns:
-                series = raw[key].dropna().resample("ME").last()
+        for key, code in _BCB_SERIES.items():
+            try:
+                raw = sgs.get(code, start=start, end=today)
+                s = raw.dropna() if isinstance(raw, pd.Series) else raw.iloc[:, 0].dropna()
+                series = s.resample("ME").last()
                 series.index = series.index.strftime("%Y-%m")
                 bcb_df[key] = series
+            except Exception as exc:
+                logger.error("BCB history fetch failed for %s (%s): %s", key, code, exc)
     except Exception as exc:
-        logger.error("BCB history fetch failed: %s", exc)
+        logger.error("BCB import failed: %s", exc)
 
     # ── FRED monthly data ─────────────────────────────────────────────────────
     fred_df = pd.DataFrame()

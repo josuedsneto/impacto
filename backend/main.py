@@ -264,7 +264,7 @@ async def acucar_run(
         os.environ["SUPABASE_SERVICE_ROLE_KEY"],
     )
     supa.table("regression_runs").insert({
-        "user_id": str(user["sub"]),
+        "user_id": str(user["id"]),
         "tipo": "acucar",
         "inputs": {**inputs, "model": body.model},
         "resultado": {
