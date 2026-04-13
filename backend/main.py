@@ -68,6 +68,58 @@ app.add_middleware(
 )
 
 
+# ── Pydantic models ─────────────────────────────────────────────────────────────
+
+class SimulationRequest(BaseModel):
+    ticker: str
+    preco_inicial: float
+    dias_simulados: int = Field(default=252, ge=1, le=1000)
+    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
+    pct_bound: float = Field(default=0.50, gt=0, le=2)
+    label: str | None = None
+
+
+class TickerSuggestRequest(BaseModel):
+    ticker: str
+    nome: str = ""        # human-readable name, optional
+    tipo: Literal["commodity", "fx", "acao", "indice"] = "commodity"
+
+
+class DolarRegressionRequest(BaseModel):
+    selic: float
+    m2_bcb: float
+    prod_industrial: float
+    fed_funds: float
+    m2_fred: float
+    indpro: float
+
+
+class AcucarRunRequest(BaseModel):
+    model: Literal["ridge", "xgboost"] = "ridge"
+    estoque_inicial: float
+    producao: float
+    demanda: float
+    estoque_final: float
+    estoque_uso_pct: float
+    usdbrl: float
+    cl_f: float
+
+
+class AtrSimulateBody(BaseModel):
+    usina_id: str
+    chuva_mm: float = Field(gt=0)
+    impureza_pct: float = Field(gt=0, lt=100)
+    volume_moagem: Optional[float] = Field(None, gt=0)
+
+
+class AtrUsinaCreateBody(BaseModel):
+    nome: str = Field(min_length=2, max_length=100)
+
+
+class AtrShareBody(BaseModel):
+    compartilhado: bool
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
@@ -260,58 +312,6 @@ async def me(user: Annotated[dict, Depends(get_current_user)]):
 async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
     """Admin-only route — verifies role enforcement."""
     return {"message": "admin ok", "user": user["email"]}
-
-
-# ── Pydantic models ─────────────────────────────────────────────────────────────
-
-class SimulationRequest(BaseModel):
-    ticker: str
-    preco_inicial: float
-    dias_simulados: int = Field(default=252, ge=1, le=1000)
-    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
-    pct_bound: float = Field(default=0.50, gt=0, le=2)
-    label: str | None = None
-
-
-class TickerSuggestRequest(BaseModel):
-    ticker: str
-    nome: str = ""        # human-readable name, optional
-    tipo: Literal["commodity", "fx", "acao", "indice"] = "commodity"
-
-
-class DolarRegressionRequest(BaseModel):
-    selic: float
-    m2_bcb: float
-    prod_industrial: float
-    fed_funds: float
-    m2_fred: float
-    indpro: float
-
-
-class AcucarRunRequest(BaseModel):
-    model: Literal["ridge", "xgboost"] = "ridge"
-    estoque_inicial: float
-    producao: float
-    demanda: float
-    estoque_final: float
-    estoque_uso_pct: float
-    usdbrl: float
-    cl_f: float
-
-
-class AtrSimulateBody(BaseModel):
-    usina_id: str
-    chuva_mm: float = Field(gt=0)
-    impureza_pct: float = Field(gt=0, lt=100)
-    volume_moagem: Optional[float] = Field(None, gt=0)
-
-
-class AtrUsinaCreateBody(BaseModel):
-    nome: str = Field(min_length=2, max_length=100)
-
-
-class AtrShareBody(BaseModel):
-    compartilhado: bool
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
