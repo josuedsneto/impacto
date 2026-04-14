@@ -9,6 +9,7 @@ const NAV_SECTIONS = [
   {
     label: "Fixações",
     items: [
+      { href: "/app/fixacoes", label: "Mercado" },
       { href: "/app/simulation", label: "Monte Carlo" },
       // { href: "/app/jump-diffusion", label: "Jump Diffusion" },
       // { href: "/app/metas", label: "Metas" },
