@@ -28,6 +28,7 @@ _yf_session.headers.update({
 from pydantic import BaseModel, Field
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
+from analysis import compute_analysis, IndicatorConfig
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
@@ -335,6 +336,76 @@ async def market_prices(
         raise HTTPException(status_code=400, detail="end must be >= start")
     rows = get_prices(ticker, start, end)
     return {"ticker": ticker, "start": start.isoformat(), "end": end.isoformat(), "rows": rows}
+
+
+@app.get("/api/market/analysis")
+@limiter.limit("20/minute")
+async def market_analysis(
+    request: Request,
+    ticker: str,
+    start: date,
+    end: date,
+    user: Annotated[dict, Depends(get_current_user)],
+    indicators: str = "",
+    rsi_period: int = 14,
+    bb_window: int = 20,
+    bb_std: float = 2.0,
+    macd_fast: int = 12,
+    macd_slow: int = 26,
+    macd_signal: int = 9,
+    stoch_k: int = 14,
+    stoch_d: int = 3,
+    cci_period: int = 20,
+    sma_periods: str = "",
+    ema_periods: str = "",
+):
+    """
+    Return OHLCV + computed technical indicators + buy/sell signals.
+    Data is fetched via market_cache (Supabase-backed, no duplicate yfinance calls).
+    """
+    import pandas as pd
+
+    ticker = validate_ticker(ticker)
+    if end < start:
+        raise HTTPException(status_code=400, detail="end must be >= start")
+
+    selected = [i.strip().lower() for i in indicators.split(",") if i.strip()]
+    sma_list = [int(p.strip()) for p in sma_periods.split(",") if p.strip().isdigit()]
+    ema_list = [int(p.strip()) for p in ema_periods.split(",") if p.strip().isdigit()]
+
+    cfg = IndicatorConfig(
+        indicators=selected,
+        rsi_period=rsi_period,
+        bb_window=bb_window,
+        bb_std=bb_std,
+        macd_fast=macd_fast,
+        macd_slow=macd_slow,
+        macd_signal=macd_signal,
+        stoch_k=stoch_k,
+        stoch_d=stoch_d,
+        cci_period=cci_period,
+        sma_periods=sma_list,
+        ema_periods=ema_list,
+    )
+
+    raw_rows = get_prices(ticker, start, end)
+    if not raw_rows:
+        return {"ticker": ticker, "rows": [], "signals": []}
+
+    df = pd.DataFrame(raw_rows)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date").sort_index()
+    for col in ["open", "high", "low", "close", "volume"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    enriched, signals = compute_analysis(df, cfg)
+
+    enriched = enriched.reset_index()
+    enriched["date"] = enriched["date"].dt.strftime("%Y-%m-%d")
+    rows = enriched.where(enriched.notna(), other=None).to_dict(orient="records")
+
+    return {"ticker": ticker, "rows": rows, "signals": signals}
 
 
 @app.get("/api/market/status")
