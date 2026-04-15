@@ -2,10 +2,9 @@ altair
 numpy
 pandas
 pydeck
-streamlit==1.42.0
 matplotlib
 seaborn
-yfinance<1.0.0
+yfinance
 scipy
 plotly
 scikit-learn
