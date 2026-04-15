@@ -1058,6 +1058,24 @@ async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_targ
     return {"ok": True}
 
 
+@app.get("/api/admin/usuarios")
+@limiter.limit("10/minute")
+async def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: lista todos os usuários cadastrados no Supabase Auth."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    users = supa.auth.admin.list_users()
+    return {"usuarios": [{"id": u.id, "email": u.email} for u in users]}
+
+
+@app.get("/api/admin/usinas/{usina_id}/usuarios")
+@limiter.limit("20/minute")
+async def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+    """Admin: lista IDs dos usuários associados a uma usina."""
+    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    rows = supa.table("user_usinas").select("user_id").eq("usina_id", usina_id).execute().data
+    return {"user_ids": [r["user_id"] for r in rows]}
+
+
 # ── VaR ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/var")
