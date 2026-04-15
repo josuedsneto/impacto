@@ -401,9 +401,11 @@ async def market_analysis(
 
     enriched, signals = compute_analysis(df, cfg)
 
+    import json as _json
+
     enriched = enriched.reset_index()
     enriched["date"] = enriched["date"].dt.strftime("%Y-%m-%d")
-    rows = enriched.where(enriched.notna(), other=None).to_dict(orient="records")
+    rows = _json.loads(enriched.to_json(orient="records"))
 
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
