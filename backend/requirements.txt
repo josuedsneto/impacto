@@ -6,8 +6,8 @@ supabase==2.10.0
 PyJWT==2.10.1
 cryptography==44.0.0
 yfinance<1.0.0
-numpy<2.0
-pandas-ta==0.3.14b0
+numpy
+ta
 scipy==1.15.0
 python-bcb
 statsmodels>=0.14.5
