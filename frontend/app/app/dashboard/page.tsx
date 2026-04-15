@@ -4,7 +4,6 @@ import { PriceCard } from "@/components/dashboard/PriceCard";
 import { NewsFeed } from "@/components/dashboard/NewsFeed";
 import { FocusWidget } from "@/components/dashboard/FocusWidget";
 import { AccountSummary } from "@/components/dashboard/AccountSummary";
-import { ToolGrid } from "@/components/dashboard/ToolGrid";
 import { UserMenu } from "@/components/dashboard/UserMenu";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -179,7 +178,7 @@ export default async function DashboardPage() {
             {marketStatus.open ? "Mercado aberto" : "Mercado fechado"}
           </div>
           {/* User */}
-          <UserMenu email={user.email!} initials={initials} />
+          <UserMenu email={user.email!} initials={initials} role={user.app_metadata?.role} />
         </div>
       </div>
 
@@ -263,17 +262,6 @@ export default async function DashboardPage() {
               simCountMonth={summary.simCountMonth}
             />
           </div>
-        </div>
-
-        {/* Section: Tools */}
-        <div>
-          <p
-            className="uppercase font-bold mb-3"
-            style={{ fontSize: 11, color: "#6b7280", letterSpacing: "1.5px" }}
-          >
-            Ferramentas
-          </p>
-          <ToolGrid />
         </div>
 
       </div>

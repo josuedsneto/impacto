@@ -14,9 +14,10 @@ import {
 interface UserMenuProps {
   email: string;
   initials: string;
+  role?: string;
 }
 
-export function UserMenu({ email, initials }: UserMenuProps) {
+export function UserMenu({ email, initials, role }: UserMenuProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -64,6 +65,14 @@ export function UserMenu({ email, initials }: UserMenuProps) {
           <p className="text-xs text-muted-foreground truncate">{email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {role === "admin" && (
+          <DropdownMenuItem
+            onClick={() => router.push("/app/admin")}
+            className="cursor-pointer"
+          >
+            Admin
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onClick={handleLogout}
           className="text-red-600 focus:text-red-600 cursor-pointer"
