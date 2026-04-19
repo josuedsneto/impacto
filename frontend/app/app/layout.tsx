@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/dashboard/UserMenu";
+import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -94,7 +97,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="flex-shrink-0 z-50">
         {/* Top bar */}
         <div
-          className="flex items-center justify-end px-7"
+          className="flex items-center justify-between px-7"
           style={{
             background: "#fff",
             borderBottom: "1px solid #e5e7eb",
@@ -102,7 +105,26 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             paddingBottom: 14,
           }}
         >
-          <div className="flex items-center gap-4">
+          {/* Brand */}
+          <Link
+            href="/app/dashboard"
+            className="flex items-center gap-2.5 transition-opacity duration-150 hover:opacity-80"
+            aria-label="Ir para o dashboard"
+          >
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="26" height="26" rx="7" fill="#16a34a"/>
+              <line x1="13" y1="22" x2="13" y2="6" stroke="#bbf7d0" strokeWidth="2.2" strokeLinecap="round"/>
+              <circle cx="13" cy="18" r="1.5" fill="#4ade80"/>
+              <circle cx="13" cy="13" r="1.5" fill="#4ade80"/>
+              <circle cx="13" cy="8" r="1.5" fill="#4ade80"/>
+              <path d="M13 18 Q18 15 17 10" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M13 13 Q8 10 9 5" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M13 8 Q17 6 16 3" stroke="#86efac" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+            </svg>
+            <span style={{ color: "#111827", fontWeight: 800, fontSize: 16, letterSpacing: "-0.3px" }}>Sugarcane</span>
+          </Link>
+
+          <div className="flex items-center gap-3">
             {/* Market status badge */}
             <div
               className="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold"
@@ -123,6 +145,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               />
               {marketStatus.open ? "Mercado aberto" : "Mercado fechado"}
             </div>
+            <ThemeToggle />
             {/* User menu */}
             <UserMenu
               email={user.email!}
@@ -159,12 +182,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       {/* ── Body ── */}
-      <div className="flex flex-1 overflow-hidden">
-        <AppSidebar />
-        <main className="flex-1 overflow-auto" style={{ background: "#f4f6f9" }}>
-          {children}
-        </main>
-      </div>
+      <TooltipProvider delayDuration={300}>
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar />
+          <main className="flex-1 overflow-auto" style={{ background: "#f4f6f9" }}>
+            {children}
+          </main>
+        </div>
+      </TooltipProvider>
 
     </div>
   );
