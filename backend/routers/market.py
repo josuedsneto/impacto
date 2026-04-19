@@ -9,12 +9,10 @@ from supabase import create_client
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from analysis import compute_analysis, IndicatorConfig
-from routers.shared import limiter, validate_ticker, make_yf_session
+from routers.shared import limiter, validate_ticker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-_yf_session = make_yf_session()
 
 
 class TickerSuggestRequest(BaseModel):
@@ -126,7 +124,7 @@ async def market_status(
 
     def _fetch():
         try:
-            t = yf.Ticker(ticker, session=_yf_session)
+            t = yf.Ticker(ticker)
             return getattr(t.fast_info, "market_state", None) or "CLOSED"
         except Exception:
             return "CLOSED"
@@ -150,7 +148,7 @@ async def suggest_ticker(
     ticker = validate_ticker(body.ticker)
 
     def _probe():
-        return yf.download(ticker, period="5d", progress=False, auto_adjust=True, session=_yf_session)
+        return yf.download(ticker, period="5d", progress=False, auto_adjust=True)
 
     loop = asyncio.get_running_loop()
     try:

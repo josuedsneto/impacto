@@ -3,12 +3,11 @@ import time as _time
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from auth import get_current_user
-from routers.shared import limiter, validate_ticker, make_yf_session
+from routers.shared import limiter, validate_ticker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_yf_session = make_yf_session()
 _corr_cache: dict = {}
 _CORR_TTL = 3600  # 1 hour
 
@@ -42,7 +41,7 @@ async def get_correlation(
         return _corr_cache[cache_key]["data"]
 
     def _fetch():
-        data = yf.download(ticker_list, period=period, progress=False, auto_adjust=True, session=_yf_session)
+        data = yf.download(ticker_list, period=period, progress=False, auto_adjust=True)
         if isinstance(data.columns, pd.MultiIndex):
             closes = data["Close"]
         else:

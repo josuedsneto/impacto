@@ -7,12 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from auth import get_current_user
 from market_cache import get_prices
-from routers.shared import limiter, validate_ticker, make_yf_session
+from routers.shared import limiter, validate_ticker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-_yf_session = make_yf_session()
 
 # ARIMA pre-computation cache: key = f"{ticker}_{steps}", val = {ts, data}
 _arima_cache: dict = {}
@@ -51,7 +49,7 @@ async def get_arima(
         return _arima_cache[cache_key]["data"]
 
     def _fetch():
-        return yf.download(ticker, period="2y", progress=False, auto_adjust=True, session=_yf_session)
+        return yf.download(ticker, period="2y", progress=False, auto_adjust=True)
 
     loop = asyncio.get_running_loop()
     data = await loop.run_in_executor(None, _fetch)
@@ -114,7 +112,7 @@ async def get_volatility(
         return _vol_cache[ticker]["data"]
 
     def _fetch():
-        return yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
+        return yf.download(ticker, period="1y", progress=False, auto_adjust=True)
 
     loop = asyncio.get_running_loop()
     data = await loop.run_in_executor(None, _fetch)

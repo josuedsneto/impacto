@@ -8,12 +8,10 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from auth import get_current_user
 from market_cache import get_prices
-from routers.shared import limiter, validate_ticker, make_yf_session
+from routers.shared import limiter, validate_ticker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-_yf_session = make_yf_session()
 
 # TTL caches
 _var_cache: dict = {}        # key: f"{ticker}_{confidence}_{horizon}"
@@ -51,7 +49,7 @@ async def get_var(
     import yfinance as yf
 
     def _fetch():
-        return yf.download(ticker, period="1y", progress=False, auto_adjust=True, session=_yf_session)
+        return yf.download(ticker, period="1y", progress=False, auto_adjust=True)
 
     loop = asyncio.get_running_loop()
     data = await loop.run_in_executor(None, _fetch)
@@ -193,7 +191,7 @@ async def get_stress(
     ticker = validate_ticker(ticker)
 
     def _fetch():
-        return yf.download(ticker, period="max", progress=False, auto_adjust=True, session=_yf_session)
+        return yf.download(ticker, period="max", progress=False, auto_adjust=True)
 
     loop = asyncio.get_running_loop()
     data = await loop.run_in_executor(None, _fetch)
