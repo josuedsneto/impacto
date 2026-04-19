@@ -17,7 +17,10 @@ _JWK_JSON = os.environ.get("SUPABASE_JWT_JWK", "")
 def _load_public_key():
     if not _JWK_JSON:
         return None
-    return ECAlgorithm.from_jwk(_JWK_JSON)
+    try:
+        return ECAlgorithm.from_jwk(_JWK_JSON)
+    except Exception as exc:
+        raise RuntimeError(f"SUPABASE_JWT_JWK inválido: {exc}") from exc
 
 
 _PUBLIC_KEY = _load_public_key()
@@ -46,8 +49,8 @@ def verify_jwt(
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado")
-    except jwt.InvalidTokenError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token inválido: {exc}")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
     return payload
 
 

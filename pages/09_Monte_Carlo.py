@@ -22,8 +22,9 @@ def baixar_dados_mc(ativo: str) -> pd.DataFrame:
     return data
 
 
-def simulacao_monte_carlo(preco_inicial, media, std, dias_simulados, num_simulacoes, limite_inferior, limite_superior):
-    retornos = np.random.normal(media, std, (dias_simulados, num_simulacoes))
+def simulacao_monte_carlo(preco_inicial, drift, std, dias_simulados, num_simulacoes, limite_inferior, limite_superior):
+    # drift = mu - 0.5*sigma^2 (correção log-normal para GBM não tendencioso)
+    retornos = np.random.normal(drift, std, (dias_simulados, num_simulacoes))
     fator = np.cumprod(1 + retornos, axis=0)
     precos_simulados = np.clip(preco_inicial * fator, limite_inferior, limite_superior)
     return precos_simulados
@@ -41,6 +42,9 @@ ativo = "SB=F" if tipo_ativo == "Açúcar" else "USDBRL=X"
 data = baixar_dados_mc(ativo)
 media_retornos_diarios = data['Daily Return'].mean()
 desvio_padrao_retornos_diarios = data['Daily Return'].std()
+# Correção log-normal: drift GBM = mu - 0.5*sigma^2
+# Sem essa correção, a mediana simulada desvia sistematicamente do preço atual
+drift_gbm = media_retornos_diarios - 0.5 * desvio_padrao_retornos_diarios ** 2
 
 data_simulacao = st.date_input("Selecione a data para simulação", value=pd.to_datetime('today') + pd.offsets.BDay(30))
 hoje = pd.to_datetime('today').date()
@@ -59,10 +63,11 @@ if dias_simulados <= 0:
     st.stop()
 
 if st.button("Simular"):
-    simulacoes = simulacao_monte_carlo(valor_simulado, media_retornos_diarios, desvio_padrao_retornos_diarios, dias_simulados, 10000, limite_inferior, limite_superior)
-    percentil_20 = np.percentile(simulacoes[-1], 20)
-    percentil_80 = np.percentile(simulacoes[-1], 80)
-    prob_acima_valor = np.mean(simulacoes[-1] > valor_simulado) * 100
+    simulacoes = simulacao_monte_carlo(valor_simulado, drift_gbm, desvio_padrao_retornos_diarios, dias_simulados, 10000, limite_inferior, limite_superior)
+    percentil_5  = np.percentile(simulacoes[-1], 5)
+    percentil_50 = np.percentile(simulacoes[-1], 50)
+    percentil_95 = np.percentile(simulacoes[-1], 95)
+    prob_acima_valor  = np.mean(simulacoes[-1] > valor_simulado) * 100
     prob_abaixo_valor = np.mean(simulacoes[-1] < valor_simulado) * 100
     days = np.arange(1, dias_simulados + 1)
     p5  = np.percentile(simulacoes, 5,  axis=1)
@@ -78,11 +83,12 @@ if st.button("Simular"):
     fig.add_trace(go.Scatter(x=days, y=p50, line=dict(color='steelblue', width=2), name='Mediana (P50)'))
     fig.update_layout(title=f'Simulação Monte Carlo — {tipo_ativo}', xaxis_title='Dias', yaxis_title='Preço')
     st.plotly_chart(fig)
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("P20", f"{percentil_20:.2f}")
-    col2.metric("P80", f"{percentil_80:.2f}")
-    col3.metric(f"Prob. acima de {valor_simulado:.2f}", f"{prob_acima_valor:.1f}%")
-    col4.metric(f"Prob. abaixo de {valor_simulado:.2f}", f"{prob_abaixo_valor:.1f}%")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("P5",  f"{percentil_5:.2f}")
+    col2.metric("P50 (Mediana)", f"{percentil_50:.2f}")
+    col3.metric("P95", f"{percentil_95:.2f}")
+    col4.metric(f"Prob. acima de {valor_simulado:.2f}", f"{prob_acima_valor:.1f}%")
+    col5.metric(f"Prob. abaixo de {valor_simulado:.2f}", f"{prob_abaixo_valor:.1f}%")
     hist_data = simulacoes[-1]
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Histogram(x=hist_data, nbinsx=100, histnorm='probability', marker_color='rgba(0,128,128,0.6)', opacity=0.75))

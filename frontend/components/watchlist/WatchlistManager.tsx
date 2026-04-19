@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { createBrowserClient } from "@supabase/ssr";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -119,7 +121,9 @@ export default function WatchlistManager() {
 
       <div className="flex gap-2 items-start">
         <div className="flex flex-col gap-1">
+          <Label htmlFor="watchlist-add">Adicionar ativo <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Pressione Enter ou clique em Adicionar" /></Label>
           <Input
+            id="watchlist-add"
             placeholder="Ex: SB=F"
             value={addInput}
             onChange={(e) => setAddInput(e.target.value)}

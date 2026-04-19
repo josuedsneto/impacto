@@ -1,1 +1,13 @@
 .streamlit/
+ssh-key-2026-03-23.key
+ssh-key-2026-03-23.key.pub
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.key
+*.pem

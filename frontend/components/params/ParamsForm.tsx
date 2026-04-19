@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { createBrowserClient } from "@supabase/ssr";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -113,7 +114,7 @@ export default function ParamsForm() {
       <p className="text-lg font-semibold">Parâmetros por Ativo</p>
 
       <div className="space-y-1">
-        <Label htmlFor="params-ticker">Ativo</Label>
+        <Label htmlFor="params-ticker">Ativo <FieldTooltip text="Ativo cujos parâmetros deseja personalizar" /></Label>
         <select
           id="params-ticker"
           value={ticker}
@@ -131,7 +132,7 @@ export default function ParamsForm() {
       ) : (
         <>
           <div className="space-y-1">
-            <Label htmlFor="params-volatilidade">Volatilidade customizada (0–5)</Label>
+            <Label htmlFor="params-volatilidade">Volatilidade customizada (0–5) <FieldTooltip text="Substitui a volatilidade histórica calculada. Deixe em branco para usar a automática" /></Label>
             <Input
               id="params-volatilidade"
               type="number"
@@ -146,7 +147,7 @@ export default function ParamsForm() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="params-taxa">Taxa livre de risco (-0.5–1)</Label>
+            <Label htmlFor="params-taxa">Taxa livre de risco (-0.5–1) <FieldTooltip text="Taxa Selic ou outra taxa de referência anualizada" /></Label>
             <Input
               id="params-taxa"
               type="number"
@@ -161,7 +162,7 @@ export default function ParamsForm() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="params-pct">PCT Bound preferido (0.05–2)</Label>
+            <Label htmlFor="params-pct">PCT Bound preferido (0.05–2) <FieldTooltip text="Valor padrão de PCT Bound ao criar simulações para este ativo" /></Label>
             <Input
               id="params-pct"
               type="number"

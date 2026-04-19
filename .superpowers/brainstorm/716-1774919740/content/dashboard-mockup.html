@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #0f172a; display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: #0f172a; display: flex; flex-direction: column; padding: 20px 12px; gap: 4px; flex-shrink: 0; }
+  .sidebar-brand { color: #f8fafc; font-weight: 800; font-size: 13px; letter-spacing: 2px; padding: 0 8px 16px; border-bottom: 1px solid #ffffff11; margin-bottom: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: #94a3b8; font-size: 12px; cursor: pointer; transition: all .15s; }
+  .nav-item:hover { background: #ffffff0d; color: #e2e8f0; }
+  .nav-item.active { background: #1e3a5f; color: #60a5fa; }
+  .nav-icon { width: 14px; height: 14px; opacity: .7; }
+  .sidebar-section { color: #475569; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 12px 10px 4px; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: auto; }
+
+  /* Header */
+  .header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+  .header-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+  .header-user { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #1e3a5f; display: flex; align-items: center; justify-content: center; color: #60a5fa; font-size: 11px; font-weight: 700; }
+  .user-email { font-size: 11px; color: #64748b; }
+
+  /* Ticker tape */
+  .ticker { background: #0f172a; padding: 6px 24px; display: flex; gap: 24px; overflow: hidden; }
+  .ticker-item { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .ticker-label { color: #64748b; font-size: 10px; font-family: monospace; }
+  .ticker-val { color: #f8fafc; font-size: 10px; font-weight: 600; font-family: monospace; }
+  .ticker-chg.pos { color: #22c55e; font-size: 9px; }
+  .ticker-chg.neg { color: #ef4444; font-size: 9px; }
+
+  /* Content */
+  .content { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Section label */
+  .section-label { font-size: 10px; font-weight: 600; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+
+  /* Price cards */
+  .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .price-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+  .price-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+  .price-ticker { font-size: 10px; font-weight: 600; color: #64748b; letter-spacing: 1px; text-transform: uppercase; }
+  .price-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+  .price-badge.pos { background: #dcfce7; color: #16a34a; }
+  .price-badge.neg { background: #fee2e2; color: #dc2626; }
+  .price-value { font-size: 26px; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+  .price-unit { font-size: 12px; color: #94a3b8; margin-left: 4px; font-weight: 400; }
+  .price-change { font-size: 11px; color: #64748b; margin-top: 2px; }
+  /* Mini bar chart */
+  .mini-chart { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-top: 12px; }
+  .bar { width: 6px; border-radius: 2px 2px 0 0; transition: height .3s; }
+
+  /* Bottom grid: 3 widgets */
+  .widgets-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* News feed */
+  .widget-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+  .widget-title { font-size: 11px; font-weight: 600; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .news-item { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+  .news-item:last-child { border-bottom: none; }
+  .news-badge { display: inline-block; font-size: 8px; padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-bottom: 3px; }
+  .news-badge.sugar { background: #fef3c7; color: #92400e; }
+  .news-badge.fx { background: #dbeafe; color: #1e40af; }
+  .news-text { font-size: 10px; color: #334155; line-height: 1.4; }
+  .news-date { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+
+  /* Focus report */
+  .focus-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+  .focus-item:last-child { border-bottom: none; }
+  .focus-label { font-size: 10px; color: #64748b; }
+  .focus-value { font-size: 11px; font-weight: 600; color: #0f172a; font-variant-numeric: tabular-nums; }
+  .focus-horizon { font-size: 9px; color: #94a3b8; text-align: right; margin-top: 1px; }
+  .focus-meta { font-size: 9px; color: #94a3b8; margin-bottom: 10px; }
+
+  /* Tools grid */
+  .tools-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .tool-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all .15s; }
+  .tool-card:hover { border-color: #3b82f6; box-shadow: 0 0 0 3px #3b82f611; }
+  .tool-icon { font-size: 22px; margin-bottom: 8px; }
+  .tool-name { font-size: 11px; font-weight: 600; color: #0f172a; margin-bottom: 3px; }
+  .tool-desc { font-size: 9px; color: #94a3b8; line-height: 1.4; }
+
+  /* Tag */
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-brand">IMPACTO</div>
+
+  <div class="nav-item active">
+    <span>⊞</span> Dashboard
+  </div>
+
+  <div class="sidebar-section">Mercado</div>
+  <div class="nav-item"><span>📈</span> Monte Carlo</div>
+  <div class="nav-item"><span>📊</span> Payoff Opções</div>
+  <div class="nav-item"><span>🧮</span> Precificação</div>
+  <div class="nav-item"><span>⚡</span> Volatilidade</div>
+
+  <div class="sidebar-section">Risco</div>
+  <div class="nav-item"><span>⚠️</span> VaR</div>
+  <div class="nav-item"><span>🎯</span> Breakeven</div>
+  <div class="nav-item"><span>🔥</span> Stress Test</div>
+
+  <div class="sidebar-section">Análise</div>
+  <div class="nav-item"><span>📰</span> Notícias</div>
+  <div class="nav-item"><span>🏦</span> Focus BCB</div>
+  <div class="nav-item"><span>📉</span> ARIMA</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">Dashboard</div>
+      <div class="header-sub">Visão geral do mercado · 30 mar 2026</div>
+    </div>
+    <div class="header-user">
+      <div class="user-email">analista@usina.com.br</div>
+      <div class="avatar">A</div>
+    </div>
+  </div>
+
+  <!-- Ticker tape -->
+  <div class="ticker">
+    <div class="ticker-item">
+      <span class="ticker-label">AÇÚCAR NY</span>
+      <span class="ticker-val">19.42¢</span>
+      <span class="ticker-chg pos">▲ +0.81%</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">USD/BRL</span>
+      <span class="ticker-val">5.8240</span>
+      <span class="ticker-chg neg">▼ -0.27%</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">SBK26</span>
+      <span class="ticker-val">19.85¢</span>
+      <span class="ticker-chg pos">▲ +0.35%</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">SELIC</span>
+      <span class="ticker-val">13.75%</span>
+      <span class="ticker-chg" style="color:#94a3b8">— sem alteração</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">IPCA EXP.</span>
+      <span class="ticker-val">5.12%</span>
+      <span class="ticker-chg neg">▲ +0.04pp</span>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Price cards -->
+    <div>
+      <div class="section-label"><span class="live-dot"></span>Preços ao vivo</div>
+      <div class="price-row">
+
+        <div class="price-card">
+          <div class="price-card-header">
+            <div>
+              <div class="price-ticker">Açúcar NY #11 · SB=F</div>
+              <div style="margin-top:4px">
+                <span class="price-value">19.42</span><span class="price-unit">¢/lb</span>
+              </div>
+              <div class="price-change">Máx 12m: 22.15 · Mín 12m: 16.80</div>
+            </div>
+            <span class="price-badge pos">▲ +0.81%</span>
+          </div>
+          <div class="mini-chart">
+            <!-- Simulated bars: sugar price evolution -->
+            <div class="bar" style="height:55%;background:#fde68a"></div>
+            <div class="bar" style="height:48%;background:#fde68a"></div>
+            <div class="bar" style="height:60%;background:#fde68a"></div>
+            <div class="bar" style="height:52%;background:#fde68a"></div>
+            <div class="bar" style="height:65%;background:#fde68a"></div>
+            <div class="bar" style="height:58%;background:#fde68a"></div>
+            <div class="bar" style="height:70%;background:#f59e0b"></div>
+            <div class="bar" style="height:62%;background:#f59e0b"></div>
+            <div class="bar" style="height:75%;background:#f59e0b"></div>
+            <div class="bar" style="height:68%;background:#f59e0b"></div>
+            <div class="bar" style="height:80%;background:#f59e0b"></div>
+            <div class="bar" style="height:72%;background:#f59e0b"></div>
+            <div class="bar" style="height:85%;background:#f59e0b"></div>
+            <div class="bar" style="height:78%;background:#d97706"></div>
+            <div class="bar" style="height:90%;background:#d97706"></div>
+            <div class="bar" style="height:82%;background:#d97706"></div>
+            <div class="bar" style="height:95%;background:#d97706"></div>
+            <div class="bar" style="height:88%;background:#d97706"></div>
+            <div class="bar" style="height:100%;background:#f59e0b"></div>
+          </div>
+        </div>
+
+        <div class="price-card">
+          <div class="price-card-header">
+            <div>
+              <div class="price-ticker">Dólar / Real · USDBRL=X</div>
+              <div style="margin-top:4px">
+                <span class="price-value">5.8240</span><span class="price-unit">R$</span>
+              </div>
+              <div class="price-change">Máx 12m: 6.30 · Mín 12m: 4.95</div>
+            </div>
+            <span class="price-badge neg">▼ -0.27%</span>
+          </div>
+          <div class="mini-chart">
+            <div class="bar" style="height:60%;background:#bfdbfe"></div>
+            <div class="bar" style="height:70%;background:#bfdbfe"></div>
+            <div class="bar" style="height:65%;background:#bfdbfe"></div>
+            <div class="bar" style="height:80%;background:#93c5fd"></div>
+            <div class="bar" style="height:75%;background:#93c5fd"></div>
+            <div class="bar" style="height:90%;background:#93c5fd"></div>
+            <div class="bar" style="height:85%;background:#93c5fd"></div>
+            <div class="bar" style="height:100%;background:#60a5fa"></div>
+            <div class="bar" style="height:92%;background:#60a5fa"></div>
+            <div class="bar" style="height:88%;background:#60a5fa"></div>
+            <div class="bar" style="height:95%;background:#3b82f6"></div>
+            <div class="bar" style="height:90%;background:#3b82f6"></div>
+            <div class="bar" style="height:85%;background:#3b82f6"></div>
+            <div class="bar" style="height:80%;background:#3b82f6"></div>
+            <div class="bar" style="height:87%;background:#3b82f6"></div>
+            <div class="bar" style="height:82%;background:#3b82f6"></div>
+            <div class="bar" style="height:78%;background:#2563eb"></div>
+            <div class="bar" style="height:74%;background:#2563eb"></div>
+            <div class="bar" style="height:70%;background:#2563eb"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Live widgets row -->
+    <div>
+      <div class="section-label"><span class="live-dot"></span>Informações em tempo real</div>
+      <div class="widgets-row">
+
+        <!-- News -->
+        <div class="widget-card">
+          <div class="widget-title">📰 Notícias do Mercado</div>
+          <div class="news-item">
+            <span class="news-badge sugar">Açúcar</span>
+            <div class="news-text">Chuvas no Centro-Sul pressionam projeções de safra 25/26</div>
+            <div class="news-date">30 mar · 09:14</div>
+          </div>
+          <div class="news-item">
+            <span class="news-badge fx">Câmbio</span>
+            <div class="news-text">Real se valoriza com dados fiscais melhores do esperado</div>
+            <div class="news-date">30 mar · 08:52</div>
+          </div>
+          <div class="news-item">
+            <span class="news-badge sugar">Açúcar</span>
+            <div class="news-text">ICE: posições compradas em açúcar atingem maior nível em 3 meses</div>
+            <div class="news-date">29 mar · 17:30</div>
+          </div>
+          <div class="news-item">
+            <span class="news-badge fx">Câmbio</span>
+            <div class="news-text">Copom: ata reforça postura contracionista por mais 2 reuniões</div>
+            <div class="news-date">29 mar · 14:11</div>
+          </div>
+        </div>
+
+        <!-- Focus BCB -->
+        <div class="widget-card">
+          <div class="widget-title">🏦 Relatório Focus · BCB</div>
+          <div class="focus-meta">Última atualização: 28 mar 2026</div>
+          <div class="focus-item">
+            <div>
+              <div class="focus-label">IPCA</div>
+              <div class="focus-horizon">2026</div>
+            </div>
+            <div style="text-align:right">
+              <div class="focus-value" style="color:#ef4444">5.12%</div>
+              <div style="font-size:9px;color:#ef4444">▲ vs 4.96%</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div>
+              <div class="focus-label">SELIC (fim ano)</div>
+              <div class="focus-horizon">2026</div>
+            </div>
+            <div style="text-align:right">
+              <div class="focus-value">13.75%</div>
+              <div style="font-size:9px;color:#94a3b8">= sem alteração</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div>
+              <div class="focus-label">USD/BRL</div>
+              <div class="focus-horizon">2026</div>
+            </div>
+            <div style="text-align:right">
+              <div class="focus-value">5.90</div>
+              <div style="font-size:9px;color:#ef4444">▲ vs 5.80</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div>
+              <div class="focus-label">PIB</div>
+              <div class="focus-horizon">2026</div>
+            </div>
+            <div style="text-align:right">
+              <div class="focus-value" style="color:#16a34a">2.08%</div>
+              <div style="font-size:9px;color:#16a34a">▲ vs 1.95%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick stats -->
+        <div class="widget-card">
+          <div class="widget-title">📌 Resumo Rápido</div>
+          <div class="focus-item">
+            <div class="focus-label">Última simulação MC</div>
+            <div style="text-align:right">
+              <div class="focus-value">SB=F · P50: 21.5¢</div>
+              <div class="focus-horizon">hoje, 08:30</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div class="focus-label">VaR 95% (açúcar)</div>
+            <div style="text-align:right">
+              <div class="focus-value" style="color:#ef4444">-8.3%</div>
+              <div class="focus-horizon">252 dias</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div class="focus-label">Breakeven BRL/sc</div>
+            <div style="text-align:right">
+              <div class="focus-value">R$ 112.40</div>
+              <div class="focus-horizon">última entrada</div>
+            </div>
+          </div>
+          <div class="focus-item">
+            <div class="focus-label">Simulações salvas</div>
+            <div style="text-align:right">
+              <div class="focus-value">7</div>
+              <div class="focus-horizon">este mês</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tools navigation grid -->
+    <div>
+      <div class="section-label">Ferramentas</div>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-icon">📈</div>
+          <div class="tool-name">Monte Carlo</div>
+          <div class="tool-desc">Simulação de preços com fan chart P5–P95</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">📊</div>
+          <div class="tool-name">Payoff Opções</div>
+          <div class="tool-desc">Estratégias multi-perna com gráfico de payoff</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">🧮</div>
+          <div class="tool-name">Precificação</div>
+          <div class="tool-desc">Black-Scholes e MC para calls europeias</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">⚠️</div>
+          <div class="tool-name">VaR</div>
+          <div class="tool-desc">Value at Risk histórico e paramétrico</div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-icon">🎯</div>
+          <div class="tool-name">Breakeven</div>
+          <div class="tool-desc">Ponto de equilíbrio por cenário de câmbio</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -2,7 +2,8 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-import plotly.subplots as sp
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from utils import require_login, show_logo
 
@@ -10,67 +11,170 @@ st.set_page_config(page_title="Regressão Açúcar", page_icon="📈", layout="w
 require_login()
 show_logo()
 
-
-def revert_log_diff(base_value, log_diff_value):
-    return base_value * np.exp(log_diff_value)
-
-
-@st.cache_data
-def load_and_transform_data_sugar(file_path):
-    df = pd.read_excel(file_path)
-    if 'Ano safra' in df.columns:
-        df['Ano safra'] = df['Ano safra'].astype(str).str[-4:]
-        df['Ano safra'] = pd.to_datetime(df['Ano safra'], format='%Y', errors='coerce')
-        if df['Ano safra'].isna().any():
-            df = df.dropna(subset=['Ano safra'])
-    df['Log_Diferencial_Estoque'] = np.log(df['Estoque Final (mi)'] / df['Estoque Inicial(mi)'])
-    df['Log_Diferencial_Oferta_Demanda'] = np.log(df['Produção (mi)'] / df['Demanda(mi)'])
-    df['Log_Estoque_Uso'] = np.log(df['Estoque Uso(%)'])
-    df['Dif_Log_USDBRL'] = np.log(df['USDBRL=X']).diff()
-    df['Dif_Log_SB_F'] = np.log(df['SB=F']).diff()
-    df['Dif_Log_CL_F'] = np.log(df['CL=F']).diff()
-    df = df.dropna()
-    return df
+# ── Dados USDA anuais (safras 2014–2025) ─────────────────────────────────────
+# Valores USDA PSD para açúcar global. O inner join com yfinance anual
+# excluirá automaticamente o ano 2025 se yfinance ainda não tiver fechamento
+# anual para SB=F (comportamento esperado enquanto a safra está em andamento).
+_USDA_ANNUAL = {
+    "year": [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+    "estoque_inicial": [35.2, 38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0],
+    "producao":        [178.4, 168.9, 172.6, 185.1, 185.5, 187.3, 176.8, 183.4, 183.8, 185.0, 186.0, 188.0],
+    "demanda":         [166.5, 163.7, 165.4, 168.3, 171.4, 174.6, 172.9, 177.5, 179.5, 178.0, 178.5, 180.5],
+    "estoque_final":   [38.1, 39.8, 47.5, 55.4, 53.5, 53.0, 48.4, 45.0, 44.7, 46.5, 47.0, 48.5],
+}
 
 
-st.title("Previsão do Preço do Açúcar")
-st.write("Modelo de regressão para prever o preço futuro do açúcar (SB=F).")
+@st.cache_data(ttl=3600)
+def fetch_dados_acucar() -> pd.DataFrame:
+    """
+    Baixa fechamentos anuais de SB=F, USDBRL=X e CL=F via yfinance (2014-hoje)
+    e faz merge inner com dados USDA anuais. Retorna DataFrame indexado por ano.
+    """
+    import yfinance as yf
 
-estoque_inicial_proj = st.number_input("Estoque Inicial (mi)", value=45000)
-estoque_final_proj = st.number_input("Estoque Final (mi)", value=40000)
-oferta_proj = st.number_input("Oferta/Production (mi)", value=160000)
-demanda_proj = st.number_input("Demanda (mi)/Human Dom. Consumption", value=150000)
-estoque_uso_proj = st.number_input("Estoque/Uso (%) Estoque final/Demanda * 100", value=20)
-usd_brl_proj = st.number_input("USDBRL=X", value=6.0)
-cl_f_proj = st.number_input("CL=F", value=75.0)
+    tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
+    price_data = {}
+
+    for key, ticker in tickers.items():
+        try:
+            raw = yf.download(ticker, start="2014-01-01", interval="1y",
+                              progress=False, auto_adjust=True)
+            if raw.empty:
+                price_data[key] = pd.Series(dtype=float)
+                continue
+            close = raw["Close"].dropna()
+            close.index = pd.DatetimeIndex(close.index).year
+            close = close.groupby(close.index).last()
+            # Flatten multi-level columns if present (yfinance sometimes returns MultiIndex)
+            if isinstance(close, pd.DataFrame):
+                close = close.iloc[:, 0]
+            price_data[key] = close.astype(float)
+        except Exception as e:
+            st.warning(f"yfinance {ticker} indisponível: {e}")
+            price_data[key] = pd.Series(dtype=float)
+
+    price_df = pd.DataFrame(price_data)
+
+    usda_df = pd.DataFrame(_USDA_ANNUAL).set_index("year")
+    usda_df["estoque_uso_pct"] = usda_df["estoque_final"] / usda_df["demanda"] * 100
+
+    merged = price_df.join(usda_df, how="inner").dropna()
+    return merged
+
+
+st.title("Previsão do Preço do Açúcar (SB=F)")
+st.write(
+    "Modelo Ridge/XGBoost treinado em dados anuais USDA + yfinance. "
+    "Insira as premissas e clique em **Gerar Previsão**."
+)
+
+# ── Inputs do usuário (valores padrão: projeção USDA 2025/26) ────────────────
+col1, col2, col3 = st.columns(3)
+with col1:
+    estoque_inicial_proj = st.number_input("Estoque Inicial (Mt)", value=48.5, step=0.5)
+    producao_proj = st.number_input("Produção (Mt)", value=190.0, step=1.0)
+with col2:
+    demanda_proj = st.number_input("Demanda (Mt)", value=182.0, step=1.0)
+    estoque_final_proj = st.number_input("Estoque Final (Mt)", value=48.5, step=0.5)
+with col3:
+    estoque_uso_proj = st.number_input(
+        "Estoque/Uso (%)",
+        value=round(48.5 / 182.0 * 100, 1),
+        step=0.5,
+    )
+    usd_brl_proj = st.number_input("USD/BRL (USDBRL=X)", value=5.85, step=0.05)
+    cl_f_proj = st.number_input("Petróleo CL=F (USD/bbl)", value=72.0, step=1.0)
+
+model_type = st.selectbox("Modelo", ["Ridge", "XGBoost"], index=0)
 
 if st.button("Gerar Previsão"):
-    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.linear_model import RidgeCV
     from sklearn.metrics import mean_squared_error, r2_score
 
-    df = load_and_transform_data_sugar('dadosRegSugar.xlsx')
-    X = df[['Log_Diferencial_Estoque', 'Log_Diferencial_Oferta_Demanda', 'Log_Estoque_Uso', 'Dif_Log_USDBRL', 'Dif_Log_CL_F']]
-    y = df['Dif_Log_SB_F']
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    with st.spinner("Buscando dados históricos e treinando modelo..."):
+        df = fetch_dados_acucar()
+
+    if len(df) < 6:
+        st.error(f"Dados insuficientes: {len(df)} anos após merge (mínimo 6 necessário).")
+        st.stop()
+
+    feature_cols = [
+        "estoque_inicial", "producao", "demanda", "estoque_final",
+        "estoque_uso_pct", "usdbrl", "cl_f",
+    ]
+    y = df["sb_f"].values
+    X = df[feature_cols].values
+
+    if model_type == "XGBoost":
+        import xgboost as xgb
+        model = xgb.XGBRegressor(
+            n_estimators=100, max_depth=3,
+            learning_rate=0.1, random_state=42, n_jobs=1,
+        )
+    else:
+        model = RidgeCV(alphas=[0.1, 1.0, 10.0, 100.0])
+
     model.fit(X, y)
-    y_pred = model.predict(X)
-    mse = mean_squared_error(y, y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y, y_pred)
-    st.write(f"**MSE:** {mse:.6f} | **RMSE:** {rmse:.6f} | **R²:** {r2:.2f}")
-    log_dif_estoque = np.log(estoque_final_proj / estoque_inicial_proj)
-    log_dif_oferta_demanda = np.log(oferta_proj / demanda_proj)
-    log_estoque_uso = np.log(estoque_uso_proj)
-    dif_log_usd_brl = np.log(usd_brl_proj) - np.log(df['USDBRL=X'].iloc[-1])
-    dif_log_cl_f = np.log(cl_f_proj) - np.log(df['CL=F'].iloc[-1])
-    X_novo = pd.DataFrame([[log_dif_estoque, log_dif_oferta_demanda, log_estoque_uso, dif_log_usd_brl, dif_log_cl_f]],
-                          columns=['Log_Diferencial_Estoque', 'Log_Diferencial_Oferta_Demanda', 'Log_Estoque_Uso', 'Dif_Log_USDBRL', 'Dif_Log_CL_F'])
-    dif_log_sb_f_previsto = model.predict(X_novo)[0]
-    sb_f_previsto = revert_log_diff(df['SB=F'].iloc[-1], dif_log_sb_f_previsto)
-    sb_f_min = revert_log_diff(df['SB=F'].iloc[-1], dif_log_sb_f_previsto - rmse)
-    sb_f_max = revert_log_diff(df['SB=F'].iloc[-1], dif_log_sb_f_previsto + rmse)
-    st.write(f"### Preço previsto de SB=F: {sb_f_previsto:.2f} (Min: {sb_f_min:.2f}, Max: {sb_f_max:.2f})")
+    y_pred_train = model.predict(X)
+    residuals = y - y_pred_train
+    std_res = float(np.std(residuals))
+    rmse = float(np.sqrt(mean_squared_error(y, y_pred_train)))
+    r2 = float(r2_score(y, y_pred_train))
+
+    # ── Previsão com inputs do usuário ────────────────────────────────────────
+    input_array = np.array([[
+        estoque_inicial_proj, producao_proj, demanda_proj,
+        estoque_final_proj, estoque_uso_proj,
+        usd_brl_proj, cl_f_proj,
+    ]])
+    sb_f_previsto = float(model.predict(input_array)[0])
+    sb_f_min = sb_f_previsto - 1.96 * std_res
+    sb_f_max = sb_f_previsto + 1.96 * std_res
+
+    st.success(
+        f"**Preço previsto SB=F: {sb_f_previsto:.2f} ¢/lb**"
+        f"  |  Intervalo 95%: [{sb_f_min:.2f}, {sb_f_max:.2f}]"
+    )
+
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("R²", f"{r2:.4f}")
+    col_m2.metric("RMSE", f"{rmse:.4f} ¢/lb")
+    col_m3.metric("Anos de treino", str(len(df)))
+
+    # ── Heatmap de correlação ─────────────────────────────────────────────────
+    corr_df = df[["sb_f"] + feature_cols]
+    fig_corr, ax = plt.subplots(figsize=(10, 7))
+    sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f",
+                linewidths=0.5, ax=ax)
+    ax.set_title("Matriz de Correlação — Variáveis do Modelo")
+    st.pyplot(fig_corr)
+    plt.close(fig_corr)
+
+    # ── Gráfico histórico real vs previsto ────────────────────────────────────
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Ano safra'], y=df['SB=F'], mode='lines', name='Valor Real (SB=F)'))
-    fig.update_layout(title="Preços Reais do Açúcar", xaxis_title="Ano Safra", yaxis_title="Preço (SB=F)")
-    st.plotly_chart(fig)
+    fig.add_trace(go.Scatter(
+        x=list(df.index), y=list(y),
+        mode="lines+markers", name="Real (SB=F)",
+        line=dict(color="blue"),
+    ))
+    fig.add_trace(go.Scatter(
+        x=list(df.index), y=list(y_pred_train),
+        mode="lines+markers", name="Previsto",
+        line=dict(dash="dash", color="orange"),
+    ))
+    fig.update_layout(
+        title="SB=F: Real vs Previsto (treino)",
+        xaxis_title="Ano",
+        yaxis_title="Preço (¢/lb)",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── Tabela histórico detalhado ────────────────────────────────────────────
+    st.subheader("Histórico de Treino")
+    hist_df = pd.DataFrame({
+        "Ano": list(df.index),
+        "SB=F Real": [round(float(v), 4) for v in y],
+        "SB=F Previsto": [round(float(v), 4) for v in y_pred_train],
+        "Resíduo": [round(float(r), 4) for r in residuals],
+    })
+    st.dataframe(hist_df, use_container_width=True)

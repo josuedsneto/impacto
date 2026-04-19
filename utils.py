@@ -34,10 +34,7 @@ def require_login():
 
 
 def show_logo(width=500):
-    try:
-        st.image("./ibea.png", width=width)
-    except Exception:
-        pass
+    pass
 
 
 @st.cache_data(ttl=300)

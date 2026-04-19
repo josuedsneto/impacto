@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -68,7 +69,7 @@ export default function BSPricer() {
     <div className="space-y-4 max-w-md">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="bs-S">S (Preço atual)</Label>
+          <Label htmlFor="bs-S">S (Preço atual) <FieldTooltip text="Preço spot atual do ativo subjacente" /></Label>
           <Input
             id="bs-S"
             type="number"
@@ -83,7 +84,7 @@ export default function BSPricer() {
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="bs-K">K (Strike)</Label>
+          <Label htmlFor="bs-K">K (Strike) <FieldTooltip text="Preço de exercício (strike) da opção" /></Label>
           <Input
             id="bs-K"
             type="number"
@@ -98,7 +99,7 @@ export default function BSPricer() {
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="bs-T">T (Anos até vencimento)</Label>
+          <Label htmlFor="bs-T">T (Anos até vencimento) <FieldTooltip text="Tempo até vencimento em anos. Ex: 0.25 = 3 meses" /></Label>
           <Input
             id="bs-T"
             type="number"
@@ -114,7 +115,7 @@ export default function BSPricer() {
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="bs-r">r (Taxa livre de risco)</Label>
+          <Label htmlFor="bs-r">r (Taxa livre de risco) <FieldTooltip text="Taxa de juros livre de risco anualizada. Ex: 0.105 = 10,5% a.a." /></Label>
           <Input
             id="bs-r"
             type="number"
@@ -130,7 +131,7 @@ export default function BSPricer() {
         </div>
 
         <div className="space-y-1 col-span-2">
-          <Label htmlFor="bs-sigma">σ (Volatilidade)</Label>
+          <Label htmlFor="bs-sigma">σ (Volatilidade) <FieldTooltip text="Volatilidade anualizada. Ex: 0.25 = 25% a.a." /></Label>
           <Input
             id="bs-sigma"
             type="number"
