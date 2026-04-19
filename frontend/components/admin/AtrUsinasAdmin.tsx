@@ -50,6 +50,11 @@ export function AtrUsinasAdmin() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
 
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("operator");
+  const [inviting, setInviting] = useState(false);
+
   function showSuccess(msg: string) {
     setSuccess(msg);
     setTimeout(() => setSuccess(null), 3000);
@@ -96,8 +101,38 @@ export function AtrUsinasAdmin() {
     fetchUsuarios();
   }, []);
 
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!managingUsina || !inviteEmail.trim()) return;
+    setInviting(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${API}/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError((data as { detail?: string }).detail ?? "Erro ao enviar convite.");
+        return;
+      }
+      setInviteEmail("");
+      showSuccess(`Convite enviado para ${inviteEmail.trim()}.`);
+    } catch {
+      setError("Erro de conexão ao enviar convite.");
+    } finally {
+      setInviting(false);
+    }
+  }
+
   async function openManage(usina: Usina) {
     setManagingUsina(usina);
+    setInviteEmail("");
     setLoadingUsers(true);
     setUsinaUserIds(new Set());
     try {
@@ -309,6 +344,45 @@ export function AtrUsinasAdmin() {
           <p className="text-xs text-muted-foreground">
             Clique para conceder ou revogar acesso. Alterações são aplicadas imediatamente.
           </p>
+
+          {/* Invite by email */}
+          <div className="border-t pt-3 space-y-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Convidar por e-mail</h4>
+            <form onSubmit={handleInvite} className="flex gap-2 items-end flex-wrap">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">E-mail</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="usuario@email.com"
+                  required
+                  disabled={inviting}
+                  className="block rounded-md border border-input bg-background px-3 py-2 text-sm w-56"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Função</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  disabled={inviting}
+                  className="block rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="viewer">Visualizador</option>
+                  <option value="operator">Operador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={inviting || !inviteEmail.trim()}
+                className="px-4 py-2 rounded text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {inviting ? "Enviando..." : "Enviar convite"}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

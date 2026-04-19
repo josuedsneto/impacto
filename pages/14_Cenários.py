@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.graph_objs as go
 import scipy.stats as stats
 
 from utils import require_login, show_logo
@@ -49,18 +48,37 @@ def calcular_percentis(break_even, media, desvio_padrao):
 
 
 def plotar_grafico_distribuicao(break_even, media, desvio_padrao):
-    plt.figure(figsize=(10, 6))
-    x = np.linspace(media - 3*desvio_padrao, media + 3*desvio_padrao, 1000)
+    x = np.linspace(media - 3 * desvio_padrao, media + 3 * desvio_padrao, 1000)
     y = stats.norm.pdf(x, loc=media, scale=desvio_padrao)
-    plt.plot(x, y, color='blue', label='Distribuição de Probabilidade')
-    plt.axvline(x=break_even, color='black', linestyle='--', label='Break-even')
-    plt.fill_between(x, y, where=(x < break_even), color='red', alpha=0.3)
-    plt.fill_between(x, y, where=(x >= break_even), color='green', alpha=0.3)
-    plt.title('Distribuição de Probabilidade')
-    plt.xlabel('Valor')
-    plt.ylabel('Densidade')
-    plt.legend()
-    st.pyplot(plt)
+    mask_below = x < break_even
+    mask_above = x >= break_even
+
+    fig = go.Figure()
+    # Área abaixo do break-even (vermelho)
+    fig.add_trace(go.Scatter(
+        x=x[mask_below], y=y[mask_below],
+        fill='tozeroy', fillcolor='rgba(220,50,50,0.3)',
+        line=dict(color='rgba(0,0,0,0)'),
+        name='Abaixo do Break-even',
+    ))
+    # Área acima do break-even (verde)
+    fig.add_trace(go.Scatter(
+        x=x[mask_above], y=y[mask_above],
+        fill='tozeroy', fillcolor='rgba(50,180,50,0.3)',
+        line=dict(color='rgba(0,0,0,0)'),
+        name='Acima do Break-even',
+    ))
+    # Curva da distribuição
+    fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(color='blue', width=2), name='Distribuição'))
+    # Linha vertical no break-even
+    fig.add_vline(x=break_even, line_dash='dash', line_color='black', annotation_text='Break-even')
+    fig.update_layout(
+        title='Distribuição de Probabilidade',
+        xaxis_title='Valor',
+        yaxis_title='Densidade',
+        separators=",.",
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 
 st.title("Cenários")
@@ -73,7 +91,9 @@ if opcao == "Moagem":
     if st.button("Simular"):
         be = encontrar_break_even(opcao, NY, 0, Cambio, Preco_Etanol)
         prob = probabilidade_abaixo_break_even(be, 1300000, (1400000 - 1300000) / stats.norm.ppf(0.8))
-        st.write(f"Breakeven: {be:.2f} | Risco: {prob*100:.2f}%")
+        be_fmt   = f"{be:.2f}".replace(".", ",")
+        prob_fmt = f"{prob*100:.2f}".replace(".", ",")
+        st.write(f"Breakeven: {be_fmt} | Risco: {prob_fmt}%")
         plotar_grafico_distribuicao(be, 1300000, (1400000 - 1300000) / stats.norm.ppf(0.8))
         percentis = calcular_percentis(be, 1300000, (1400000 - 1300000) / stats.norm.ppf(0.8))
         df = pd.DataFrame(percentis, columns=["Percentil", "Valor"])
@@ -87,7 +107,9 @@ elif opcao == "Preço Etanol":
     if st.button("Simular"):
         be = encontrar_break_even(opcao, NY, Moagem, Cambio, 0)
         prob = probabilidade_abaixo_break_even(be, 2768.90, 3000.28)
-        st.write(f"Breakeven: {be:.2f} | Risco: {prob*100:.2f}%")
+        be_fmt   = f"{be:.2f}".replace(".", ",")
+        prob_fmt = f"{prob*100:.2f}".replace(".", ",")
+        st.write(f"Breakeven: {be_fmt} | Risco: {prob_fmt}%")
         plotar_grafico_distribuicao(be, 2768.90, (3000.28 - 2768.90) / stats.norm.ppf(0.7))
         percentis = calcular_percentis(be, 2768.90, (3000.28 - 2768.90) / stats.norm.ppf(0.7))
         df = pd.DataFrame(percentis, columns=["Percentil", "Valor"])
@@ -101,7 +123,9 @@ elif opcao == "Câmbio":
     if st.button("Simular"):
         be = encontrar_break_even(opcao, NY, Moagem, 0, Preco_Etanol)
         prob = probabilidade_abaixo_break_even(be, 5.2504, 5.4293)
-        st.write(f"Breakeven: {be:.2f} | Risco: {prob*100:.2f}%")
+        be_fmt   = f"{be:.2f}".replace(".", ",")
+        prob_fmt = f"{prob*100:.2f}".replace(".", ",")
+        st.write(f"Breakeven: {be_fmt} | Risco: {prob_fmt}%")
         plotar_grafico_distribuicao(be, 5.2504, (5.4293 - 5.1904) / stats.norm.ppf(0.8))
 
 elif opcao == "NY":
@@ -111,5 +135,7 @@ elif opcao == "NY":
     if st.button("Simular"):
         be = encontrar_break_even(opcao, 0, Moagem, Cambio, Preco_Etanol)
         prob = probabilidade_abaixo_break_even(be, 20.5572, 22.3796)
-        st.write(f"Breakeven: {be:.2f} | Risco: {prob*100:.2f}%")
+        be_fmt   = f"{be:.2f}".replace(".", ",")
+        prob_fmt = f"{prob*100:.2f}".replace(".", ",")
+        st.write(f"Breakeven: {be_fmt} | Risco: {prob_fmt}%")
         plotar_grafico_distribuicao(be, 20.5572, (22.3796 - 20.5572) / stats.norm.ppf(0.8))

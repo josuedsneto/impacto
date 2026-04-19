@@ -6,6 +6,14 @@ import yfinance as yf
 
 from utils import require_login, show_logo
 
+
+def _br(v, dec=4):
+    return f"{abs(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _pct(v, dec=2):
+    return f"{v * 100:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".") + "%"
+
 st.set_page_config(page_title="Volatilidade", page_icon="📈", layout="wide")
 require_login()
 show_logo()
@@ -56,28 +64,78 @@ if st.button("Calcular"):
         ewma_vol_anual = data['EWMA Volatility Anualizada'].mean()
         garch_vol_mean = data['GARCH Volatility'].mean()
         garch_vol_anual = data['GARCH Volatility Anualizada'].mean()
+        preco_atual = float(data['Price'].iloc[-1])
+        ewma_vol_atual = float(data['EWMA Volatility'].iloc[-1])
+        garch_vol_atual = float(data['GARCH Volatility'].iloc[-1])
 
+        # ── Métricas de resumo ─────────────────────────────────────────────────
+        st.subheader("Resumo de Volatilidade")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Preço Atual", _br(preco_atual, 2))
+        c2.metric(
+            "EWMA Diária (atual)",
+            _pct(ewma_vol_atual),
+            help=f"Movimento de ±1σ hoje: ±{_br(preco_atual * ewma_vol_atual, 2)}",
+        )
+        c3.metric(
+            "GARCH Diária (atual)",
+            _pct(garch_vol_atual),
+            help=f"Movimento de ±1σ hoje: ±{_br(preco_atual * garch_vol_atual, 2)}",
+        )
+        c4.metric(
+            "EWMA Anualizada (média)",
+            _pct(ewma_vol_anual),
+            help=f"Intervalo anual ±1σ: [{_br(preco_atual * (1 - ewma_vol_anual), 2)}, {_br(preco_atual * (1 + ewma_vol_anual), 2)}]",
+        )
+        st.caption(
+            f"**Amplitude diária ±1σ (EWMA atual):** {_br(preco_atual * ewma_vol_atual, 2)} | "
+            f"**Amplitude diária ±1σ (GARCH atual):** {_br(preco_atual * garch_vol_atual, 2)}"
+        )
+
+        # ── Gráficos ───────────────────────────────────────────────────────────
         fig1 = px.line(data, x=data.index, y='EWMA Volatility', title=f'Volatilidade EWMA - {variable} (Diária)')
+        fig1.update_layout(separators=",.")
         st.plotly_chart(fig1)
-        st.write(f"- **Volatilidade Média EWMA (Diária):** {ewma_vol_mean:.4%}")
+        c1, c2 = st.columns(2)
+        c1.metric("Média EWMA Diária", _pct(ewma_vol_mean))
+        c2.metric("Amplitude ±1σ diária (média)", f"±{_br(preco_atual * ewma_vol_mean, 2)}")
 
         fig1b = px.line(data, x=data.index, y='EWMA Volatility Anualizada', title=f'Volatilidade EWMA - {variable} (Anualizada)')
+        fig1b.update_layout(separators=",.")
         st.plotly_chart(fig1b)
-        st.write(f"- **Volatilidade Média EWMA (Anualizada):** {ewma_vol_anual:.4%}")
+        c1, c2 = st.columns(2)
+        c1.metric("Média EWMA Anualizada", _pct(ewma_vol_anual))
+        c2.metric("Intervalo anual ±1σ (média)", f"[{_br(preco_atual*(1-ewma_vol_anual),2)}, {_br(preco_atual*(1+ewma_vol_anual),2)}]")
 
         fig2 = px.line(data, x=data.index, y='GARCH Volatility', title=f'Volatilidade Condicional GARCH - {variable} (Diária)')
+        fig2.update_layout(separators=",.")
         st.plotly_chart(fig2)
-        st.write(f"- **Volatilidade Média GARCH (Diária):** {garch_vol_mean:.4%}")
+        c1, c2 = st.columns(2)
+        c1.metric("Média GARCH Diária", _pct(garch_vol_mean))
+        c2.metric("Amplitude ±1σ diária (média)", f"±{_br(preco_atual * garch_vol_mean, 2)}")
 
         fig2b = px.line(data, x=data.index, y='GARCH Volatility Anualizada', title=f'Volatilidade Condicional GARCH - {variable} (Anualizada)')
+        fig2b.update_layout(separators=",.")
         st.plotly_chart(fig2b)
-        st.write(f"- **Volatilidade Média GARCH (Anualizada):** {garch_vol_anual:.4%}")
+        c1, c2 = st.columns(2)
+        c1.metric("Média GARCH Anualizada", _pct(garch_vol_anual))
+        c2.metric("Intervalo anual ±1σ (média)", f"[{_br(preco_atual*(1-garch_vol_anual),2)}, {_br(preco_atual*(1+garch_vol_anual),2)}]")
+
         st.subheader("Parâmetros do Modelo GARCH")
         conf_int = model_fit.conf_int()
         lower_col, upper_col = conf_int.columns[0], conf_int.columns[1]
-        st.write(f"**Omega:** {model_fit.params['omega']:.4e} (Intervalo: [{conf_int.loc['omega', lower_col]:.4e}, {conf_int.loc['omega', upper_col]:.4e}])")
-        st.write(f"**Alpha[1]:** {model_fit.params['alpha[1]']:.4f} (Intervalo: [{conf_int.loc['alpha[1]', lower_col]:.4f}, {conf_int.loc['alpha[1]', upper_col]:.4f}])")
-        st.write(f"**Beta[1]:** {model_fit.params['beta[1]']:.4f} (Intervalo: [{conf_int.loc['beta[1]', lower_col]:.4f}, {conf_int.loc['beta[1]', upper_col]:.4f}])")
+        omega = model_fit.params['omega']
+        alpha = model_fit.params['alpha[1]']
+        beta  = model_fit.params['beta[1]']
+        cg1, cg2, cg3 = st.columns(3)
+        cg1.metric("Omega", f"{omega:.4e}".replace(".", ","))
+        cg2.metric("Alpha[1]", _br(alpha))
+        cg3.metric("Beta[1]",  _br(beta))
+        st.caption(
+            f"Intervalo Omega: [{conf_int.loc['omega', lower_col]:.4e}, {conf_int.loc['omega', upper_col]:.4e}] | "
+            f"Alpha: [{_br(float(conf_int.loc['alpha[1]', lower_col]))}, {_br(float(conf_int.loc['alpha[1]', upper_col]))}] | "
+            f"Beta: [{_br(float(conf_int.loc['beta[1]', lower_col]))}, {_br(float(conf_int.loc['beta[1]', upper_col]))}]"
+        )
         excel_filename = f'{variable.lower()}_bi.xlsx'
         save_to_excel(data, excel_filename)
         with open(excel_filename, "rb") as file:

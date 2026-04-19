@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 const NAV_SECTIONS = [
   {
     label: "Fixações",
     items: [
+      { href: "/app/consolidado", label: "Consolidado" },
+      { href: "/app/posicao", label: "Posição" },
       { href: "/app/fixacoes", label: "Mercado" },
       { href: "/app/simulation", label: "Monte Carlo" },
       { href: "/app/volatilidade", label: "Volatilidade" },
@@ -30,14 +31,26 @@ const NAV_SECTIONS = [
       { href: "/app/atr", label: "ATR" },
     ],
   },
+  {
+    label: "Ferramentas",
+    items: [
+      { href: "/app/alertas", label: "Alertas" },
+      { href: "/app/correlacao", label: "Correlação" },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
+      { href: "/app/planos", label: "Planos e Preços" },
+    ],
+  },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <aside
+    <aside
         className="w-56 flex-shrink-0 flex flex-col overflow-y-auto"
         style={{ background: "#111827" }}
       >
@@ -137,6 +150,5 @@ export function AppSidebar() {
           </div>
         ))}
       </aside>
-    </TooltipProvider>
   );
 }

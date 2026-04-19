@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from utils import require_login, show_logo
 
@@ -61,9 +59,19 @@ def plotar_graficos_dispersao(df):
 def plotar_heatmap_atr(df):
     cols = ['ATR', 'Impureza Total', 'Pureza', 'Preciptação']
     corr = df[cols].corr()
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax, annot_kws={"size": 8}, cbar_kws={"shrink": 0.8})
-    st.pyplot(fig)
+    text = [[f"{v:.2f}".replace(".", ",") for v in row] for row in corr.values]
+    fig = go.Figure(go.Heatmap(
+        z=corr.values,
+        x=corr.columns.tolist(),
+        y=corr.index.tolist(),
+        colorscale='RdBu',
+        zmin=-1, zmax=1,
+        text=text,
+        texttemplate="%{text}",
+        showscale=True,
+    ))
+    fig.update_layout(title="Matriz de Correlação — ATR")
+    st.plotly_chart(fig)
 
 
 st.title("Análise de ATR e Impurezas")
@@ -76,10 +84,13 @@ if st.button("Calcular"):
     resultados = treinar_modelos(df)
     st.subheader("Resultados dos Modelos")
     for nome, resultado in resultados.items():
-        st.write(f"**{nome}** - R²: {resultado['R²']:.2f}, RMSE: {resultado['RMSE']:.2f}")
+        r2_fmt   = f"{resultado['R²']:.2f}".replace(".", ",")
+        rmse_fmt = f"{resultado['RMSE']:.2f}".replace(".", ",")
+        st.write(f"**{nome}** — R²: {r2_fmt}, RMSE: {rmse_fmt}")
     model_lr = resultados["Regressão Linear"]['model']
     pureza_necessaria = calcular_pureza_necessaria(ATR_desejado, estimativa_precipitacao, estimativa_impurezas, model_lr)
-    st.write(f'Para alcançar um ATR de {ATR_desejado}, com preciptação de {estimativa_precipitacao} e impurezas totais de {estimativa_impurezas}, é necessário uma pureza de aproximadamente {pureza_necessaria:.2f}.')
+    pureza_fmt = f"{pureza_necessaria:.2f}".replace(".", ",")
+    st.write(f'Para alcançar um ATR de {ATR_desejado}, com preciptação de {estimativa_precipitacao} e impurezas totais de {estimativa_impurezas}, é necessário uma pureza de aproximadamente {pureza_fmt}.')
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df['ATR'], mode='lines', name='Real', line=dict(color='blue')))
     fig.add_trace(go.Scatter(x=df.index, y=resultados['Random Forest']['y_pred'], mode='lines', name='Predito Random Forest', line=dict(dash='dash')))

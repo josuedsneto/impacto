@@ -2,8 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import date, timedelta
 
 from utils import require_login, show_logo
@@ -88,6 +86,7 @@ def fetch_dados_dolar(meses: int = 72) -> pd.DataFrame:
     return merged.dropna()
 
 
+@st.cache_data(ttl=3600)
 def obter_defaults_atuais() -> dict:
     """Busca últimos valores das séries para pré-preencher inputs."""
     try:
@@ -159,19 +158,28 @@ if st.button("Gerar Regressão"):
     input_const = sm.add_constant(input_row, has_constant="add")
     taxa_prevista = float(fitted.predict(input_const)[0])
 
-    st.success(f"**Taxa de câmbio prevista: R$ {taxa_prevista:.4f}**")
+    def _br(v, dec=4): return f"{v:.{dec}f}".replace(".", ",")
+    st.success(f"**Taxa de câmbio prevista: R$ {_br(taxa_prevista)}**")
     col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("R²", f"{r2:.4f}")
-    col_m2.metric("RMSE", f"{rmse:.4f}")
+    col_m1.metric("R²",   _br(r2))
+    col_m2.metric("RMSE", _br(rmse))
     col_m3.metric("Obs. de treino", str(len(df)))
 
     # Heatmap de correlação
     corr_df = df[["taxa_dolar"] + feature_cols]
-    fig_corr, ax = plt.subplots(figsize=(10, 7))
-    sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
-    ax.set_title("Matriz de Correlação")
-    st.pyplot(fig_corr)
-    plt.close(fig_corr)
+    corr = corr_df.corr()
+    text = [[f"{v:.2f}".replace(".", ",") for v in row] for row in corr.values]
+    fig_corr = go.Figure(go.Heatmap(
+        z=corr.values,
+        x=corr.columns.tolist(),
+        y=corr.index.tolist(),
+        colorscale="RdBu",
+        zmin=-1, zmax=1,
+        text=text,
+        texttemplate="%{text}",
+    ))
+    fig_corr.update_layout(title="Matriz de Correlação")
+    st.plotly_chart(fig_corr, use_container_width=True)
 
     # Gráfico real vs previsto
     fig = go.Figure()

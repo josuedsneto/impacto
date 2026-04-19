@@ -45,16 +45,23 @@ def plot_acf_custom(df):
     st.plotly_chart(fig)
 
 
+@st.cache_data(ttl=3600)
+def _ajustar_arima_acucar(close_tuple: tuple, p: int, d: int, q: int, dias_futuro: int) -> list:
+    """Ajusta o modelo ARIMA e retorna a previsão. Separado para permitir cache."""
+    from statsmodels.tsa.arima.model import ARIMA as _ARIMA
+    forecast = _ARIMA(pd.Series(close_tuple), order=(p, d, q)).fit().forecast(steps=dias_futuro)
+    return forecast.tolist()
+
+
 def arima_previsao(df, dias_futuro, p=5, d=1, q=0):
-    model = ARIMA(df['Close'], order=(p, d, q))
-    model_fit = model.fit()
-    forecast = model_fit.forecast(steps=dias_futuro)
+    with st.spinner("Ajustando modelo ARIMA..."):
+        forecast_list = _ajustar_arima_acucar(tuple(df['Close'].values), p, d, q, dias_futuro)
     previsao_datas = pd.date_range(df.index[-1], periods=dias_futuro + 1, freq='D')[1:]
-    df_forecast = pd.DataFrame({'Data': previsao_datas, 'Previsão': forecast})
+    df_forecast = pd.DataFrame({'Data': previsao_datas, 'Previsão': forecast_list})
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Valor Real', line=dict(color='blue')))
     fig.add_trace(go.Scatter(x=df_forecast['Data'], y=df_forecast['Previsão'], mode='lines+markers', name=f'Previsão de {dias_futuro} dias', line=dict(color='red', dash='dash')))
-    fig.update_layout(title=f'Previsão ARIMA ({p}, {d}, {q}) - {dias_futuro} Dias', xaxis_title='Data', yaxis_title='Preço do Açúcar')
+    fig.update_layout(title=f'Previsão ARIMA ({p}, {d}, {q}) — {dias_futuro} dias', xaxis_title='Data', yaxis_title='Preço do Açúcar')
     st.plotly_chart(fig)
 
 

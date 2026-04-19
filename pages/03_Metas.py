@@ -1,12 +1,10 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 import yfinance as yf
 from datetime import date
 
-import streamlit as st
 from utils import require_login, show_logo
 
 st.set_page_config(page_title="Metas", page_icon="📈", layout="wide")
@@ -36,20 +34,23 @@ def plot_heatmap_metas(meta):
     for i, acucar in enumerate(precos_acucar):
         for j, dolar in enumerate(precos_dolar):
             produto[i, j] = 22.0462 * 1.04 * acucar * dolar - meta
-    fig, ax = plt.subplots(figsize=(20, 16))
-    cax = ax.imshow(produto, cmap='RdYlGn', aspect='auto')
-    for i in range(len(precos_acucar)):
-        for j in range(len(precos_dolar)):
-            ax.text(j, i, f'R$ {produto[i, j]:.0f}/Ton', ha='center', va='center', color='white', fontsize=11.5, fontweight='bold')
-    fig.colorbar(cax, ax=ax, label='Produto')
-    ax.set_xticks(np.arange(len(precos_dolar)))
-    ax.set_xticklabels([f'{d:.2f}' for d in precos_dolar])
-    ax.set_yticks(np.arange(len(precos_acucar)))
-    ax.set_yticklabels([f'{a:.2f}' for a in precos_acucar])
-    ax.set_xlabel('Preço do Dólar', fontsize=14)
-    ax.set_ylabel('Preço do Açúcar', fontsize=14)
-    ax.set_title(f'Produto = 22.0462 * 1.04 * Preço do Açúcar * Preço do Dólar - Meta: {meta}', fontsize=16)
-    st.pyplot(fig)
+    text = [[f"R$ {v:.0f}/Ton".replace(".", ",") for v in row] for row in produto]
+    fig = go.Figure(go.Heatmap(
+        z=produto,
+        x=[f"{d:.2f}".replace(".", ",") for d in precos_dolar],
+        y=[f"{a:.2f}".replace(".", ",") for a in precos_acucar],
+        colorscale='RdYlGn',
+        text=text,
+        texttemplate="%{text}",
+        showscale=True,
+    ))
+    fig.update_layout(
+        title=f'22,0462 × 1,04 × Açúcar × Dólar − Meta: {meta}',
+        xaxis_title='Preço do Dólar (R$)',
+        yaxis_title='Preço do Açúcar (¢/lb)',
+        height=600,
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 
 st.title("Metas")

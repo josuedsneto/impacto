@@ -4,39 +4,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Impacto** is a Streamlit web application for Monte Carlo price simulations and options pricing on Brazilian financial assets (sugar futures, USD/BRL exchange rate). The UI and variables are in Portuguese.
+**Impacto** is a financial analysis platform for Monte Carlo price simulations, options pricing, and hedge management on Brazilian financial assets (sugar futures, USD/BRL exchange rate). The UI and variables are in Portuguese.
 
-## Running the Application
+> **The Streamlit version (`Painel.py` + `pages/`) is deprecated and no longer maintained.**
+> All new development happens in the **Next.js frontend** (`frontend/`) and **FastAPI backend** (`backend/`).
+
+## Active Stack
+
+### Frontend — Next.js (`frontend/`)
 
 ```bash
-pip install -r requirements.txt
-streamlit run Painel.py
+cd frontend
+npm run dev   # → http://localhost:3000
 ```
 
-The app runs on `http://localhost:8501`. There are no tests or linting configurations.
+- **Framework**: Next.js (App Router) with TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components (`components/ui/`)
+- **Auth**: Supabase SSR (`@supabase/ssr`) — server components use `createServerSupabaseClient`, client components use `createBrowserClient`
+- **State**: React state + fetch against the FastAPI backend (no global store)
+- **Charts**: Recharts (where used) or plain SVG/table
+- **Toasts**: `sonner` via `toast.success / toast.error`
 
-## Architecture
+Page structure: `app/(auth)/` for login, `app/app/` for authenticated pages.
+All authenticated pages: server components redirect to `/login` if no session; client components call `getToken()` and pass `Authorization: Bearer <token>` to every API call.
 
-This is a multi-page Streamlit app:
+### Backend — FastAPI (`backend/`)
 
-- **`config.py`** — Single source of truth for all asset configs (CSV filename, default price, bounds). Both pages import `ATIVOS` from here.
-- **`Painel.py`** — Entry point / dashboard home. Shows live prices and an index of all modules.
-- **`pages/09_Monte_Carlo.py`** — Monte Carlo simulation fan chart (P5–P95 percentiles).
-- **`pages/08_Payoff_Opções.py`** — Multi-leg options strategy payoff diagram builder.
-- **`pages/23_Opções.py`** — European call pricer via Monte Carlo across a range of strikes.
+```bash
+cd backend
+uvicorn main:app --reload   # → http://localhost:8000
+```
 
-### Data Loading
+- **Auth guard**: `Depends(get_current_user)` on every protected route
+- **Database**: Supabase (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env vars)
+- **Rate limiting**: SlowAPI (`@limiter.limit("N/minute")` on every endpoint)
+- **Migrations**: `backend/migrations/` — run in Supabase SQL Editor or via `supabase db push`
 
-CSV files use European number formatting (comma as decimal separator, `DD.MM.YYYY` dates). `carregar_dados()` handles the normalization and is decorated with `@st.cache_data` to avoid re-reading CSVs on every interaction.
+Routers are in `backend/routers/` and registered in `backend/main.py`.
 
-### Simulation Design
+### Database — Supabase
 
-Prices are clipped to `[limite_inferior, limite_superior]` each day during simulation. Returns are drawn from a normal distribution parameterized by historical daily mean and std. `preco_inicial` is passed explicitly as a function parameter to `simulacao_monte_carlo()`. The Opções.py formula prices European calls: `np.mean(np.maximum(precos[-1, :] - strike, 0))` — payoff is evaluated only at the final day.
+Key tables: `simulations`, `price_alerts`, `fixacoes_cobertura`, `usinas`, `user_usinas`, `atr_simulacoes`.
+All tables have RLS enabled. Service role key bypasses RLS (backend only — never expose to frontend).
 
-### CSV Data Files
+## Frontend Page Conventions
 
-| File | Asset |
-|------|-------|
-| `Dados Históricos - Açúcar NY nº11 Futuros (6).csv` | Sugar NY #11 futures |
-| `USD_BRL Dados Históricos (2).csv` | USD/BRL exchange rate |
-| `sbv24.csv` | SBV24 sugar futures contract |
+- **Server components** (no interactivity): fetch data at render time, no `"use client"`, use `createServerSupabaseClient` from `@/lib/supabase/server`.
+- **Client components** (forms, live state): `"use client"` at top, use `createBrowserClient`, call `getToken()` before each API request.
+- `MetricCard` pattern (label + value + optional sub) is used across pages — add to a component if reused.
+- Format BR numbers: `.toFixed(2)` with `.replace(".", ",")` where needed.
+
+## Sidebar
+
+Navigation is defined in `components/layout/AppSidebar.tsx` (`NAV_SECTIONS` array). Add new pages there.
+
+## Deprecated (do not modify)
+
+The following exist for historical reference only — do not add features or fix bugs here:
+
+- `Painel.py` and all `pages/*.py` (Streamlit)
+- `config.py`, `utils.py`, `options.py` (Streamlit helpers)
+- `requirements.txt`
+- CSV data files (`*.csv` in root)

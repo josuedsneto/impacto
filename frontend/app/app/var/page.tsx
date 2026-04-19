@@ -90,10 +90,38 @@ function VarPanel({ ticker }: { ticker: string }) {
 
   const confLabel = `${(parseFloat(confidence) * 100).toFixed(0)}%`;
 
+  function exportToCSV() {
+    if (!result) return;
+    const rows = [
+      ["Métrica", "Valor"],
+      ["Ticker", ticker],
+      ["Último Preço", result.last_price.toString()],
+      ["Confiança", confLabel],
+      ["VaR Histórico (abs)", result.var_historico_abs.toString()],
+      ["VaR Histórico (%)", (result.var_historico_pct * 100).toFixed(4)],
+      ["VaR Paramétrico (abs)", result.var_parametrico_abs.toString()],
+      ["VaR Paramétrico (%)", (result.var_parametrico_pct * 100).toFixed(4)],
+      ["Observações", result.n_observations.toString()],
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `var_${ticker}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-medium">Nível de confiança:</span>
+        {result && (
+          <button onClick={exportToCSV} className="ml-auto text-xs border rounded px-2 py-1 text-muted-foreground hover:text-foreground transition-colors">
+            Exportar CSV
+          </button>
+        )}
         <Select value={confidence} onValueChange={handleConfidenceChange}>
           <SelectTrigger className="w-28">
             <SelectValue />

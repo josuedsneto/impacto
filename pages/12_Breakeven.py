@@ -1,8 +1,13 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.graph_objs as go
 
 from utils import require_login, show_logo
+
+
+def _br(v, dec=2):
+    return f"{abs(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 st.set_page_config(page_title="Breakeven", page_icon="📈", layout="wide")
 require_login()
@@ -78,11 +83,78 @@ if st.button("Gerar Gráfico"):
 
     idx_break_even = np.argmin(np.abs(np.array(faturamentos) - np.array(custos)))
     break_even_point = valores_parametro[idx_break_even]
-    st.write(f"O ponto de break-even para '{variavel_parametro}' é: **{break_even_point:.2f}**")
+    st.metric(f"Break-even — {variavel_parametro}", _br(break_even_point))
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=valores_parametro, y=faturamentos, mode='lines', name='Faturamento'))
     fig.add_trace(go.Scatter(x=valores_parametro, y=custos, mode='lines', name='Custo'))
-    fig.add_shape(type="line", x0=break_even_point, y0=min(min(faturamentos), min(custos)), x1=break_even_point, y1=max(max(faturamentos), max(custos)), line=dict(color="red", width=2, dash="dashdot"))
-    fig.update_layout(title="Análise de Ponto de Equilíbrio", xaxis_title=variavel_parametro, yaxis_title="Valor", template="plotly_white")
-    st.plotly_chart(fig)
+    fig.add_vline(x=break_even_point, line_dash="dashdot", line_color="red",
+                  annotation_text=f"Break-even: {_br(break_even_point)}", annotation_position="top right")
+    fig.update_layout(
+        title="Análise de Ponto de Equilíbrio",
+        xaxis_title=variavel_parametro,
+        yaxis_title="Valor (R$)",
+        template="plotly_white",
+        separators=",.",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── Heatmap NY × Câmbio ────────────────────────────────────────────────────
+    st.subheader("Sensibilidade EBITDA: NY × Câmbio")
+    prod_vhp_h  = outras_variaveis.get("Prod VHP",     90000.0)
+    prod_eth_h  = outras_variaveis.get("Prod Etanol",  35000.0)
+    preco_eth_h = outras_variaveis.get("Preço Etanol", 2800.0)
+
+    ny_vals  = np.arange(14.0, 25.5, 0.5)
+    cam_vals = np.arange(4.5,  6.15, 0.1)
+    z = np.zeros((len(ny_vals), len(cam_vals)))
+    for i, ny in enumerate(ny_vals):
+        for j, cam in enumerate(cam_vals):
+            fat_h = (
+                (ny - 0.19) * 22.0462 * 1.04 * cam * prod_vhp_h
+                + (ny + 1) * 22.0462 * 0.75 * cam * 12000
+                + prod_eth_h * preco_eth_h
+                + 3227430 + 22061958
+            )
+            cst_h = (
+                0.6 * (
+                    prod_eth_h * preco_eth_h
+                    + (ny + 1) * 22.0462 * 0.75 * cam * 12000
+                    + (ny - 0.19) * 22.0462 * 1.04 * cam * prod_vhp_h
+                )
+                + gasto_fixo_total
+            )
+            z[i, j] = (fat_h - cst_h) / 1_000_000  # R$ Mi
+
+    text_h = [[f"R$ {v:.1f}Mi".replace(".", ",") for v in row] for row in z]
+    fig_h = go.Figure(go.Heatmap(
+        z=z,
+        x=[f"{c:.1f}".replace(".", ",") for c in cam_vals],
+        y=[f"{n:.1f}".replace(".", ",") for n in ny_vals],
+        colorscale="RdYlGn",
+        text=text_h,
+        texttemplate="%{text}",
+        showscale=True,
+    ))
+    fig_h.update_layout(
+        title="EBITDA (R$ Mi) — NY (¢/lb) × Câmbio (R$/USD)",
+        xaxis_title="Câmbio (R$/USD)",
+        yaxis_title="NY (¢/lb)",
+        height=550,
+    )
+    st.plotly_chart(fig_h, use_container_width=True)
+    st.caption("Demais variáveis fixas nos valores informados acima. Gasto variável por unidade não considerado nesta sensibilidade.")
+
+    # CSV export — faturamento/custo series
+    df_export = pd.DataFrame({
+        variavel_parametro: valores_parametro,
+        'Faturamento (R$)': faturamentos,
+        'Custo (R$)': custos,
+    })
+    csv_be = df_export.to_csv(index=False, sep=';', decimal=',').encode('utf-8-sig')
+    st.download_button(
+        label="Baixar CSV do Breakeven",
+        data=csv_be,
+        file_name=f"breakeven_{variavel_parametro.lower().replace(' ', '_')}.csv",
+        mime="text/csv",
+    )

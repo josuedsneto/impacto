@@ -18,7 +18,12 @@
       "Bash(git commit -m 'docs\\(16-02\\): complete correcoes-pontuais-02 plan:*)",
       "Bash(ls .planning/phases/16-export-csv-pdf/*SUMMARY*)",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('Goal:', d['goal']\\); print\\('Reqs:', d['section']\\)\")",
-      "Skill(gsd:plan-phase)"
+      "Skill(gsd:plan-phase)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import pandas_ta as ta; print\\(ta.version\\)\")",
+      "Bash(python -c \"from analysis import compute_analysis, IndicatorConfig; print\\('OK'\\)\")",
+      "Bash(python -c \"from main import app; print\\('main.py imports OK'\\)\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

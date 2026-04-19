@@ -1,6 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objs as go
 import streamlit as st
 
 from config import ATIVOS, carregar_dados
@@ -79,9 +79,11 @@ std_retornos = data["Daily Return"].std()
 preco_inicial = data["Close"].iloc[-1]
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Retorno médio diário", f"{media_retornos:.4%}")
-col2.metric("Volatilidade diária (std)", f"{std_retornos:.4%}")
-col3.metric("Preço inicial", f"{float(preco_inicial):.4f}")
+def _pct(v): return f"{v*100:.4f}".replace(".", ",") + "%"
+def _br(v, dec=4): return f"{v:.{dec}f}".replace(".", ",")
+col1.metric("Retorno médio diário",   _pct(media_retornos))
+col2.metric("Volatilidade diária (std)", _pct(std_retornos))
+col3.metric("Preço inicial", _br(float(preco_inicial)))
 
 if simular:
     st.subheader(f"Preços das Calls — {tipo_ativo} — {tempo_desejado} dias")
@@ -91,11 +93,17 @@ if simular:
     df = pd.DataFrame(resultados, columns=["Strike", "Preço Justo"])
     st.dataframe(df, use_container_width=True)
 
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.bar(df["Strike"], df["Preço Justo"], width=0.2, color="steelblue", alpha=0.8)
-    ax.set_xlabel("Strike")
-    ax.set_ylabel("Preço Justo da Call")
-    ax.set_title(f"Curva de Preços de Calls — {tipo_ativo} ({tempo_desejado} dias)")
-    ax.grid(axis="y")
-    ax.grid(False, axis="x")
-    st.pyplot(fig)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Strike"],
+        y=df["Preço Justo"],
+        marker_color="steelblue",
+        opacity=0.8,
+    ))
+    fig.update_layout(
+        title=f"Curva de Preços de Calls — {tipo_ativo} ({tempo_desejado} dias)",
+        xaxis_title="Strike",
+        yaxis_title="Preço Justo da Call",
+        separators=",.",
+    )
+    st.plotly_chart(fig, use_container_width=True)

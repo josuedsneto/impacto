@@ -47,4 +47,5 @@ if st.button("Simular"):
     jump_diffusion_df = pd.DataFrame({'Step': range(len(simulated_prices)), 'Price': simulated_prices})
     fig = px.line(jump_diffusion_df, x='Step', y='Price', title=f"Simulação de Preços - {variable} com Jump-Diffusion")
     st.plotly_chart(fig)
-    st.write(f"O valor médio da simulação para o ano foi: {np.mean(simulated_prices):.2f}")
+    media_fmt = f"{np.mean(simulated_prices):.2f}".replace(".", ",")
+    st.write(f"O valor médio da simulação para o ano foi: {media_fmt}")

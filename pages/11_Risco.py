@@ -1,8 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.graph_objs as go
 
 from utils import require_login, show_logo
 
@@ -45,15 +44,22 @@ def simulacao_monte_carlo_risco(valores_medios, perc_15, perc_85, num_simulacoes
 
 
 def plot_histograma(resultados, titulo, cor):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.histplot(resultados, bins=50, kde=True, color=cor, ax=ax)
-    ax.set_xlabel('Valor (R$)')
-    ax.set_ylabel('Frequência')
-    ax.set_title(titulo)
-    ax.grid(True)
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: 'R$ {:,.0f}M'.format(x/1_000_000)))
-    plt.tight_layout()
-    st.pyplot(fig)
+    valores_m = [v / 1_000_000 for v in resultados]
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=valores_m,
+        nbinsx=50,
+        marker_color=cor,
+        opacity=0.75,
+        name=titulo,
+    ))
+    fig.update_layout(
+        title=titulo,
+        xaxis_title='Valor (R$ Mi)',
+        yaxis_title='Frequência',
+        separators=",.",
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 
 st.title("IBEA - Simulações de Desempenho SF 2024/2025")
@@ -74,13 +80,14 @@ if st.button("Simular"):
     st.subheader("Faturamento")
     plot_histograma(faturamentos, "Distribuição de Frequência do Faturamento Total", "skyblue")
     percentis_desejados = [1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 85, 90, 95, 99]
-    st.write(f"**Faturamento Médio:** R$ {np.mean(faturamentos):,.2f}")
-    df_fat = pd.DataFrame({'Percentil': percentis_desejados, 'Faturamento': [np.percentile(faturamentos, p) for p in percentis_desejados]})
+    def _br_m(v): return f"{v/1_000_000:,.2f}".replace(",","X").replace(".","," ).replace("X",".")
+    st.metric("Faturamento Médio", f"R$ {_br_m(np.mean(faturamentos))} Mi")
+    df_fat = pd.DataFrame({'Percentil': percentis_desejados, 'Faturamento (R$ Mi)': [round(np.percentile(faturamentos, p)/1_000_000, 2) for p in percentis_desejados]})
     st.dataframe(df_fat)
     st.subheader("Custo")
     plot_histograma(custos, "Distribuição de Frequência do Custo Total", "orange")
-    st.write(f"**Custo Médio:** R$ {np.mean(custos):,.2f}")
+    st.metric("Custo Médio", f"R$ {_br_m(np.mean(custos))} Mi")
     ebtida_ajustado = [f - c + 7219092 for f, c in zip(faturamentos, custos)]
     st.subheader("Ebtida Ajustado")
     plot_histograma(ebtida_ajustado, "Distribuição de Frequência do Ebtida Ajustado", "lightgreen")
-    st.write(f"**Ebtida Ajustado Médio:** R$ {np.mean(ebtida_ajustado):,.2f}")
+    st.metric("Ebtida Ajustado Médio", f"R$ {_br_m(np.mean(ebtida_ajustado))} Mi")

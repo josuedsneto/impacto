@@ -2,8 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from utils import require_login, show_logo
 
@@ -131,24 +129,32 @@ if st.button("Gerar Previsão"):
     sb_f_min = sb_f_previsto - 1.96 * std_res
     sb_f_max = sb_f_previsto + 1.96 * std_res
 
+    def _br(v, dec=2): return f"{v:.{dec}f}".replace(".", ",")
     st.success(
-        f"**Preço previsto SB=F: {sb_f_previsto:.2f} ¢/lb**"
-        f"  |  Intervalo 95%: [{sb_f_min:.2f}, {sb_f_max:.2f}]"
+        f"**Preço previsto SB=F: {_br(sb_f_previsto)} ¢/lb**"
+        f"  |  Intervalo 95%: [{_br(sb_f_min)}, {_br(sb_f_max)}]"
     )
 
     col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("R²", f"{r2:.4f}")
-    col_m2.metric("RMSE", f"{rmse:.4f} ¢/lb")
+    col_m1.metric("R²",   _br(r2, 4))
+    col_m2.metric("RMSE", f"{_br(rmse, 4)} ¢/lb")
     col_m3.metric("Anos de treino", str(len(df)))
 
     # ── Heatmap de correlação ─────────────────────────────────────────────────
     corr_df = df[["sb_f"] + feature_cols]
-    fig_corr, ax = plt.subplots(figsize=(10, 7))
-    sns.heatmap(corr_df.corr(), annot=True, cmap="coolwarm", fmt=".2f",
-                linewidths=0.5, ax=ax)
-    ax.set_title("Matriz de Correlação — Variáveis do Modelo")
-    st.pyplot(fig_corr)
-    plt.close(fig_corr)
+    corr = corr_df.corr()
+    text = [[f"{v:.2f}".replace(".", ",") for v in row] for row in corr.values]
+    fig_corr = go.Figure(go.Heatmap(
+        z=corr.values,
+        x=corr.columns.tolist(),
+        y=corr.index.tolist(),
+        colorscale="RdBu",
+        zmin=-1, zmax=1,
+        text=text,
+        texttemplate="%{text}",
+    ))
+    fig_corr.update_layout(title="Matriz de Correlação — Variáveis do Modelo")
+    st.plotly_chart(fig_corr, use_container_width=True)
 
     # ── Gráfico histórico real vs previsto ────────────────────────────────────
     fig = go.Figure()
