@@ -46,7 +46,7 @@ def _find_user_by_customer(customer_id: str) -> str | None:
         .maybe_single()
         .execute()
     )
-    return row.data["user_id"] if row.data else None
+    return row.data["user_id"] if row and row.data else None
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ async def get_subscription(
         .maybe_single()
         .execute()
     )
-    if not row.data:
+    if not row or not row.data:
         return {"plan": "free", "current_period_end": None}
     return {
         "plan": row.data["plan"],
@@ -100,7 +100,7 @@ async def create_checkout(
         .maybe_single()
         .execute()
     )
-    customer_id = row.data.get("stripe_customer_id") if row.data else None
+    customer_id = row.data.get("stripe_customer_id") if row and row.data else None
 
     if not customer_id:
         customer = stripe.Customer.create(
@@ -138,7 +138,7 @@ async def create_portal(
         .maybe_single()
         .execute()
     )
-    customer_id = row.data.get("stripe_customer_id") if row.data else None
+    customer_id = row.data.get("stripe_customer_id") if row and row.data else None
     if not customer_id:
         raise HTTPException(status_code=400, detail="Nenhuma assinatura encontrada.")
 
