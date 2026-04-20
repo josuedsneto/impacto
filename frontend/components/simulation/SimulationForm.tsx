@@ -99,8 +99,28 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
             ? detail.map((e: { msg: string }) => e.msg).join(", ")
             : (detail ?? "Erro ao executar simulação.")
         );
+        return;
+      }
+
+      // Poll until simulation completes (backend runs it as a background task)
+      const simId: string = data.id;
+      let result = data;
+      for (let i = 0; i < 60; i++) {
+        if (result.status !== "running") break;
+        await new Promise((r) => setTimeout(r, 2000));
+        const pollRes = await fetch(`${BACKEND_URL}/api/simulations/${simId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!pollRes.ok) break;
+        result = await pollRes.json();
+      }
+
+      if (result.status === "error") {
+        setError("Simulação falhou no servidor. Tente novamente.");
+      } else if (result.status === "done") {
+        onResult(result as SimulationResult);
       } else {
-        onResult(data as SimulationResult);
+        setError("Simulação demorou muito. Verifique o histórico.");
       }
     } catch {
       setError("Erro de conexão com o servidor.");

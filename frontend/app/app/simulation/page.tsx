@@ -154,7 +154,7 @@ export default function SimulationPage() {
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
                       {item.label ?? "—"} &middot; P50:{" "}
-                      {item.p50.toFixed(2)}
+                      {item.p50 != null ? item.p50.toFixed(2) : "—"}
                     </div>
                   </button>
                 </li>

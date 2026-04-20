@@ -18,20 +18,20 @@ export default function SimulationMetrics({ result }: SimulationMetricsProps) {
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1 text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">P5</p>
-          <p className="text-xl font-bold">{result.p5.toFixed(2)}</p>
+          <p className="text-xl font-bold">{result.p5?.toFixed(2) ?? "—"}</p>
         </div>
         <div className="space-y-1 text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">P50 (mediana)</p>
-          <p className="text-xl font-bold">{result.p50.toFixed(2)}</p>
+          <p className="text-xl font-bold">{result.p50?.toFixed(2) ?? "—"}</p>
         </div>
         <div className="space-y-1 text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">P95</p>
-          <p className="text-xl font-bold">{result.p95.toFixed(2)}</p>
+          <p className="text-xl font-bold">{result.p95?.toFixed(2) ?? "—"}</p>
         </div>
       </div>
 
       <div className="border-t pt-2 text-sm text-muted-foreground">
-        Preço inicial: {result.preco_inicial.toFixed(2)}
+        Preço inicial: {result.preco_inicial?.toFixed(2) ?? "—"}
       </div>
     </div>
   );
