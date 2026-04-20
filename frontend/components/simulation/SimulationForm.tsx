@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { ComputingLoader } from "@/components/ui/computing-loader";
 import { createBrowserClient } from "@supabase/ssr";
 
 export interface SimulationResult {
@@ -208,8 +209,12 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Button type="submit" disabled={loading}>
-        {loading ? "Simulando..." : "Simular"}
+        {loading ? "Aguarde..." : "Simular"}
       </Button>
+
+      {loading && (
+        <ComputingLoader label="Executando simulação Monte Carlo..." expectedSeconds={20} />
+      )}
     </form>
   );
 }

@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ComputingLoader } from "@/components/ui/computing-loader";
 import {
   ComposedChart,
   Line,
@@ -120,7 +121,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
       </div>
 
       {loading && (
-        <div className="h-80 rounded-lg bg-muted animate-pulse" />
+        <ComputingLoader label="Ajustando modelo ARIMA..." expectedSeconds={15} />
       )}
 
       {error && (

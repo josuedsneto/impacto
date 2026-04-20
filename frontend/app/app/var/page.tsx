@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ComputingLoader } from "@/components/ui/computing-loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -135,11 +136,7 @@ function VarPanel({ ticker }: { ticker: string }) {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
+        <ComputingLoader label="Calculando Value at Risk..." expectedSeconds={20} />
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && !error && result && (

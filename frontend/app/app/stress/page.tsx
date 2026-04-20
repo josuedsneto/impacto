@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { ComputingLoader } from "@/components/ui/computing-loader";
 import {
   Select,
   SelectContent,
@@ -104,11 +105,7 @@ export default function StressPage() {
       </div>
 
       {loading && (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
-          ))}
-        </div>
+        <ComputingLoader label="Rodando cenários de stress..." expectedSeconds={20} />
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}

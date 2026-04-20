@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ComputingLoader } from "@/components/ui/computing-loader";
 import { createBrowserClient } from "@supabase/ssr";
 
 export interface AcucarDefaults {
@@ -229,8 +230,12 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Button type="submit" disabled={loading}>
-        {loading ? "Calculando..." : "Calcular Previsão SB=F"}
+        {loading ? "Aguarde..." : "Calcular Previsão SB=F"}
       </Button>
+
+      {loading && (
+        <ComputingLoader label="Ajustando modelo de regressão..." expectedSeconds={15} />
+      )}
     </form>
   );
 }
