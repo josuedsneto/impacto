@@ -1,29 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AtrForm, { Usina, AtrResult } from "@/components/atr/AtrForm";
 import { AtrMetrics } from "@/components/atr/AtrMetrics";
 import { AtrHistorico, HistoricoItem } from "@/components/atr/AtrHistorico";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 async function getCurrentUserId(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
+  const { data } = await createClient().auth.getSession();
   return data.session?.user.id ?? null;
 }
 
@@ -45,20 +31,16 @@ export default function AtrPage() {
       setUsinasLoading(true);
       setUsinasError(null);
       try {
-        const [token, userId] = await Promise.all([getAccessToken(), getCurrentUserId()]);
+        const [data, userId] = await Promise.all([
+          apiFetch<{ usinas: Usina[] }>(`/api/atr/usinas`),
+          getCurrentUserId(),
+        ]);
         setCurrentUserId(userId);
-
-        const res = await fetch(`${API}/api/atr/usinas`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setUsinasError((data as { detail?: string }).detail ?? "Erro ao carregar usinas.");
-        } else {
-          setUsinas((data as { usinas: Usina[] }).usinas);
-        }
-      } catch {
-        setUsinasError("Erro de conexão com o servidor.");
+        setUsinas(data.usinas);
+      } catch (e) {
+        setUsinasError(
+          e instanceof ApiError ? e.message : "Erro de conexão com o servidor."
+        );
       } finally {
         setUsinasLoading(false);
       }
@@ -82,20 +64,15 @@ export default function AtrPage() {
       setHistoricoLoading(true);
       setHistoricoError(null);
       try {
-        const token = await getAccessToken();
-        const url = `${API}/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`;
-        const res = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setHistoricoError((data as { detail?: string }).detail ?? "Erro ao carregar histórico.");
-        } else {
-          setHistorico((data as { historico: HistoricoItem[] }).historico);
-          setHistoricoLoaded(true);
-        }
-      } catch {
-        setHistoricoError("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ historico: HistoricoItem[] }>(
+          `/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`
+        );
+        setHistorico(data.historico);
+        setHistoricoLoaded(true);
+      } catch (e) {
+        setHistoricoError(
+          e instanceof ApiError ? e.message : "Erro de conexão com o servidor."
+        );
       } finally {
         setHistoricoLoading(false);
       }
@@ -110,22 +87,15 @@ export default function AtrPage() {
 
   async function handleToggleShare(id: string, compartilhado: boolean) {
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/atr/simulacoes/${encodeURIComponent(id)}/compartilhar`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ compartilhado }),
-      });
-      if (res.ok) {
-        setHistorico((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, compartilhado } : item
-          )
-        );
-      }
+      await apiFetch(
+        `/api/atr/simulacoes/${encodeURIComponent(id)}/compartilhar`,
+        { method: "PATCH", body: JSON.stringify({ compartilhado }) }
+      );
+      setHistorico((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, compartilhado } : item
+        )
+      );
     } catch {
       // Silently fail — user can retry
     }

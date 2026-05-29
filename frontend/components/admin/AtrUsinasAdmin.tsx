@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -10,8 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface Usina {
   id: string;
@@ -22,15 +20,6 @@ interface Usina {
 interface Usuario {
   id: string;
   email: string;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 export function AtrUsinasAdmin() {
@@ -64,18 +53,10 @@ export function AtrUsinasAdmin() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar usinas.");
-        return;
-      }
-      setUsinas((data as { usinas: Usina[] }).usinas);
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      const data = await apiFetch<{ usinas: Usina[] }>(`/api/admin/usinas`);
+      setUsinas(data.usinas);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }
@@ -83,14 +64,8 @@ export function AtrUsinasAdmin() {
 
   async function fetchUsuarios() {
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usuarios`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsuarios((data as { usuarios: Usuario[] }).usuarios);
-      }
+      const data = await apiFetch<{ usuarios: Usuario[] }>(`/api/admin/usuarios`);
+      setUsuarios(data.usuarios);
     } catch {
       // non-critical — silently ignore
     }
@@ -107,24 +82,14 @@ export function AtrUsinasAdmin() {
     setInviting(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/invite`, {
+      await apiFetch(`/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/invite`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao enviar convite.");
-        return;
-      }
       setInviteEmail("");
       showSuccess(`Convite enviado para ${inviteEmail.trim()}.`);
-    } catch {
-      setError("Erro de conexão ao enviar convite.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão ao enviar convite.");
     } finally {
       setInviting(false);
     }
@@ -136,14 +101,10 @@ export function AtrUsinasAdmin() {
     setLoadingUsers(true);
     setUsinaUserIds(new Set());
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas/${encodeURIComponent(usina.id)}/usuarios`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsinaUserIds(new Set((data as { user_ids: string[] }).user_ids));
-      }
+      const data = await apiFetch<{ user_ids: string[] }>(
+        `/api/admin/usinas/${encodeURIComponent(usina.id)}/usuarios`
+      );
+      setUsinaUserIds(new Set(data.user_ids));
     } catch {
       // silently ignore
     } finally {
@@ -156,30 +117,19 @@ export function AtrUsinasAdmin() {
     setToggling(userId);
     setError(null);
     try {
-      const token = await getAccessToken();
       const isAssociated = usinaUserIds.has(userId);
-      const url = `${API}/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/usuarios/${encodeURIComponent(userId)}`;
+      const url = `/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/usuarios/${encodeURIComponent(userId)}`;
 
       if (isAssociated) {
-        const res = await fetch(url, {
-          method: "DELETE",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        await apiFetch(url, { method: "DELETE" });
+        setUsinaUserIds((prev) => {
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
         });
-        if (res.ok) {
-          setUsinaUserIds((prev) => {
-            const next = new Set(prev);
-            next.delete(userId);
-            return next;
-          });
-        }
       } else {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          setUsinaUserIds((prev) => new Set([...prev, userId]));
-        }
+        await apiFetch(url, { method: "POST" });
+        setUsinaUserIds((prev) => new Set([...prev, userId]));
       }
     } catch {
       setError("Erro ao atualizar associação.");
@@ -194,25 +144,15 @@ export function AtrUsinasAdmin() {
     setCreating(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas`, {
+      await apiFetch(`/api/admin/usinas`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ nome: newUsinaName.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao criar usina.");
-        return;
-      }
       setNewUsinaName("");
       showSuccess("Usina criada com sucesso.");
       await fetchUsinas();
-    } catch {
-      setError("Erro de conexão com o servidor.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     } finally {
       setCreating(false);
     }
@@ -223,20 +163,11 @@ export function AtrUsinasAdmin() {
     setError(null);
     if (managingUsina?.id === id) setManagingUsina(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/usinas/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError((data as { detail?: string }).detail ?? "Erro ao deletar usina.");
-        return;
-      }
+      await apiFetch(`/api/admin/usinas/${encodeURIComponent(id)}`, { method: "DELETE" });
       showSuccess("Usina deletada.");
       await fetchUsinas();
-    } catch {
-      setError("Erro de conexão com o servidor.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     }
   }
 

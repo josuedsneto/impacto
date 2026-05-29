@@ -5,29 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
-async function fetchPrice(ticker: string, token: string): Promise<number | null> {
+async function fetchPrice(ticker: string): Promise<number | null> {
   const today = new Date();
   const end = today.toISOString().slice(0, 10);
   const start = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   try {
-    const res = await fetch(`${API}/api/market/prices?ticker=${ticker}&start=${start}&end=${end}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    const data = await res.json();
-    const rows: { close: number }[] = data.rows ?? [];
+    const data = await apiFetch<{ rows?: { close: number }[] }>(
+      `/api/market/prices?ticker=${ticker}&start=${start}&end=${end}`
+    );
+    const rows = data.rows ?? [];
     return rows.length > 0 ? rows[rows.length - 1].close : null;
   } catch {
     return null;
@@ -44,17 +32,13 @@ export default function WatchlistManager() {
 
   useEffect(() => {
     async function loadWatchlist() {
-      const token = await getAccessToken();
       try {
-        const res = await fetch(`${API}/api/watchlist`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
+        const data = await apiFetch<{ tickers?: string[] }>(`/api/watchlist`);
         const list: string[] = data.tickers ?? [];
         setTickers(list);
 
         const priceResults = await Promise.all(
-          list.map(async (t) => ({ ticker: t, price: await fetchPrice(t, token) }))
+          list.map(async (t) => ({ ticker: t, price: await fetchPrice(t) }))
         );
         const priceMap: Record<string, number | null> = {};
         for (const { ticker, price } of priceResults) {
@@ -76,42 +60,32 @@ export default function WatchlistManager() {
     setAddLoading(true);
     setAddError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/watchlist`, {
+      await apiFetch(`/api/watchlist`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ ticker }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setAddError(err.detail ?? "Erro ao adicionar ticker.");
-        return;
-      }
-      const price = await fetchPrice(ticker, token);
+      const price = await fetchPrice(ticker);
       setTickers((prev) => [ticker, ...prev]);
       setPrices((prev) => ({ ...prev, [ticker]: price }));
       setAddInput("");
+    } catch (e) {
+      setAddError(e instanceof ApiError ? e.message : "Erro ao adicionar ticker.");
     } finally {
       setAddLoading(false);
     }
   }
 
   async function handleRemove(ticker: string) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API}/api/watchlist/${ticker}`, {
-      method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
+    try {
+      await apiFetch(`/api/watchlist/${ticker}`, { method: "DELETE" });
       setTickers((prev) => prev.filter((t) => t !== ticker));
       setPrices((prev) => {
         const next = { ...prev };
         delete next[ticker];
         return next;
       });
+    } catch {
+      // silent — item stays
     }
   }
 

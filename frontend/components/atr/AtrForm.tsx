@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createBrowserClient } from "@supabase/ssr";
+import { getToken, API_URL } from "@/lib/api";
 
 export interface Usina {
   id: string;
@@ -22,17 +22,6 @@ interface AtrFormProps {
   usinas: Usina[];
   onResult: (r: AtrResult) => void;
   onUsinaChange?: (id: string) => void;
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
 }
 
 export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProps) {
@@ -62,7 +51,7 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
     setError(null);
 
     try {
-      const token = await getAccessToken();
+      const token = await getToken();
       const body: Record<string, unknown> = {
         usina_id: usinaId,
         chuva_mm: parseFloat(chuva),
@@ -72,7 +61,7 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
         body.volume_moagem = parseFloat(volume);
       }
 
-      const res = await fetch(`${API}/api/atr/simulate`, {
+      const res = await fetch(`${API_URL}/api/atr/simulate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

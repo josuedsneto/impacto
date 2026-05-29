@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface BreakevenResult {
   preco_acucar_cents_lb: number;
@@ -26,15 +24,6 @@ interface BreakevenSim {
   breakeven_brl_saca: number;
   label: string | null;
   created_at: string;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function MetricItem({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -106,15 +95,10 @@ export default function BreakevenPage() {
   useEffect(() => {
     async function fetchLive() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/breakeven`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) { setLiveError(data.detail ?? "Erro."); return; }
-        setLive(data as BreakevenResult);
-        setLiveFator(String((data as BreakevenResult).fator_conversao));
-      } catch { setLiveError("Erro de conexão."); }
+        const data = await apiFetch<BreakevenResult>(`/api/breakeven`);
+        setLive(data);
+        setLiveFator(String(data.fator_conversao));
+      } catch (e) { setLiveError(e instanceof ApiError ? e.message : "Erro de conexão."); }
       finally { setLiveLoading(false); }
     }
     fetchLive();
@@ -136,10 +120,8 @@ export default function BreakevenPage() {
     if (manualBreakeven === null) { setSaveError("Preencha todos os campos."); return; }
     setSaving(true); setSaveMsg(null); setSaveError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/breakeven/save`, {
+      const data = await apiFetch<BreakevenSim>(`/api/breakeven/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           preco_acucar_cents_lb: manualAcucar,
           preco_dolar_brl: manualDolar,
@@ -147,13 +129,9 @@ export default function BreakevenPage() {
           label: manualLabel.trim() || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) { setSaveError(data.detail ?? "Erro ao salvar."); }
-      else {
-        setSaveMsg("Simulação salva!");
-        setHistory((prev) => [data as BreakevenSim, ...prev]);
-      }
-    } catch { setSaveError("Erro de conexão."); }
+      setSaveMsg("Simulação salva!");
+      setHistory((prev) => [data, ...prev]);
+    } catch (e) { setSaveError(e instanceof ApiError ? e.message : "Erro de conexão."); }
     finally { setSaving(false); }
   }
 
@@ -161,12 +139,9 @@ export default function BreakevenPage() {
     if (historyLoaded) return;
     setHistoryLoading(true);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/breakeven/history`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) { setHistory(data.simulations ?? []); setHistoryLoaded(true); }
+      const data = await apiFetch<{ simulations?: BreakevenSim[] }>(`/api/breakeven/history`);
+      setHistory(data.simulations ?? []);
+      setHistoryLoaded(true);
     } catch { /* silent */ }
     finally { setHistoryLoading(false); }
   }

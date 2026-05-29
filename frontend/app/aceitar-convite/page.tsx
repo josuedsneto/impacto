@@ -2,24 +2,13 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError, getToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface InviteInfo {
   invited_email: string;
   usina_nome: string;
-}
-
-async function getToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
 }
 
 function AcceitarConviteContent() {
@@ -49,16 +38,12 @@ function AcceitarConviteContent() {
         setIsLoggedIn(!!accessToken);
 
         // Validate invite (public endpoint)
-        const res = await fetch(`${API}/api/invites/validate?token=${encodeURIComponent(token)}`);
-        if (!res.ok) {
-          const err = await res.json();
-          setLoadError(err.detail ?? "Convite inválido ou expirado.");
-          return;
-        }
-        const data = await res.json();
+        const data = await apiFetch<InviteInfo>(
+          `/api/invites/validate?token=${encodeURIComponent(token)}`
+        );
         setInviteInfo({ invited_email: data.invited_email, usina_nome: data.usina_nome });
-      } catch {
-        setLoadError("Erro ao verificar convite.");
+      } catch (e) {
+        setLoadError(e instanceof ApiError ? e.message : "Erro ao verificar convite.");
       } finally {
         setLoading(false);
       }
@@ -76,20 +61,14 @@ function AcceitarConviteContent() {
         router.push(`/login?next=${encodeURIComponent(`/aceitar-convite?token=${token}`)}`);
         return;
       }
-      const res = await fetch(`${API}/api/invites/accept`, {
+      const data = await apiFetch<{ usina?: string }>(`/api/invites/accept`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao aceitar convite.");
-        return;
-      }
       setDone(true);
       setUsinaNome(data.usina ?? inviteInfo?.usina_nome ?? "");
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setAccepting(false);
     }

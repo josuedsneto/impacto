@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,23 +11,12 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface MetasResult {
   meta: number;
   mtm_series: { date: string; mtm: number; meta: number }[];
   heatmap: number[][];
   acucares: number[];
   dolares: number[];
-}
-
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function cellColor(v: number): string {
@@ -47,14 +36,9 @@ export default function MetasPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/metas?meta=${meta}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as MetasResult);
-    } catch { setError("Erro de conexão."); }
+      const data = await apiFetch<MetasResult>(`/api/metas?meta=${meta}`);
+      setResult(data);
+    } catch (e) { setError(e instanceof ApiError ? e.message : "Erro de conexão."); }
     finally { setLoading(false); }
   }
 

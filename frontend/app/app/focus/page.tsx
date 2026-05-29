@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface IndicatorValue {
   value: number | null;
@@ -17,15 +15,6 @@ interface FocusResponse {
   selic: IndicatorValue;
   pib: IndicatorValue;
   ano_referencia: string;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function fmt(v: number | null, decimals = 2): string {
@@ -51,18 +40,10 @@ export default function FocusPage() {
   useEffect(() => {
     async function fetchFocus() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/focus`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const json = await res.json();
-        if (!res.ok) {
-          setError((json as { detail?: string }).detail ?? "Erro ao carregar dados do Focus.");
-          return;
-        }
-        setData(json as FocusResponse);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        const json = await apiFetch<FocusResponse>(`/api/focus`);
+        setData(json);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Erro ao carregar dados do Focus.");
       } finally {
         setLoading(false);
       }

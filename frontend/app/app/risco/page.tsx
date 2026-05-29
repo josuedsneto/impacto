@@ -1,31 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface VariavelInput { media: number; p15: number; p85: number; }
 interface DistResult { media: number; percentis: { p: number; v: number }[]; }
 interface RiscoResult { faturamento: DistResult; custo: DistResult; ebitda: DistResult; }
-
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
-}
 
 const DEFAULTS: Record<string, VariavelInput> = {
   moagem:       { media: 1300000, p15: 1100000, p85: 1500000 },
@@ -97,19 +84,12 @@ export default function RiscoPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/risco`, {
+      const data = await apiFetch<RiscoResult>(`/api/risco`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ ...inputs, num_simulacoes: 10000 }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as RiscoResult);
-    } catch { setError("Erro de conexão."); }
+      setResult(data);
+    } catch (e) { setError(e instanceof ApiError ? e.message : "Erro de conexão."); }
     finally { setLoading(false); }
   }
 

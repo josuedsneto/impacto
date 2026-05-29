@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -23,8 +23,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface ArimaPoint {
   date: string;
   value?: number;
@@ -39,15 +37,6 @@ interface ArimaResponse {
   series: ArimaPoint[];
 }
 
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
 function ArimaPanel({ ticker }: { ticker: string }) {
   const [steps, setSteps] = useState("30");
   const [data, setData] = useState<ArimaPoint[] | null>(null);
@@ -60,33 +49,23 @@ function ArimaPanel({ ticker }: { ticker: string }) {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
         const encodedTicker = encodeURIComponent(ticker);
         const params = new URLSearchParams({ steps: stepsVal });
-        const res = await fetch(
-          `${API}/api/arima/${encodedTicker}?${params}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
+        const json = await apiFetch<ArimaResponse>(
+          `/api/arima/${encodedTicker}?${params}`
         );
-        const json = await res.json();
-        if (res.status === 400) {
-          setError(
-            (json as { detail?: string }).detail ??
-              "ARIMA não convergiu para este ativo."
-          );
-          return;
-        }
-        if (!res.ok) {
-          setError(
-            (json as { detail?: string }).detail ?? "Erro ao carregar ARIMA."
-          );
-          return;
-        }
-        setData((json as ArimaResponse).series);
+        setData(json.series);
         setLoaded(true);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+      } catch (e) {
+        if (e instanceof ApiError) {
+          setError(
+            e.status === 400
+              ? e.message || "ARIMA não convergiu para este ativo."
+              : e.message || "Erro ao carregar ARIMA."
+          );
+        } else {
+          setError("Erro de conexão com o servidor.");
+        }
       } finally {
         setLoading(false);
       }

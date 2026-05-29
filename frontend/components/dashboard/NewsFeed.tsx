@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
 
 interface NewsItem {
   title: string;
@@ -10,8 +10,6 @@ interface NewsItem {
   source: string;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export function NewsFeed() {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,19 +17,8 @@ export function NewsFeed() {
   useEffect(() => {
     async function fetchNews() {
       try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        const { data: session } = await supabase.auth.getSession();
-        const token = session.session?.access_token ?? "";
-
-        const res = await fetch(`${API}/api/news`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        setItems((data.items as NewsItem[]).slice(0, 4));
+        const data = await apiFetch<{ items: NewsItem[] }>(`/api/news`);
+        setItems(data.items.slice(0, 4));
       } catch {
         // silently fail
       } finally {

@@ -6,12 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { TickerSelect } from "@/components/market/TickerSelect";
 import { IndicatorSelector, DEFAULT_CONFIG, type IndicatorConfig } from "@/components/market/IndicatorSelector";
 import { FixacoesChart, type OhlcvRow, type AnalysisSignal } from "@/components/market/FixacoesChart";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function defaultDateRange(): { start: string; end: string } {
   const end = new Date();
@@ -36,15 +34,6 @@ export default function FixacoesPage() {
   const [signals, setSignals] = useState<AnalysisSignal[]>([]);
   const [queriedTicker, setQueriedTicker] = useState("");
 
-  async function getToken(): Promise<string | null> {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  }
-
   const handleAnalyze = useCallback(async () => {
     if (!ticker.trim()) {
       toast.error("Informe o ticker.");
@@ -52,7 +41,6 @@ export default function FixacoesPage() {
     }
     setLoading(true);
     try {
-      const token = await getToken();
       const params = new URLSearchParams({
         ticker: ticker.trim().toUpperCase(),
         start,
@@ -71,22 +59,17 @@ export default function FixacoesPage() {
         ema_periods: config.emaPeriods.join(","),
       });
 
-      const res = await fetch(`${BACKEND_URL}/api/market/analysis?${params}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao consultar análise.");
-        return;
-      }
+      const data = await apiFetch<{ rows: OhlcvRow[]; signals: AnalysisSignal[]; ticker: string }>(
+        `/api/market/analysis?${params}`
+      );
       if (data.rows.length === 0) {
         toast.warning(`Nenhum dado encontrado para ${ticker.toUpperCase()} no período.`);
       }
       setRows(data.rows);
       setSignals(data.signals);
       setQueriedTicker(data.ticker);
-    } catch {
-      toast.error("Erro de conexão com o servidor.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }

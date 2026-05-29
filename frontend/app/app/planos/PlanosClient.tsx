@@ -1,23 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Plan } from "@/lib/plan";
 import { PLAN_LABELS, isPro } from "@/lib/plan";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
 
 const PLANS: {
   id: Plan;
@@ -111,20 +100,13 @@ export function PlanosClient({
     if (plan === "free") return;
     setLoading(plan);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/billing/checkout`, {
+      const data = await apiFetch<{ checkout_url: string }>(`/api/billing/checkout`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao iniciar checkout.");
-        return;
-      }
       window.location.href = data.checkout_url;
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setLoading(null);
     }
@@ -133,19 +115,12 @@ export function PlanosClient({
   async function handlePortal() {
     setLoading("portal");
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/billing/portal`, {
+      const data = await apiFetch<{ portal_url: string }>(`/api/billing/portal`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao abrir portal.");
-        return;
-      }
       window.location.href = data.portal_url;
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setLoading(null);
     }

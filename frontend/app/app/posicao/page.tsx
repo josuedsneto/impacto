@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError, getToken, API_URL } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface Fixacao {
   id: string;
@@ -56,15 +54,6 @@ const TICKERS = [
 
 function unit(ticker: string) {
   return TICKERS.find((t) => t.id === ticker)?.unit ?? "";
-}
-
-async function getToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function fmtNum(v: number | null | undefined, dec = 2) {
@@ -126,26 +115,16 @@ export default function PosicaoPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = await getToken();
-      const [listRes, sumRes, subRes] = await Promise.all([
-        fetch(`${API}/api/cobertura`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(
-          `${API}/api/cobertura/summary?ticker=${encodeURIComponent(activeTicker)}&producao_total=${producaoTotal || 0}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        ),
-        fetch(`${API}/api/billing/subscription`, { headers: { Authorization: `Bearer ${token}` } }),
+      const [list, sum, sub] = await Promise.all([
+        apiFetch<{ fixacoes?: Fixacao[] }>(`/api/cobertura`).catch(() => null),
+        apiFetch<CoverturaSummary>(
+          `/api/cobertura/summary?ticker=${encodeURIComponent(activeTicker)}&producao_total=${producaoTotal || 0}`
+        ).catch(() => null),
+        apiFetch<{ plan: string }>(`/api/billing/subscription`).catch(() => null),
       ]);
-      if (listRes.ok) {
-        const d = await listRes.json();
-        setFixacoes(d.fixacoes ?? []);
-      }
-      if (sumRes.ok) {
-        setSummary(await sumRes.json());
-      }
-      if (subRes.ok) {
-        const sub = await subRes.json();
-        setIsPro(sub.plan === "pro" || sub.plan === "enterprise");
-      }
+      if (list) setFixacoes(list.fixacoes ?? []);
+      if (sum) setSummary(sum);
+      if (sub) setIsPro(sub.plan === "pro" || sub.plan === "enterprise");
     } catch {
       toast.error("Erro ao carregar posição.");
     } finally {
@@ -158,14 +137,8 @@ export default function PosicaoPage() {
   const fetchAudit = useCallback(async () => {
     setAuditLoading(true);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/cobertura/audit`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setAuditEntries(d.entries ?? []);
-      }
+      const d = await apiFetch<{ entries?: AuditEntry[] }>(`/api/cobertura/audit`);
+      setAuditEntries(d.entries ?? []);
     } catch {
       toast.error("Erro ao carregar auditoria.");
     } finally {
@@ -184,10 +157,8 @@ export default function PosicaoPage() {
     }
     setSubmitting(true);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/cobertura`, {
+      await apiFetch(`/api/cobertura`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           ticker: fTicker,
           volume: parseFloat(fVolume),
@@ -196,18 +167,13 @@ export default function PosicaoPage() {
           label: fLabel.trim() || null,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.detail ?? "Erro ao registrar fixação.");
-        return;
-      }
       toast.success("Fixação registrada!");
       setFVolume("");
       setFPreco("");
       setFLabel("");
       fetchData();
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setSubmitting(false);
     }
@@ -215,12 +181,7 @@ export default function PosicaoPage() {
 
   async function handleDelete(id: string) {
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/cobertura/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
+      await apiFetch(`/api/cobertura/${id}`, { method: "DELETE" });
       toast.success("Fixação removida.");
       setFixacoes((prev) => prev.filter((f) => f.id !== id));
       fetchData();
@@ -233,7 +194,7 @@ export default function PosicaoPage() {
     setDownloading(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API}/api/reports/posicao`, {
+      const res = await fetch(`${API_URL}/api/reports/posicao`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 403) {
@@ -258,14 +219,10 @@ export default function PosicaoPage() {
   async function handleShare() {
     setSharing(true);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/share`, {
+      const data = await apiFetch<{ url: string }>(`/api/share`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ type: "posicao", expires_days: 30 }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
       setShareUrl(data.url);
     } catch {
       toast.error("Erro ao criar link de compartilhamento.");

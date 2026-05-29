@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { ComputingLoader } from "@/components/ui/computing-loader";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, getToken, API_URL } from "@/lib/api";
 
 export interface SimulationResult {
   id: string;
@@ -29,17 +29,6 @@ interface SimulationFormProps {
   onResult: (result: SimulationResult) => void;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [ticker, setTicker] = useState("SB=F");
   const [precoInicial, setPrecoInicial] = useState<number>(0);
@@ -53,16 +42,12 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   useEffect(() => {
     async function loadParams() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${BACKEND_URL}/api/params/${encodeURIComponent(ticker)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
-        }
+        const data = await apiFetch<{ pct_bound_preferido?: number | null }>(
+          `/api/params/${encodeURIComponent(ticker)}`
+        );
+        if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
       } catch {
-        // silently ignore — defaults remain
+        // silently ignore — defaults remain (ex.: 404 sem params salvos)
       }
     }
     loadParams();
@@ -74,8 +59,8 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
     setError(null);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/simulations`, {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/simulations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +94,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       for (let i = 0; i < 60; i++) {
         if (result.status !== "running") break;
         await new Promise((r) => setTimeout(r, 2000));
-        const pollRes = await fetch(`${BACKEND_URL}/api/simulations/${simId}`, {
+        const pollRes = await fetch(`${API_URL}/api/simulations/${simId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!pollRes.ok) break;

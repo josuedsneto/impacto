@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AcucarForm, { AcucarDefaults, AcucarResult } from "@/components/regression/AcucarForm";
 import { AcucarMetrics } from "@/components/regression/AcucarMetrics";
@@ -12,17 +12,6 @@ interface HistoryItem {
   created_at: string;
   inputs: AcucarDefaults & { model: string };
   resultado: Omit<AcucarResult, "historico">;
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
 }
 
 export default function RegressaoAcucarPage() {
@@ -41,18 +30,10 @@ export default function RegressaoAcucarPage() {
       setDefaultsLoading(true);
       setDefaultsError(null);
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/regression/acucar/defaults`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setDefaultsError(data.detail ?? "Erro ao carregar valores padrão.");
-        } else {
-          setDefaults(data as AcucarDefaults);
-        }
-      } catch {
-        setDefaultsError("Erro de conexão com o servidor.");
+        const data = await apiFetch<AcucarDefaults>(`/api/regression/acucar/defaults`);
+        setDefaults(data);
+      } catch (e) {
+        setDefaultsError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
       } finally {
         setDefaultsLoading(false);
       }
@@ -66,19 +47,11 @@ export default function RegressaoAcucarPage() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/regression/runs?tipo=acucar`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setHistoryError(data.detail ?? "Erro ao carregar histórico.");
-        } else {
-          setHistory((data as { runs: HistoryItem[] }).runs);
-          setHistoryLoaded(true);
-        }
-      } catch {
-        setHistoryError("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ runs: HistoryItem[] }>(`/api/regression/runs?tipo=acucar`);
+        setHistory(data.runs);
+        setHistoryLoaded(true);
+      } catch (e) {
+        setHistoryError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
       } finally {
         setHistoryLoading(false);
       }

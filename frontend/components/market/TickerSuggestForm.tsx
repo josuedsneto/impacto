@@ -13,24 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { createBrowserClient } from "@supabase/ssr";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { apiFetch, ApiError } from "@/lib/api";
 
 export function TickerSuggestForm() {
   const [ticker, setTicker] = useState("");
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("commodity");
   const [loading, setLoading] = useState(false);
-
-  async function getAccessToken(): Promise<string | null> {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,26 +29,16 @@ export function TickerSuggestForm() {
     }
     setLoading(true);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/market/suggest`, {
+      const data = await apiFetch<{ message?: string }>(`/api/market/suggest`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ ticker: ticker.trim().toUpperCase(), nome, tipo }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        // MKT-03: show visible error before anything is saved
-        toast.error(data.detail ?? "Erro ao sugerir ticker.");
-      } else {
-        toast.success(data.message ?? `Ticker '${ticker}' enviado para revisão.`);
-        setTicker("");
-        setNome("");
-      }
+      toast.success(data.message ?? `Ticker '${ticker}' enviado para revisão.`);
+      setTicker("");
+      setNome("");
     } catch (err) {
-      toast.error("Erro de conexão com o servidor.");
+      // MKT-03: show visible error before anything is saved
+      toast.error(err instanceof ApiError ? err.message : "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }

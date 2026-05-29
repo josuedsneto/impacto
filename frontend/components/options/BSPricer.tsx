@@ -1,21 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
 
 export default function BSPricer() {
   const [S, setS] = useState(20);
@@ -34,23 +23,13 @@ export default function BSPricer() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/options/bs-price`, {
+        const data = await apiFetch<{ price: number }>(`/api/options/bs-price`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
           body: JSON.stringify(params),
         });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.detail ?? "Erro ao calcular preço BS.");
-        } else {
-          setPrice(data.price);
-        }
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        setPrice(data.price);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
       } finally {
         setLoading(false);
       }

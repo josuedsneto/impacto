@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 interface NewsItem {
@@ -12,15 +11,6 @@ interface NewsItem {
   link: string;
   source: string;
   published: string;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 export default function NoticiasPage() {
@@ -33,22 +23,14 @@ export default function NoticiasPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/news`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar notícias.");
-        return;
-      }
-      setNews(data.items as NewsItem[]);
+      const data = await apiFetch<{ items: NewsItem[] }>(`/api/news`);
+      setNews(data.items);
       const now = new Date();
       setLastUpdate(
         now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       );
-    } catch {
-      setError("Erro de conexão com o servidor.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }

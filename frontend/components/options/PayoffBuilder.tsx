@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,17 +23,6 @@ export interface PayoffResult {
 
 interface PayoffBuilderProps {
   onPayoffResult: (result: PayoffResult) => void;
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
 }
 
 let legCounter = 0;
@@ -78,23 +67,13 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/options/payoff`, {
+      const data = await apiFetch<PayoffResult>(`/api/options/payoff`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ legs }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.detail ?? "Erro ao calcular payoff.");
-      } else {
-        onPayoffResult(data as PayoffResult);
-      }
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      onPayoffResult(data);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ComputingLoader } from "@/components/ui/computing-loader";
-import { createBrowserClient } from "@supabase/ssr";
+import { getToken, API_URL } from "@/lib/api";
 
 export interface AcucarDefaults {
   sb_f: number | null;
@@ -38,17 +38,6 @@ interface AcucarFormProps {
   onResult: (r: AcucarResult) => void;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
   const [estoqueInicial, setEstoqueInicial] = useState<string>("");
   const [producao, setProducao] = useState<string>("");
@@ -78,8 +67,8 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
     setError(null);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/regression/acucar/run`, {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/regression/acucar/run`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

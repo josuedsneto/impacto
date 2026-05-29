@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SimulationForm, {
   SimulationResult,
@@ -35,17 +35,6 @@ function toSummary(result: SimulationResult): HistorySummary {
   };
 }
 
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export default function SimulationPage() {
   const [activeResult, setActiveResult] = useState<SimulationResult | null>(
     null
@@ -67,19 +56,11 @@ export default function SimulationPage() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/simulations`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setHistoryError(data.detail ?? "Erro ao carregar histórico.");
-        } else {
-          setHistory((data as { simulations: HistorySummary[] }).simulations);
-          setHistoryLoaded(true);
-        }
-      } catch {
-        setHistoryError("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ simulations: HistorySummary[] }>(`/api/simulations`);
+        setHistory(data.simulations);
+        setHistoryLoaded(true);
+      } catch (e) {
+        setHistoryError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
       } finally {
         setHistoryLoading(false);
       }
@@ -88,15 +69,9 @@ export default function SimulationPage() {
 
   async function handleHistoryItemClick(id: string) {
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/simulations/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setActiveResult(data as SimulationResult);
-        setActiveTab("simular");
-      }
+      const data = await apiFetch<SimulationResult>(`/api/simulations/${id}`);
+      setActiveResult(data);
+      setActiveTab("simular");
     } catch {
       // silent — user remains on Histórico tab
     }

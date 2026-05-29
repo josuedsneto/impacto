@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const TICKERS = [
   { id: "SB=F", label: "Açúcar NY (SB=F)" },
@@ -37,15 +35,6 @@ function corrBg(v: number): string {
   return "#eff6ff";
 }
 
-async function getToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
 export default function CorrelacaoPage() {
   const [selected, setSelected] = useState<string[]>(["SB=F", "USDBRL=X", "CL=F"]);
   const [period, setPeriod] = useState<string>("1y");
@@ -62,16 +51,13 @@ export default function CorrelacaoPage() {
     if (selected.length < 2) { toast.error("Selecione ao menos 2 ativos."); return; }
     setLoading(true);
     try {
-      const token = await getToken();
       const params = new URLSearchParams({ tickers: selected.join(","), period });
-      const res = await fetch(`${API}/api/correlation?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.detail ?? "Erro ao calcular correlação."); return; }
+      const data = await apiFetch<{ tickers: string[]; matrix: number[][]; n_observations: number }>(
+        `/api/correlation?${params}`
+      );
       setResult(data);
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setLoading(false);
     }

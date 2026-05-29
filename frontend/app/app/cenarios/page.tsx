@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type Opcao = "Moagem" | "Câmbio" | "NY" | "Preço Etanol";
 
@@ -24,15 +22,6 @@ interface CenariosResult {
   std: number;
   percentis: { p: number; v: number }[];
   distribuicao: { x: number; y: number }[];
-}
-
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 const OPCOES: Opcao[] = ["Moagem", "Câmbio", "NY", "Preço Etanol"];
@@ -68,20 +57,13 @@ export default function CenariosPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getToken();
       const body = { opcao, ny: 0, moagem: 0, cambio: 0, preco_etanol: 0, ...values };
-      const res = await fetch(`${API}/api/cenarios`, {
+      const data = await apiFetch<CenariosResult>(`/api/cenarios`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as CenariosResult);
-    } catch { setError("Erro de conexão."); }
+      setResult(data);
+    } catch (e) { setError(e instanceof ApiError ? e.message : "Erro de conexão."); }
     finally { setLoading(false); }
   }
 

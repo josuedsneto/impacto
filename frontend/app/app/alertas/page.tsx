@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface Alert {
   id: string;
@@ -24,15 +22,6 @@ interface Alert {
   price: number;
   label: string | null;
   created_at: string;
-}
-
-async function getToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 export default function AlertasPage() {
@@ -47,12 +36,7 @@ export default function AlertasPage() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/alerts`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await apiFetch<{ alerts?: Alert[] }>(`/api/alerts`);
       setAlerts(data.alerts ?? []);
     } catch {
       toast.error("Erro ao carregar alertas.");
@@ -70,10 +54,8 @@ export default function AlertasPage() {
     }
     setSubmitting(true);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/alerts`, {
+      await apiFetch(`/api/alerts`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           ticker: ticker.trim().toUpperCase(),
           condition,
@@ -81,17 +63,12 @@ export default function AlertasPage() {
           label: label.trim() || null,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.detail ?? "Erro ao criar alerta.");
-        return;
-      }
       toast.success("Alerta criado!");
       setPrice("");
       setLabel("");
       fetchAlerts();
-    } catch {
-      toast.error("Erro de conexão.");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setSubmitting(false);
     }
@@ -99,12 +76,7 @@ export default function AlertasPage() {
 
   async function handleDelete(id: string) {
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/alerts/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
+      await apiFetch(`/api/alerts/${id}`, { method: "DELETE" });
       toast.success("Alerta removido.");
       setAlerts((prev) => prev.filter((a) => a.id !== id));
     } catch {

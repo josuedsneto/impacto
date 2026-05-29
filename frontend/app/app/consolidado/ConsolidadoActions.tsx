@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, getToken, API_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -9,17 +9,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
 
 export function ConsolidadoActions({ isPro }: { isPro: boolean }) {
   const [downloading, setDownloading] = useState(false);
@@ -30,7 +19,7 @@ export function ConsolidadoActions({ isPro }: { isPro: boolean }) {
     setDownloading(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API}/api/reports/posicao`, {
+      const res = await fetch(`${API_URL}/api/reports/posicao`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 403) {
@@ -55,14 +44,10 @@ export function ConsolidadoActions({ isPro }: { isPro: boolean }) {
   async function handleShare() {
     setSharing(true);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/share`, {
+      const data = await apiFetch<{ url: string }>(`/api/share`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ type: "consolidado", expires_days: 30 }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
       setShareUrl(data.url);
     } catch {
       toast.error("Erro ao criar link de compartilhamento.");

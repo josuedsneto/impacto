@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -11,21 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface ConfigEntry {
   key: string;
   value: string;
   description: string;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function ConfigRow({ entry }: { entry: ConfigEntry }) {
@@ -39,24 +28,14 @@ function ConfigRow({ entry }: { entry: ConfigEntry }) {
     setError(null);
     setSaved(false);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/admin/config/${encodeURIComponent(entry.key)}`, {
+      await apiFetch(`/api/admin/config/${encodeURIComponent(entry.key)}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ value }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        setError((data as { detail?: string }).detail ?? "Erro ao salvar.");
-        return;
-      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      setError("Erro de conexão.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão.");
     } finally {
       setSaving(false);
     }
@@ -98,18 +77,10 @@ export function AdminConfig() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/admin/config`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar configurações.");
-          return;
-        }
-        setEntries(data as ConfigEntry[]);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        const data = await apiFetch<ConfigEntry[]>(`/api/admin/config`);
+        setEntries(data);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Erro de conexão com o servidor.");
       } finally {
         setLoading(false);
       }
