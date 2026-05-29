@@ -11,3 +11,19 @@ ssh-key-2026-03-23.key.pub
 !**/.env.example
 *.key
 *.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Dados / planilhas (não versionar — usar storage)
+*.csv
+*.xls
+*.xlsx
