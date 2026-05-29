@@ -4,7 +4,7 @@ from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from simulation import run_simulation
 from routers.shared import limiter
@@ -25,7 +25,7 @@ class SimulationRequest(BaseModel):
 async def _run_simulation_bg(sim_id: str, body: SimulationRequest, user_id: str):
     """Background task: run MC simulation and update the DB row with results."""
     try:
-        client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        client = get_supabase()
 
         # Fetch user's custom volatility
         params_row = (
@@ -68,7 +68,7 @@ async def _run_simulation_bg(sim_id: str, body: SimulationRequest, user_id: str)
     except Exception as exc:
         logger.error("Simulation %s failed: %s", sim_id, exc)
         try:
-            client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+            client = get_supabase()
             client.table("simulations").update({"status": "error"}).eq("id", sim_id).execute()
         except Exception:
             pass
@@ -86,7 +86,7 @@ async def create_simulation(
     SIM-01: Enqueue MC simulation as a background task.
     Returns {id, status: "running"} immediately; poll GET /api/simulations/{id} for result.
     """
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     pending = client.table("simulations").insert({
         "user_id": user["id"],
         "ticker": body.ticker.strip().upper(),
@@ -111,7 +111,7 @@ async def list_simulations(
     offset: int = 0,
 ):
     """SIM-02/SIM-04: List all simulations for the authenticated user only."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("simulations")
         .select("id,ticker,label,preco_inicial,dias_simulados,p5,p50,p95,status,created_at")
@@ -131,7 +131,7 @@ async def get_simulation(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """SIM-03/SIM-04: Fetch a single simulation including percentiles_series."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("simulations")
         .select("*")

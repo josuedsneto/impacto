@@ -12,8 +12,7 @@ from datetime import date, timedelta
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
-from supabase import create_client
-
+from db import get_supabase
 from market_cache import get_prices
 
 logger = logging.getLogger(__name__)
@@ -27,10 +26,7 @@ _CRON_SECRET = os.getenv("CRON_SECRET", "")
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _db():
-    return create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    return get_supabase()
 
 
 def _get_current_price(ticker: str) -> float | None:

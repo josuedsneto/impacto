@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from routers.shared import limiter
@@ -114,7 +114,7 @@ async def dolar_run(
         logger.error("dolar_run error: %s", exc)
         raise HTTPException(status_code=500, detail="Erro ao executar regressão.")
 
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     supa.table("regression_runs").insert({
         "user_id": user["id"],
         "tipo": "dolar",
@@ -150,7 +150,7 @@ async def acucar_run(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     supa.table("regression_runs").insert({
         "user_id": str(user["id"]),
         "tipo": "acucar",
@@ -175,7 +175,7 @@ async def regression_runs_list(
 ):
     if tipo not in ("dolar", "acucar"):
         raise HTTPException(status_code=400, detail="tipo must be 'dolar' or 'acucar'")
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     res = (
         supa.table("regression_runs")
         .select("id, tipo, inputs, resultado, created_at")

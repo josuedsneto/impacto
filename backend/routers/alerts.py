@@ -3,7 +3,7 @@ import os
 from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from routers.shared import limiter, validate_ticker
 
@@ -22,7 +22,7 @@ class AlertCreateRequest(BaseModel):
 @limiter.limit("30/minute")
 async def list_alerts(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """List all active price alerts for the authenticated user."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     rows = (
         client.table("price_alerts")
         .select("id,ticker,condition,price,label,active,created_at")
@@ -43,7 +43,7 @@ async def create_alert(
 ):
     """Create a new price alert."""
     ticker = validate_ticker(body.ticker)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     row = client.table("price_alerts").insert({
         "user_id": user["id"],
         "ticker": ticker,
@@ -63,7 +63,7 @@ async def delete_alert(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Soft-delete (deactivate) a price alert."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("price_alerts")
         .update({"active": False})

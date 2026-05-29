@@ -12,7 +12,7 @@ from typing import Annotated
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
-from supabase import create_client
+from db import get_supabase
 
 from auth import get_current_user
 from routers.shared import limiter
@@ -26,7 +26,7 @@ _FRONTEND_URL   = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 def _db():
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    return get_supabase()
 
 
 def _send_invite_email(to: str, usina_nome: str, token: str):

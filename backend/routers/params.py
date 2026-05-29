@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from routers.shared import limiter, validate_ticker
 
@@ -30,7 +30,7 @@ async def get_params(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-01: Return saved simulation params for a ticker, or 404 if not set."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("user_parameters")
         .select("*")
@@ -65,7 +65,7 @@ async def upsert_params(
 
     update_dict["updated_at"] = date.today().isoformat()
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     client.table("user_parameters").upsert(
         {"user_id": user["id"], "ticker": ticker.upper(), **update_dict},
         on_conflict="user_id,ticker",
@@ -83,7 +83,7 @@ async def get_watchlist(
     offset: int = 0,
 ):
     """PARAM-03: Return all tickers in the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("watchlist")
         .select("ticker,created_at")
@@ -104,7 +104,7 @@ async def add_to_watchlist(
 ):
     """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
     ticker = validate_ticker(body.ticker)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     client.table("watchlist").upsert(
         {"user_id": user["id"], "ticker": ticker},
         on_conflict="user_id,ticker",
@@ -121,6 +121,6 @@ async def remove_from_watchlist(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-03: Remove a ticker from the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
     return {"ticker": ticker.upper(), "removed": True}

@@ -5,7 +5,7 @@ from datetime import date
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user, require_admin
 from market_cache import get_prices, backfill_ticker
 from analysis import compute_analysis, IndicatorConfig
@@ -163,7 +163,7 @@ async def suggest_ticker(
             detail=f"Ticker '{ticker}' not found on yfinance or has no recent data.",
         )
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     existing = client.table("tickers_catalog").select("ticker,status").eq("ticker", ticker).execute()
     if existing.data:
         return {
@@ -191,7 +191,7 @@ async def admin_list_suggestions(
     limit: int = 50,
     offset: int = 0,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     query = client.table("tickers_catalog").select(
         "id,ticker,nome,tipo,status,backfill_status,review_note,adicionado_por,created_at"
     ).order("created_at", desc=False)
@@ -211,7 +211,7 @@ async def admin_review_suggestion(
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     existing = client.table("tickers_catalog").select("id,ticker,status").eq("id", str(suggestion_id)).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail="Suggestion not found")
@@ -234,6 +234,6 @@ async def admin_backfill(
 ):
     ticker = validate_ticker(ticker)
     result = backfill_ticker(ticker)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     client.table("tickers_catalog").update({"backfill_status": "done"}).eq("ticker", ticker.upper()).execute()
     return result

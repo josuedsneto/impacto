@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user, require_admin
 from routers.shared import limiter
 
@@ -30,7 +30,7 @@ async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
 @router.get("/api/admin/config")
 async def admin_get_config(user: Annotated[dict, Depends(require_admin)]):
     """Return all admin_config rows ordered by key."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("admin_config")
         .select("key,value,description,updated_at")
@@ -47,7 +47,7 @@ async def admin_update_config(
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Upsert a key/value pair in admin_config."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     payload = {"key": key, "value": body.value, "updated_at": date.today().isoformat()}
     if body.description is not None:
         payload["description"] = body.description
@@ -58,7 +58,7 @@ async def admin_update_config(
 @router.get("/api/admin/usinas")
 @limiter.limit("20/minute")
 async def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     rows = supa.table("usinas").select("id, nome, created_at").order("nome").execute().data
     return {"usinas": rows}
 
@@ -66,7 +66,7 @@ async def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require
 @router.post("/api/admin/usinas")
 @limiter.limit("10/minute")
 async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     try:
         row = supa.table("usinas").insert({"nome": body.nome}).execute().data[0]
     except Exception:
@@ -77,7 +77,7 @@ async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Ann
 @router.delete("/api/admin/usinas/{usina_id}")
 @limiter.limit("10/minute")
 async def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     supa.table("usinas").delete().eq("id", usina_id).execute()
     return {"ok": True}
 
@@ -85,7 +85,7 @@ async def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict
 @router.post("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
 async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     try:
         supa.table("user_usinas").insert({"usina_id": usina_id, "user_id": user_id_target}).execute()
     except Exception:
@@ -96,7 +96,7 @@ async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target:
 @router.delete("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
 async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     supa.table("user_usinas").delete().eq("usina_id", usina_id).eq("user_id", user_id_target).execute()
     return {"ok": True}
 
@@ -104,7 +104,7 @@ async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_targ
 @router.get("/api/admin/usuarios")
 @limiter.limit("10/minute")
 async def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     users = supa.auth.admin.list_users()
     return {"usuarios": [{"id": u.id, "email": u.email} for u in users]}
 
@@ -112,6 +112,6 @@ async def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(requi
 @router.get("/api/admin/usinas/{usina_id}/usuarios")
 @limiter.limit("20/minute")
 async def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = get_supabase()
     rows = supa.table("user_usinas").select("user_id").eq("usina_id", usina_id).execute().data
     return {"user_ids": [r["user_id"] for r in rows]}

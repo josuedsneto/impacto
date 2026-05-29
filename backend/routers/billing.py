@@ -6,7 +6,7 @@ from typing import Annotated
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
-from supabase import create_client
+from db import get_supabase
 
 from auth import get_current_user
 from routers.shared import limiter
@@ -27,7 +27,7 @@ _PRICE_IDS: dict[str, str] = {
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _db():
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    return get_supabase()
 
 
 def _upsert_subscription(user_id: str, **fields):

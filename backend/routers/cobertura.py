@@ -4,7 +4,7 @@ from typing import Annotated
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from market_cache import get_prices
 from routers.shared import limiter, validate_ticker
@@ -25,7 +25,7 @@ class CoberturaCreateRequest(BaseModel):
 @limiter.limit("30/minute")
 async def list_cobertura(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """List all fixações for the authenticated user."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     rows = (
         client.table("fixacoes_cobertura")
         .select("id,ticker,volume,preco,data_fixacao,label,created_at")
@@ -45,7 +45,7 @@ async def create_cobertura(
 ):
     """Register a new fixação (hedged price)."""
     ticker = validate_ticker(body.ticker)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     row = client.table("fixacoes_cobertura").insert({
         "user_id": user["id"],
         "ticker": ticker,
@@ -65,7 +65,7 @@ async def delete_cobertura(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Delete a fixação entry."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("fixacoes_cobertura")
         .delete()
@@ -82,7 +82,7 @@ async def delete_cobertura(
 @limiter.limit("20/minute")
 async def cobertura_audit(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Return the 50 most recent audit log entries for the authenticated user's fixações."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     rows = (
         client.table("cobertura_audit")
         .select("id,fixacao_id,action,snapshot,created_at")
@@ -104,7 +104,7 @@ async def cobertura_summary(
 ):
     """Returns coverage ratio and average fixed price vs current market price."""
     ticker = validate_ticker(ticker)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     rows = (
         client.table("fixacoes_cobertura")
         .select("volume,preco")

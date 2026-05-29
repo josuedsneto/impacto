@@ -11,7 +11,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from supabase import create_client
+from db import get_supabase
 
 from auth import get_current_user
 from market_cache import get_prices
@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 def _db():
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    return get_supabase()
 
 
 def _require_pro(user_id: str):

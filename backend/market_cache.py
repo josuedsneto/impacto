@@ -17,13 +17,13 @@ from datetime import date, timedelta
 from typing import Optional
 import yfinance as yf
 import pandas as pd
-from supabase import create_client, Client
+from supabase import Client
+
+from db import get_supabase
 
 
 def _get_service_client() -> Client:
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    return create_client(url, key)
+    return get_supabase()
 
 
 def _fetch_from_yfinance(ticker: str, start: date, end: date) -> pd.DataFrame:

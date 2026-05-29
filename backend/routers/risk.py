@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from supabase import create_client
+from db import get_supabase
 from auth import get_current_user
 from market_cache import get_prices
 from routers.shared import limiter, validate_ticker
@@ -93,7 +93,7 @@ async def get_breakeven(
     if now - _breakeven_cache["ts"] < _BREAKEVEN_TTL and _breakeven_cache["data"] is not None:
         return _breakeven_cache["data"]
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     config_row = (
         client.table("admin_config")
         .select("value")
@@ -141,7 +141,7 @@ async def save_breakeven(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     breakeven = round(body.preco_acucar_cents_lb * body.fator_conversao * body.preco_dolar_brl, 4)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     saved = client.table("breakeven_simulations").insert({
         "user_id": user["id"],
         "preco_acucar_cents_lb": body.preco_acucar_cents_lb,
@@ -162,7 +162,7 @@ async def list_breakeven_history(
     limit: int = 50,
     offset: int = 0,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("breakeven_simulations")
         .select("id,preco_acucar_cents_lb,preco_dolar_brl,fator_conversao,breakeven_brl_saca,label,created_at")
@@ -332,7 +332,7 @@ async def save_risco(
     body: RiscoSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     saved = client.table("risco_simulations").insert({
         "user_id": user["id"],
         "inputs": body.inputs,
@@ -352,7 +352,7 @@ async def list_risco_history(
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("risco_simulations")
         .select("id,fat_media,custo_media,ebitda_media,label,created_at")
@@ -465,7 +465,7 @@ async def save_cenario(
     body: CenariosSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     saved = client.table("cenarios_simulations").insert({
         "user_id": user["id"],
         **body.model_dump(exclude={"label"}),
@@ -481,7 +481,7 @@ async def list_cenarios_history(
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = get_supabase()
     result = (
         client.table("cenarios_simulations")
         .select("id,opcao,breakeven,probabilidade_abaixo,media,label,created_at")
