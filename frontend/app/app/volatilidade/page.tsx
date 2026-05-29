@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,23 +17,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface VolatilityResult {
   ticker: string;
   vol_30d: number;
   vol_90d: number;
   vol_1y: number;
   rolling_30d: { date: string; vol: number }[];
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -60,19 +49,13 @@ function VolPanel({ ticker }: { ticker: string }) {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
       const params = new URLSearchParams({ ticker });
-      const res = await fetch(`${API}/api/volatility?${params}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar volatilidade.");
-        return;
-      }
-      setResult(data as VolatilityResult);
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      const data = await apiFetch<VolatilityResult>(`/api/volatility?${params}`);
+      setResult(data);
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? e.message : "Erro de conexão com o servidor."
+      );
     } finally {
       setLoading(false);
     }

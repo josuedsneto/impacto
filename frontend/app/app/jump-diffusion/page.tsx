@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch, ApiError } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface JDResult {
   ticker: string;
   s0: number;
@@ -20,15 +18,6 @@ interface JDResult {
   mu: number;
   mean: number;
   prices: { step: number; price: number }[];
-}
-
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 const TICKERS = [
@@ -51,7 +40,6 @@ export default function JumpDiffusionPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getToken();
       const body = {
         ticker,
         sigma: sigma ? parseFloat(sigma) : null,
@@ -60,19 +48,14 @@ export default function JumpDiffusionPage() {
         sigma_jump: parseFloat(sigmaJump),
         steps: parseInt(steps),
       };
-      const res = await fetch(`${API}/api/jump-diffusion`, {
+      const data = await apiFetch<JDResult>(`/api/jump-diffusion`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as JDResult);
-    } catch { setError("Erro de conexão."); }
-    finally { setLoading(false); }
+      setResult(data);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Erro de conexão.");
+    } finally { setLoading(false); }
   }
 
   return (
