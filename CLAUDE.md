@@ -47,10 +47,22 @@ Routers are in `backend/routers/` and registered in `backend/main.py`.
 Key tables: `simulations`, `price_alerts`, `fixacoes_cobertura`, `usinas`, `user_usinas`, `atr_simulacoes`.
 All tables have RLS enabled. Service role key bypasses RLS (backend only — never expose to frontend).
 
+### Testing — pytest (`backend/tests/`)
+
+```bash
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest
+```
+
+- Covers the pure financial logic: `options.py` (Black-Scholes, payoff, MC pricer), `atr.py` (OLS calibration + prediction), `simulation.py` (Monte Carlo, with `get_prices` monkeypatched).
+- Config in `backend/pytest.ini` (`pythonpath = .` so tests `import options` directly). Dev deps in `backend/requirements-dev.txt`.
+- CI runs the suite on push/PR via `.github/workflows/test.yml`.
+
 ## Frontend Page Conventions
 
 - **Server components** (no interactivity): fetch data at render time, no `"use client"`, use `createServerSupabaseClient` from `@/lib/supabase/server`.
-- **Client components** (forms, live state): `"use client"` at top, use `createBrowserClient`, call `getToken()` before each API request.
+- **Client components** (forms, live state): `"use client"` at top. Call the backend via `apiFetch<T>(path, init?)` from `@/lib/api` (injects the Bearer token, parses JSON, throws `ApiError` with the backend `detail`). For non-JSON responses (e.g. PDF/blob downloads) use `getToken()` + raw `fetch` with `API_URL`. Avoid re-creating Supabase clients inline.
 - `MetricCard` pattern (label + value + optional sub) is used across pages — add to a component if reused.
 - Format BR numbers: `.toFixed(2)` with `.replace(".", ",")` where needed.
 
