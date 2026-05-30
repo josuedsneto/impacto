@@ -70,11 +70,12 @@ python -m pytest
 
 Navigation is defined in `components/layout/AppSidebar.tsx` (`NAV_SECTIONS` array). Add new pages there.
 
-## Deprecated (do not modify)
+## Deprecated / archived
 
-The following exist for historical reference only — do not add features or fix bugs here:
+The Streamlit app (`Painel.py`, `pages/*.py`, `config.py`, `utils.py`, root
+`requirements.txt`, `.python-version`) has been **removed from the active
+branches** and lives only on the `legacy/streamlit` branch for historical
+reference. Do not reintroduce it here.
 
-- `Painel.py` and all `pages/*.py` (Streamlit)
-- `config.py`, `utils.py`, `options.py` (Streamlit helpers)
-- `requirements.txt`
-- CSV data files (`*.csv` in root)
+CSV/XLSX data files in the repo root are not part of the application and are
+git-ignored (`*.csv`, `*.xls*`).

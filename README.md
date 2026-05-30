@@ -1,53 +1,61 @@
-# Gestão de Risco e Derivativos na Indústria Açucareira
+# Impacto
 
-## Descrição
-Este projeto visa auxiliar na gestão de risco da indústria açucareira, utilizando estratégias de proteção cambial, fixações e operações no mercado de opções. O sistema foi desenvolvido em Python e Streamlit, com o objetivo de fornecer uma ferramenta para a análise e simulação de riscos relacionados à volatilidade dos preços do açúcar e do dólar.
+Plataforma de análise financeira para gestão de risco na indústria açucareira:
+simulações de preço por Monte Carlo, precificação de opções e gestão de hedge
+(fixações/cobertura) sobre ativos brasileiros (açúcar futuro NY nº 11, USD/BRL).
+A interface e as variáveis estão em português.
 
-A volatilidade nos mercados financeiros pode afetar diretamente os resultados de uma usina de açúcar, e a implementação de estratégias como contratos futuros, swaps e opções ajuda a mitigar os riscos financeiros.
+> A versão original em **Streamlit** foi descontinuada. Ela permanece arquivada
+> na branch [`legacy/streamlit`](../../tree/legacy/streamlit) apenas para
+> referência histórica. Todo o desenvolvimento ativo acontece no frontend
+> **Next.js** (`frontend/`) e no backend **FastAPI** (`backend/`).
 
-## Funcionalidades
-- Proteção Cambial: Simulação de contratos futuros de câmbio para garantir uma taxa de câmbio previsível para exportações.
-Fixações: Uso de contratos a termo e swaps para garantir um preço mínimo para a produção de açúcar.
-- Mercado de Opções: Simulação de opções de venda e compra de açúcar, permitindo flexibilidade para proteger-se contra movimentos desfavoráveis nos preços.
-Análises Estatísticas: Cálculo de médias, volatilidade e projeções para os preços do açúcar.
-- Simulação de Monte Carlo: Geração de cenários futuros com base na distribuição dos retornos - 
-- históricos dos preços do açúcar.
-## Tecnologias Utilizadas
-- Python: Linguagem de programação utilizada para o desenvolvimento do algoritmo.
-- Streamlit: Framework para criação da interface interativa.
-- Pandas: Manipulação e análise de dados financeiros.
-- yFinance: Obtenção de dados históricos de preços do açúcar e do dólar.
-- NumPy: Cálculos matemáticos e estatísticos.
-- Matplotlib/Plotly: Visualização dos dados e gráficos interativos.
-## Requisitos
-Python 3.12 ou superior
-Bibliotecas:
-streamlit
-yfinance
-pandas
-numpy
-matplotlib
-plotly
+## Stack
 
-## Instalação
-Clone este repositório para o seu ambiente local
-Link com o site da Streamlit
+- **Frontend** — Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui, Recharts
+- **Backend** — FastAPI (Python), SlowAPI (rate limiting)
+- **Auth & DB** — Supabase (Postgres com RLS, autenticação via JWT ES256)
 
-## Instale as dependências:
+## Desenvolvimento
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:3000
+```
+
+### Backend
+
+```bash
+cd backend
 pip install -r requirements.txt
+uvicorn main:app --reload   # http://localhost:8000
+```
 
-## Executando o Projeto
-Execute o site Streamlit e link o rebositorio do github
+Crie os arquivos `.env` a partir dos `.env.example` em `frontend/` e `backend/`.
 
-## Como Utilizar
-Selecione o ativo: Escolha o ativo desejado, como "SBV24.NYB", "USDBRL=X", etc.
-Defina o intervalo de datas: Selecione um período para análise.
-Escolha o indicador: Selecione o indicador que deseja analisar, como EWMA, CCI, MACD, etc.
-Calcule e visualize os resultados: Após definir as opções, clique no botão "Calcular" para gerar as análises e gráficos interativos.
+### Testes
 
-## Colaboradores
-Gabriel Canuto de Alencar
+```bash
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest
+```
+
+## Estrutura
+
+```
+frontend/             # app Next.js (App Router)
+backend/              # API FastAPI
+  routers/            # endpoints, registrados em main.py
+  tests/              # suíte pytest da lógica financeira
+supabase/migrations/  # migrations (timestamped, fonte única)
+```
+
+Mais detalhes de convenções e arquitetura em [`CLAUDE.md`](CLAUDE.md).
 
 ## Licença
-Este projeto está licenciado sob a MIT License.
-https://share.streamlit.io/user/coluno
+
+MIT — ver [`LICENSE`](LICENSE).
