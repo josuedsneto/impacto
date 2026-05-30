@@ -38,7 +38,7 @@ uvicorn main:app --reload   # → http://localhost:8000
 - **Auth guard**: `Depends(get_current_user)` on every protected route
 - **Database**: Supabase (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env vars)
 - **Rate limiting**: SlowAPI (`@limiter.limit("N/minute")` on every endpoint)
-- **Migrations**: `backend/migrations/` — run in Supabase SQL Editor or via `supabase db push`
+- **Migrations**: `supabase/migrations/` (single source, timestamped `YYYYMMDDHHMMSS_name.sql`) — run in Supabase SQL Editor or via `supabase db push`
 
 Routers are in `backend/routers/` and registered in `backend/main.py`.
 
