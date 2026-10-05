@@ -196,6 +196,8 @@ T36 → T37
 
 ### T6: Botão de tema no menu do usuário
 
+**Status**: ✅ Done
+
 **What**: item "Tema escuro"/"Tema claro" no `UserMenu`, chamando `toggle()`; cores do menu passam a tokens.
 **Where**: `frontend/components/dashboard/UserMenu.tsx`
 **Depends on**: T5
@@ -205,8 +207,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `UserMenu.tsx` fora de `PENDENTES`; gate quick passa
-- [ ] Gate build passa (fim da fase)
+- [x] `UserMenu.tsx` fora de `PENDENTES`; gate quick passa
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build
