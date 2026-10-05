@@ -174,6 +174,8 @@ T36 → T37
 
 ### T5: Montar o Toaster no layout raiz
 
+**Status**: ✅ Done
+
 **What**: `<Toaster richColors position="top-right" />` no `app/layout.tsx`.
 **Where**: `frontend/app/layout.tsx`
 **Depends on**: T4
@@ -183,8 +185,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Um único `<Toaster` em `app/`
-- [ ] Gate build passa
+- [x] Um único `<Toaster` em `app/`
+- [x] Gate build passa
 
 **Tests**: none
 **Gate**: build
