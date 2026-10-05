@@ -11,6 +11,9 @@ import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraCenarios } from "@/lib/leitura";
 import { lerNumero } from "@/lib/numero";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -104,6 +107,32 @@ export default function CenariosPage() {
       <PageHeader
         titulo="Breakeven da safra"
         descricao="Encontra o valor de uma variável em que o EBITDA zera e a chance de o mercado ficar abaixo dele."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Breakeven da safra", NOME_OPCAO[opcao])}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      parametros: [
+                        ["Variável analisada", NOME_OPCAO[result.opcao]],
+                        ...Object.entries(values).map(
+                          ([k, v]) => [`${CAMPOS[k].rotulo} (${CAMPOS[k].unidade})`, lerNumero(v)] as [string, number | null]
+                        ),
+                        ["Breakeven", result.breakeven],
+                        ["Chance de ficar abaixo (%)", result.probabilidade_abaixo * 100],
+                        ["Média esperada", result.media],
+                        ["Desvio-padrão", result.std],
+                      ],
+                      tabelas: [
+                        { colunas: ["Percentil", NOME_OPCAO[result.opcao]], linhas: result.percentis.map((p) => [`P${p.p}`, p.v]) },
+                        { colunas: [NOME_OPCAO[result.opcao], "Densidade"], linhas: result.distribuicao.map((d) => [d.x, d.y]) },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">

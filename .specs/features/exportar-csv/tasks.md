@@ -159,6 +159,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T6: Risco do EBITDA e Breakeven da safra
 
+**Status**: ✅ Done
+
 **What**: CSV dos percentis de faturamento/custo/EBITDA e dos percentis + distribuição do cenário.
 **Where**: `frontend/app/app/risco/page.tsx`
 **Depends on**: T5
@@ -168,8 +170,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivos fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivos fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

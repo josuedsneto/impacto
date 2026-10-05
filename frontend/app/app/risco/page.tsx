@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraRisco } from "@/lib/leitura";
 import { lerNumero } from "@/lib/numero";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -140,6 +143,35 @@ export default function RiscoPage() {
       <PageHeader
         titulo="Risco do EBITDA"
         descricao="10.000 cenários de faturamento, custo e EBITDA da safra a partir das faixas de cada variável."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Risco do EBITDA", null)}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      // Faixas usadas: média, cenário baixo (P15) e alto (P85) de cada variável
+                      parametros: Object.entries(inputs).flatMap(([k, v]) => [
+                        [`${LABELS[k]}: média`, lerNumero(v.media)],
+                        [`${LABELS[k]}: cenário baixo (P15)`, lerNumero(v.p15)],
+                        [`${LABELS[k]}: cenário alto (P85)`, lerNumero(v.p85)],
+                      ] as [string, number | null][]),
+                      tabelas: [
+                        {
+                          colunas: ["Percentil", "Faturamento (R$)", "Custo (R$)", "EBITDA (R$)"],
+                          linhas: result.ebitda.percentis.map((p, i) => [
+                            `P${p.p}`,
+                            result.faturamento.percentis[i]?.v,
+                            result.custo.percentis[i]?.v,
+                            p.v,
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <Card>
