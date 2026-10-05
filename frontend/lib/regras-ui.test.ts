@@ -39,7 +39,6 @@ const PENDENTES = new Set<string>([
   "components/dashboard/FocusWidget.tsx",
   "components/dashboard/NewsFeed.tsx",
   "components/dashboard/PriceCard.tsx",
-  "components/layout/AppSidebar.tsx",
   "components/market/FixacoesChart.tsx",
   "components/market/PriceChart.tsx",
   "components/options/BSPricer.tsx",

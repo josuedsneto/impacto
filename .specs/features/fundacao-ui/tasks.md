@@ -262,6 +262,8 @@ T36 → T37
 
 ### T9: Extrair NavLinks e migrar o menu lateral
 
+**Status**: ✅ Done
+
 **What**: `NavLinks` com `onNavigate?`; `AppSidebar` usa `NavLinks`, tokens e `hidden lg:flex`.
 **Where**: `frontend/components/layout/NavLinks.tsx`
 **Depends on**: T8
@@ -271,7 +273,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `AppSidebar.tsx` fora de `PENDENTES`; gate quick passa
+- [x] `AppSidebar.tsx` fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
