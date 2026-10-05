@@ -70,6 +70,14 @@ describe("apiFetch", () => {
     );
   });
 
+  it("traduz tempo limite estourado (API-02)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")));
+    const { apiFetch } = await carregar();
+    await expect(apiFetch("/api/x", { timeoutMs: 10 })).rejects.toThrow(
+      "Sem conexão com o servidor. Verifique sua internet e tente novamente.",
+    );
+  });
+
   it("em 401 renova a sessão e repete a requisição (API-04)", async () => {
     auth.refreshSession.mockResolvedValue({ data: { session: { access_token: "tok-2" } }, error: null });
     auth.getSession
