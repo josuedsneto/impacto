@@ -791,6 +791,8 @@ T36 → T37
 
 ### T34: Migrar Parâmetros
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`; sucesso de salvar vira toast.
 **Where**: `frontend/app/app/params/page.tsx`
 **Depends on**: T33
@@ -800,7 +802,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Página e `ParamsForm.tsx` fora de `PENDENTES`; gate quick passa
+- [x] Página e `ParamsForm.tsx` fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

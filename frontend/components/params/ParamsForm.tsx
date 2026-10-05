@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { apiFetch, type ApiError } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function ParamsForm() {
   const [ticker, setTicker] = useState("SB=F");
@@ -14,7 +15,6 @@ export default function ParamsForm() {
   const [pctBound, setPctBound] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function loadParams(selectedTicker: string) {
@@ -23,7 +23,6 @@ export default function ParamsForm() {
     setPctBound("");
     setLoading(true);
     setError(null);
-    setSaved(false);
 
     try {
       const data = await apiFetch<{
@@ -45,18 +44,15 @@ export default function ParamsForm() {
 
   useEffect(() => {
     loadParams(ticker);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
 
   async function handleSave() {
     if (!volatilidade && !taxaLivreRisco && !pctBound) {
-      setError("Preencha ao menos um campo.");
+      toast.error("Preencha ao menos um campo.");
       return;
     }
 
     setSaving(true);
-    setError(null);
-    setSaved(false);
 
     try {
       const body: Record<string, number> = {};
@@ -68,17 +64,17 @@ export default function ParamsForm() {
         method: "PUT",
         body: JSON.stringify(body),
       });
-      setSaved(true);
+      toast.success(`Parâmetros de ${ticker} salvos.`);
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-4 max-w-sm">
-      <p className="text-lg font-semibold">Parâmetros por Ativo</p>
+    <div className="max-w-md space-y-4 rounded-xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Parâmetros por ativo</h2>
 
       <div className="space-y-1">
         <Label htmlFor="params-ticker">Ativo <FieldTooltip text="Ativo cujos parâmetros deseja personalizar" /></Label>
@@ -149,11 +145,10 @@ export default function ParamsForm() {
         </>
       )}
 
-      {saved && (
-        <p className="text-sm text-green-600">Parâmetros salvos com sucesso.</p>
-      )}
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p role="alert" className="text-sm text-negative">
+          {error}
+        </p>
       )}
     </div>
   );
