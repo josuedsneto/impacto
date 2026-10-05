@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatPercent, formatPreco } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraStress } from "@/lib/leitura";
+import { nomeAtivo } from "@/lib/ativos";
 import {
   Select,
   SelectContent,
@@ -76,8 +79,8 @@ export default function StressPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="SB=F">Açúcar NY</SelectItem>
-            <SelectItem value="USDBRL=X">USD/BRL</SelectItem>
+            <SelectItem value="SB=F">{nomeAtivo("SB=F")}</SelectItem>
+            <SelectItem value="USDBRL=X">{nomeAtivo("USDBRL=X")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -92,6 +95,16 @@ export default function StressPage() {
 
       {error && <ErrorState mensagem={error} onRetry={() => setTentativa((t) => t + 1)} />}
 
+      {!loading && !error && scenarios.length > 0 && (
+        // O primeiro cenário da API é o pior drawdown de toda a história.
+        <Leitura>
+          {leituraStress({
+            drawdown: scenarios[0].drawdown_pct,
+            inicio: scenarios[0].periodo_inicio,
+            fim: scenarios[0].periodo_fim,
+          })}
+        </Leitura>
+      )}
       {!loading && !error && scenarios.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>

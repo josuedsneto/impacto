@@ -364,6 +364,8 @@ T24 → T25
 
 ### T14: Teste de estresse
 
+**Status**: ✅ Done
+
 **What**: Frase `leituraStress`; seletor por nome.
 **Where**: `frontend/app/app/stress/page.tsx`
 **Depends on**: T13
@@ -373,8 +375,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

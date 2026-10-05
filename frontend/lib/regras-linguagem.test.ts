@@ -19,7 +19,6 @@ const PENDENTES = new Set<string>([
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/risco/page.tsx",
-  "app/app/stress/page.tsx",
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
@@ -29,7 +28,6 @@ const PENDENTES = new Set<string>([
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
 const FERRAMENTAS = [
-  "app/app/stress/page.tsx",
   "app/app/arima/page.tsx",
   "app/app/risco/page.tsx",
   "app/app/cenarios/page.tsx",
