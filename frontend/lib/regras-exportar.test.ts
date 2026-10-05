@@ -24,8 +24,6 @@ const TELAS = [
 ];
 
 const PENDENTES = new Set<string>([
-  "app/app/metas/page.tsx",
-  "app/app/breakeven/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/atr/page.tsx",

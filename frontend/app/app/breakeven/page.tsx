@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { CampoNumero } from "@/components/ui/campo-numero";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraBreakeven } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { lerNumero } from "@/lib/numero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -164,6 +167,31 @@ export default function BreakevenPage() {
       <PageHeader
         titulo="Breakeven do açúcar"
         descricao="Converte o preço de NY e o câmbio em R$/saca, com dados ao vivo ou valores informados por você."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Breakeven do acucar", null)}
+            montar={
+              history.length
+                ? () =>
+                    gerarCsv({
+                      tabelas: [
+                        {
+                          colunas: ["Data", "Nome", "Açúcar NY (¢/lb)", "Câmbio (R$/US$)", "Fator ¢/lb → R$/saca", "Breakeven (R$/saca)"],
+                          linhas: history.map((s) => [
+                            s.created_at.slice(0, 10),
+                            s.label,
+                            s.preco_acucar_cents_lb,
+                            s.preco_dolar_brl,
+                            s.fator_conversao,
+                            s.breakeven_brl_saca,
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "historico") handleTabHistory(); }}>

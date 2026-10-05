@@ -8,6 +8,9 @@ import { formatBRL, formatDate, formatNumber } from "@/lib/format";
 import { toast } from "sonner";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraMetas } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -51,6 +54,30 @@ export default function MetasPage() {
       <PageHeader
         titulo="Metas"
         descricao="Compara o valor de mercado do açúcar em R$/t com a sua meta, no histórico e em cenários de preço e câmbio."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Metas", null)}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Meta (R$/t)", result.meta]],
+                      tabelas: [
+                        {
+                          colunas: ["Data", "Valor de mercado (R$/t)", "Meta (R$/t)", "Diferença (R$/t)"],
+                          linhas: result.mtm_series.map((p) => [p.date, p.mtm, p.meta, p.mtm - p.meta]),
+                        },
+                        {
+                          // Mapa de cenários: diferença para a meta por açúcar (linhas) e câmbio (colunas)
+                          colunas: ["Açúcar (¢/lb) \\ Câmbio (R$/US$)", ...result.dolares.map(String)],
+                          linhas: result.acucares.map((a, i) => [a, ...result.heatmap[i]]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <Card className="max-w-sm">

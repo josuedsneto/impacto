@@ -181,6 +181,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T7: Metas e Breakeven do açúcar
 
+**Status**: ✅ Done
+
 **What**: CSV da série de valor de mercado vs meta e do histórico de breakeven.
 **Where**: `frontend/app/app/metas/page.tsx`
 **Depends on**: T6
@@ -190,8 +192,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivos fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivos fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
