@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatCompactBRL } from "@/lib/format";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart,
+  Cell, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
 interface VariavelInput { media: number; p15: number; p85: number; }
@@ -53,22 +56,39 @@ function VariavelRow({ name, value, onChange }: {
   );
 }
 
-function PercentilChart({ data, color, label }: { data: DistResult; color: string; label: string }) {
-  const fmt = (v: number) => `R$ ${(v / 1_000_000).toFixed(1)}M`;
+function PercentilChart({ data, cor, label }: { data: DistResult; cor: string; label: string }) {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle className="text-sm font-medium">{label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xl font-bold mb-3">{fmt(data.media)} <span className="text-sm font-normal text-muted-foreground">média</span></p>
+        <p className="mb-3 text-xl font-bold tabular-nums">
+          {formatCompactBRL(data.media)} <span className="text-sm font-normal text-muted-foreground">média</span>
+        </p>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data.percentis} margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="p" tick={{ fontSize: 10 }} tickFormatter={(v) => `P${v}`} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
-            <Tooltip formatter={(v: number) => [fmt(v), label]} labelFormatter={(l) => `Percentil ${l}`} />
-            <Bar dataKey="v" fill={color} radius={[2, 2, 0, 0]} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+            <XAxis dataKey="p" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} tickFormatter={(v) => `P${v}`} />
+            <YAxis
+              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+              width={72}
+              tickFormatter={(v: number) => formatCompactBRL(v)}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--muted)" }}
+              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+              formatter={(v: number) => [formatCompactBRL(v), label]}
+              labelFormatter={(l) => `Percentil ${l}`}
+            />
+            <Bar dataKey="v" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+              {data.percentis.map((p) => (
+                // Valores negativos (prejuízo) em vermelho
+                <Cell key={p.p} fill={p.v < 0 ? "var(--negative)" : cor} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -80,27 +100,25 @@ export default function RiscoPage() {
   const [inputs, setInputs] = useState<Record<string, VariavelInput>>({ ...DEFAULTS });
   const [result, setResult] = useState<RiscoResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleSimulate() {
     setLoading(true);
-    setError(null);
     try {
       const data = await apiFetch<RiscoResult>("/api/risco", {
         method: "POST",
         body: JSON.stringify({ ...inputs, num_simulacoes: 10000 }),
       });
       setResult(data);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Risco Operacional</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monte Carlo de faturamento, custo e EBITDA da safra</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Risco do EBITDA"
+        descricao="10.000 cenários de faturamento, custo e EBITDA da safra a partir das faixas de cada variável."
+      />
 
       <Card>
         <CardHeader>
@@ -132,16 +150,17 @@ export default function RiscoPage() {
           <Button onClick={handleSimulate} disabled={loading} className="mt-4">
             {loading ? "Simulando..." : "Simular (10.000 cenários)"}
           </Button>
-          {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
         </CardContent>
       </Card>
 
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <PercentilChart data={result.faturamento} color="#3b82f6" label="Faturamento" />
-          <PercentilChart data={result.custo} color="#f97316" label="Custo" />
-          <PercentilChart data={result.ebitda} color="#22c55e" label="EBITDA Ajustado" />
+      {result ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <PercentilChart data={result.faturamento} cor="var(--chart-1)" label="Faturamento" />
+          <PercentilChart data={result.custo} cor="var(--chart-2)" label="Custo" />
+          <PercentilChart data={result.ebitda} cor="var(--chart-3)" label="EBITDA ajustado" />
         </div>
+      ) : (
+        <EmptyState mensagem="Ajuste as faixas das variáveis e clique em Simular para ver a distribuição do resultado." />
       )}
     </div>
   );

@@ -622,6 +622,8 @@ T36 → T37
 
 ### T26: Migrar Risco (EBITDA)
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `formatCompactBRL`, tokens no gráfico, remove imports sem uso.
 **Where**: `frontend/app/app/risco/page.tsx`
 **Depends on**: T25
@@ -631,7 +633,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

@@ -19,7 +19,6 @@ const PENDENTES = new Set<string>([
   "app/app/params/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
-  "app/app/risco/page.tsx",
   "app/page.tsx",
   "components/atr/AtrHistorico.tsx",
   "components/atr/AtrMetrics.tsx",
