@@ -106,6 +106,8 @@ T36 → T37
 
 ### T2: Criar teste de regras de UI com lista de pendentes
 
+**Status**: ✅ Done
+
 **What**: `lib/regras-ui.test.ts` varre `app/` e `components/` (exceto `components/ui/`) e falha se um arquivo fora da lista `PENDENTES` tiver cor literal (hex/rgb), `toFixed` ou `<h1` fora de `PageHeader`; `PENDENTES` começa com os arquivos que hoje violam.
 **Where**: `frontend/lib/regras-ui.test.ts`
 **Depends on**: T1
@@ -115,9 +117,9 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Teste passa com a lista inicial
-- [ ] Teste falha se um arquivo migrado volta a ter `toFixed` (verificado removendo um item da lista)
-- [ ] Teste falha se `PENDENTES` tiver arquivo que já está limpo (lista não apodrece)
+- [x] Teste passa com a lista inicial
+- [x] Teste falha se um arquivo migrado volta a ter `toFixed` (verificado removendo um item da lista)
+- [x] Teste falha se `PENDENTES` tiver arquivo que já está limpo (lista não apodrece)
 
 **Tests**: unit
 **Gate**: quick
