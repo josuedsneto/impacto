@@ -518,6 +518,8 @@ T24 → T25
 
 ### T21: Modelo do açúcar
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design, nomes dos modelos e frase `leituraRegAcucar`.
 **Where**: `frontend/components/regression/AcucarForm.tsx`
 **Depends on**: T20
@@ -527,8 +529,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `AcucarForm.tsx` e a página fora de `PENDENTES`
-- [ ] Gate passa
+- [x] `AcucarForm.tsx` e a página fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

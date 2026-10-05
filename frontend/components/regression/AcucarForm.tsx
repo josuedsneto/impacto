@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { lerNumero } from "@/lib/numero";
 
 export interface AcucarDefaults {
   sb_f: number | null;
@@ -38,30 +39,46 @@ interface AcucarFormProps {
   onResult: (r: AcucarResult) => void;
 }
 
+// Campos na ordem da tela; a chave é o nome do campo na API.
+const CAMPOS = [
+  { chave: "estoque_inicial", rotulo: "Estoque inicial mundial", unidade: "milhões de t", ajuda: "Açúcar em estoque no mundo no começo da safra (USDA).", placeholder: "ex.: 46,5" },
+  { chave: "producao", rotulo: "Produção mundial", unidade: "milhões de t", ajuda: "Açúcar produzido no mundo na safra (USDA).", placeholder: "ex.: 190" },
+  { chave: "demanda", rotulo: "Consumo mundial", unidade: "milhões de t", ajuda: "Açúcar consumido no mundo na safra (USDA).", placeholder: "ex.: 182" },
+  { chave: "estoque_final", rotulo: "Estoque final mundial", unidade: "milhões de t", ajuda: "Açúcar em estoque no fim da safra. Estoque maior tende a baixar o preço.", placeholder: "ex.: 48,5" },
+  { chave: "estoque_uso_pct", rotulo: "Estoque sobre consumo", unidade: "%", ajuda: "Estoque final dividido pelo consumo. Quanto maior, mais folgado está o mercado.", placeholder: "ex.: 26,6" },
+  { chave: "usdbrl", rotulo: "Câmbio", unidade: "R$/US$", ajuda: "Dólar mais caro incentiva o Brasil a exportar mais açúcar.", placeholder: "ex.: 5,40" },
+  { chave: "cl_f", rotulo: "Petróleo WTI", unidade: "US$/barril", ajuda: "Petróleo mais caro favorece o etanol e tira cana do açúcar.", placeholder: "ex.: 75" },
+] as const;
+
+type Chave = (typeof CAMPOS)[number]["chave"];
+const FAIXA = { min: -1_000_000, max: 100_000_000 };
+
 export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
-  const [estoqueInicial, setEstoqueInicial] = useState<string>("");
-  const [producao, setProducao] = useState<string>("");
-  const [demanda, setDemanda] = useState<string>("");
-  const [estoqueFinal, setEstoqueFinal] = useState<string>("");
-  const [estoqueUsoPct, setEstoqueUsoPct] = useState<string>("");
-  const [usdbrl, setUsdbrl] = useState<string>("");
-  const [clF, setClF] = useState<string>("");
+  const [valores, setValores] = useState<Record<Chave, string>>(
+    () => Object.fromEntries(CAMPOS.map((c) => [c.chave, ""])) as Record<Chave, string>
+  );
   const [modelType, setModelType] = useState<string>("ridge");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!defaults) return;
-    if (defaults.estoque_inicial != null) setEstoqueInicial(String(defaults.estoque_inicial));
-    if (defaults.producao != null) setProducao(String(defaults.producao));
-    if (defaults.demanda != null) setDemanda(String(defaults.demanda));
-    if (defaults.estoque_final != null) setEstoqueFinal(String(defaults.estoque_final));
-    if (defaults.estoque_uso_pct != null) setEstoqueUsoPct(String(defaults.estoque_uso_pct));
-    if (defaults.usdbrl != null) setUsdbrl(String(defaults.usdbrl));
-    if (defaults.cl_f != null) setClF(String(defaults.cl_f));
+    // Valores atuais vindos da API, já em formato pt-BR para edição.
+    setValores((prev) => {
+      const novo = { ...prev };
+      for (const c of CAMPOS) {
+        const v = (defaults as unknown as Record<string, number | null>)[c.chave];
+        if (v != null) novo[c.chave] = String(v).replace(".", ",");
+      }
+      return novo;
+    });
   }, [defaults]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!CAMPOS.every((c) => campoValido(valores[c.chave], FAIXA))) {
+      toast.error("Preencha todos os campos com números antes de calcular.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -70,13 +87,7 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
         timeoutMs: 120_000,
         body: JSON.stringify({
           model: modelType,
-          estoque_inicial: estoqueInicial !== "" ? parseFloat(estoqueInicial) : null,
-          producao: producao !== "" ? parseFloat(producao) : null,
-          demanda: demanda !== "" ? parseFloat(demanda) : null,
-          estoque_final: estoqueFinal !== "" ? parseFloat(estoqueFinal) : null,
-          estoque_uso_pct: estoqueUsoPct !== "" ? parseFloat(estoqueUsoPct) : null,
-          usdbrl: usdbrl !== "" ? parseFloat(usdbrl) : null,
-          cl_f: clF !== "" ? parseFloat(clF) : null,
+          ...Object.fromEntries(CAMPOS.map((c) => [c.chave, lerNumero(valores[c.chave])])),
         }),
       });
       onResult(data);
@@ -90,99 +101,21 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="estoque_inicial">Estoque Inicial (Mt)</Label>
-          <Input
-            id="estoque_inicial"
-            type="number"
-            step="0.01"
-            value={estoqueInicial}
-            onChange={(e) => setEstoqueInicial(e.target.value)}
-            placeholder="Ex: 46.5"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="producao">Produção (Mt)</Label>
-          <Input
-            id="producao"
-            type="number"
-            step="0.01"
-            value={producao}
-            onChange={(e) => setProducao(e.target.value)}
-            placeholder="Ex: 186.0"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="demanda">Demanda (Mt)</Label>
-          <Input
-            id="demanda"
-            type="number"
-            step="0.01"
-            value={demanda}
-            onChange={(e) => setDemanda(e.target.value)}
-            placeholder="Ex: 178.5"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="estoque_final">Estoque Final (Mt)</Label>
-          <Input
-            id="estoque_final"
-            type="number"
-            step="0.01"
-            value={estoqueFinal}
-            onChange={(e) => setEstoqueFinal(e.target.value)}
-            placeholder="Ex: 47.0"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="estoque_uso_pct">Estoque/Uso (%)</Label>
-          <Input
-            id="estoque_uso_pct"
-            type="number"
-            step="0.01"
-            value={estoqueUsoPct}
-            onChange={(e) => setEstoqueUsoPct(e.target.value)}
-            placeholder="Ex: 26.3"
-            disabled={loading}
-          />
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="usdbrl">USD/BRL</Label>
-          <Input
-            id="usdbrl"
-            type="number"
-            step="0.01"
-            value={usdbrl}
-            onChange={(e) => setUsdbrl(e.target.value)}
-            placeholder="Ex: 5.10"
+        {CAMPOS.map((c) => (
+          <CampoNumero
+            key={c.chave}
+            id={c.chave}
+            rotulo={c.rotulo}
+            unidade={c.unidade}
+            ajuda={c.ajuda}
+            valor={valores[c.chave]}
+            onChange={(t) => setValores((prev) => ({ ...prev, [c.chave]: t }))}
+            {...FAIXA}
+            placeholder={c.placeholder}
             disabled={loading}
           />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="cl_f">CL=F (Petróleo, USD/bbl)</Label>
-          <Input
-            id="cl_f"
-            type="number"
-            step="0.01"
-            value={clF}
-            onChange={(e) => setClF(e.target.value)}
-            placeholder="Ex: 72.0"
-            disabled={loading}
-          />
-        </div>
+        ))}
       </div>
 
       <div className="space-y-1">
@@ -192,15 +125,15 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
           value={modelType}
           onChange={(e) => setModelType(e.target.value)}
           disabled={loading}
-          className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
         >
-          <option value="ridge">Ridge Regression</option>
-          <option value="xgboost">XGBoost</option>
+          <option value="ridge">Linear (Ridge)</option>
+          <option value="xgboost">Árvores de decisão (XGBoost)</option>
         </select>
       </div>
 
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Calculando..." : "Calcular Previsão SB=F"}
+        {loading ? "Calculando..." : "Calcular previsão"}
       </Button>
     </form>
   );

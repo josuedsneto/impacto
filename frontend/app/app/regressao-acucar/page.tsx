@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraRegAcucar } from "@/lib/leitura";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatCents, formatNumber } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,6 +95,9 @@ export default function RegressaoAcucarPage() {
 
             {activeResult ? (
               <div className="min-w-0 space-y-6">
+                <Leitura>
+                  {leituraRegAcucar({ previsto: activeResult.sb_f_previsto, min: activeResult.sb_f_min, max: activeResult.sb_f_max })}
+                </Leitura>
                 <AcucarMetrics result={activeResult} />
                 <AcucarHistoricoChart result={activeResult} />
               </div>
@@ -123,7 +128,7 @@ export default function RegressaoAcucarPage() {
                     <span className="text-sm text-muted-foreground">{formatDate(item.created_at)}</span>
                   </div>
                     <div className="mt-1 text-sm text-muted-foreground">
-                      Modelo: {item.inputs.model} · R²: {formatNumber(item.resultado.r2, 4)} · Erro médio:{" "}
+                      Modelo: {item.inputs.model === "xgboost" ? "Árvores (XGBoost)" : "Linear (Ridge)"} · R²: {formatNumber(item.resultado.r2, 4)} · Erro médio:{" "}
                       {formatCents(item.resultado.rmse)}
                     </div>
                     <div className="text-sm text-muted-foreground">
