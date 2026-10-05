@@ -14,7 +14,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 - Números com até 6 casas, vírgula decimal, sem milhar; datas em AAAA-MM-DD na tabela (ordenáveis no Excel) e dd/mm/aaaa no cabeçalho de parâmetros.
 - SPEC_DEVIATION EXP-01 AC1: em telas cujo resultado vive dentro de uma aba (VaR, ARIMA, Volatilidade), o botão fica na barra do resultado, não no `PageHeader`. Motivo: o resultado é estado da aba; levantar o estado só para o botão complicaria a tela.
 
-**Status**: Draft
+**Status**: Done
 
 ---
 

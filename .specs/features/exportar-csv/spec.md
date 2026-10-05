@@ -66,10 +66,10 @@ Nenhum resultado do app pode ser levado para fora. Quem precisa montar um relat�
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| EXP-01 | P1: Baixar o resultado (botão e estados) | - | Pending |
-| EXP-02 | P1: Baixar o resultado (formato do arquivo) | - | Pending |
-| EXP-03 | P1: Baixar o resultado (cabeçalho de parâmetros) | - | Pending |
-| EXP-04 | P1: Baixar o resultado (cobertura das ferramentas) | - | Pending |
+| EXP-01 | P1: Baixar o resultado (botão e estados) | - | Verified |
+| EXP-02 | P1: Baixar o resultado (formato do arquivo) | - | Implementing |
+| EXP-03 | P1: Baixar o resultado (cabeçalho de parâmetros) | - | Verified |
+| EXP-04 | P1: Baixar o resultado (cobertura das ferramentas) | - | Verified |
 
 **Coverage:** 4 total, 0 mapeados (Medium).
 

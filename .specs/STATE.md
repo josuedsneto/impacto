@@ -30,7 +30,7 @@ As features dependem umas das outras nesta ordem. Cada uma tem `spec.md` em `fea
 ## Handoff
 
 - **Branch:** `refactor/auditoria` (com push).
-- **Concluído:** `cliente-api`, `fundacao-ui`, `linguagem-clara` (validações PASS em `features/*/validation.md`); `limpeza-legado` exceto LEG-01.
-- **Pendente do usuário:** UAT das três features (passos no fim de cada `validation.md`); `git rm` do Streamlit (LEG-01).
-- **Próximo passo:** `exportar-csv` (Medium: tarefas inline, usa `lib/format.ts` e `PageHeader.acoes`).
-- **Ambiente:** testes do front `npm test` (vitest); gate por task com tsc + lint por arquivo; rodar `lessons.py` sempre da raiz do repo.
+- **Concluído:** `cliente-api`, `fundacao-ui`, `linguagem-clara`, `exportar-csv` (validações PASS); `limpeza-legado` exceto LEG-01.
+- **Pendente do usuário:** UAT das quatro features (passos no fim de cada `validation.md`); `git rm` do Streamlit (LEG-01).
+- **Próximo passo:** `dados-mercado-cache` (backend: VaR, ARIMA, Stress, Volatilidade e regressões via `get_prices`; corrigir fechamento intradiário congelado).
+- **Ambiente:** testes do front `npm test`; backend `python test_calcs.py && python test_mensagens.py`; rodar `lessons.py` da raiz.
