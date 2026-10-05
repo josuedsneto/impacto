@@ -495,6 +495,8 @@ T36 → T37
 
 ### T20: Migrar ARIMA
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `ErrorState` com "Tentar novamente", `format.ts`, tokens no gráfico.
 **Where**: `frontend/app/app/arima/page.tsx`
 **Depends on**: T19
@@ -504,7 +506,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
