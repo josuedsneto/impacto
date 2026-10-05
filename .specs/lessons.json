@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 2,
+  "next_id": 3,
   "lessons": [
     {
       "id": "L-001",
@@ -22,6 +22,24 @@
       ],
       "created": "2026-10-05T14:28:03Z",
       "last_seen": "2026-10-05T14:28:03Z"
+    },
+    {
+      "id": "L-002",
+      "key": "gate_fail::encadear gate e commit com sobre saida filtrada por grep nao para em erro de lint usar o codigo de saida do eslint ou checar contagem de erros 0 antes de commitar",
+      "text": "Encadear gate e commit com && sobre saída filtrada por grep não para em erro de lint; usar o código de saída do eslint ou checar contagem de erros > 0 antes de commitar.",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "fundacao-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "commit d5f072d (tooling)"
+      ],
+      "created": "2026-10-05T17:51:37Z",
+      "last_seen": "2026-10-05T17:51:37Z"
     }
   ]
 }

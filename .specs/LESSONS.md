@@ -20,6 +20,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: frontend/lib/api.ts:destinoSeguro (frontend/auth)
 - last seen: 2026-10-05T14:28:03Z
 
+### L-002 - Encadear gate e commit com && sobre saída filtrada por grep não para em erro de lint; usar o código de saída do eslint ou checar contagem de erros > 0 antes de commitar.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `tooling` · harmful: 0
+- features: fundacao-ui
+- evidence: commit d5f072d (tooling)
+- last seen: 2026-10-05T17:51:37Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
