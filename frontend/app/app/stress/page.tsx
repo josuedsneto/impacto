@@ -58,7 +58,8 @@ export default function StressPage() {
       setError(null);
       try {
         const params = new URLSearchParams({ ticker });
-        setScenarios(await apiFetch<StressScenario[]>(`/api/stress?${params}`));
+        const data = await apiFetch<{ cenarios: StressScenario[]; ultimo_dado: string }>(`/api/stress?${params}`);
+        setScenarios(data.cenarios);
       } catch (e) {
         setError((e as Error).message);
       } finally {
