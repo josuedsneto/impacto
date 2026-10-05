@@ -137,6 +137,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T5: Teste de estresse e ARIMA
 
+**Status**: ✅ Done
+
 **What**: CSV dos cenários de estresse e da série histórico + previsão com intervalo.
 **Where**: `frontend/app/app/stress/page.tsx`
 **Depends on**: T4
@@ -146,8 +148,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivos fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivos fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

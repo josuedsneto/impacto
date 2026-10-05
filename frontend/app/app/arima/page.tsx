@@ -7,7 +7,10 @@ import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatNumber, formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraArima } from "@/lib/leitura";
-import { nomeAtivo } from "@/lib/ativos";
+import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -105,10 +108,33 @@ function ArimaPanel({ ticker }: { ticker: string }) {
       {!loading && !error && data && (() => {
         // Último ponto projetado = fim do horizonte escolhido.
         const fim = data.filter((p) => p.forecast != null).at(-1);
+        const u = unidadeAtivo(ticker) ? ` (${unidadeAtivo(ticker)})` : "";
         return (
+          <>
+          <div className="flex justify-end">
+            <BotaoExportar
+              arquivo={nomeArquivo("Previsao ARIMA", ticker)}
+              montar={() =>
+                gerarCsv({
+                  parametros: [
+                    ["Ativo", nomeAtivo(ticker)],
+                    ["Horizonte (dias úteis)", Number(steps)],
+                    ["Modelo", "ARIMA(1,1,1)"],
+                  ],
+                  tabelas: [
+                    {
+                      colunas: ["Data", `Histórico${u}`, `Previsão${u}`, `Mínimo 95%${u}`, `Máximo 95%${u}`],
+                      linhas: data.map((p) => [p.date, p.value, p.forecast, p.ci_lower, p.ci_upper]),
+                    },
+                  ],
+                })
+              }
+            />
+          </div>
           <Leitura>
             {leituraArima({ ticker, dias: Number(steps), valor: fim?.forecast, min: fim?.ci_lower, max: fim?.ci_upper })}
           </Leitura>
+          </>
         );
       })()}
       {!loading && !error && data && (

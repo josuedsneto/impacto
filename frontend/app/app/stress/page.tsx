@@ -7,7 +7,10 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatPercent, formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraStress } from "@/lib/leitura";
-import { nomeAtivo } from "@/lib/ativos";
+import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import {
   Select,
   SelectContent,
@@ -70,6 +73,37 @@ export default function StressPage() {
       <PageHeader
         titulo="Teste de estresse"
         descricao="As piores quedas do preço na história e em crises conhecidas (2008 e covid-19)."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Teste de estresse", ticker)}
+            montar={
+              !loading && scenarios.length
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Ativo", nomeAtivo(ticker)]],
+                      tabelas: [
+                        {
+                          colunas: [
+                            "Cenário",
+                            "Início",
+                            "Fim",
+                            "Queda do pico ao fundo (%)",
+                            `Preço no fundo${unidadeAtivo(ticker) ? ` (${unidadeAtivo(ticker)})` : ""}`,
+                          ],
+                          linhas: scenarios.map((s) => [
+                            s.cenario,
+                            s.periodo_inicio === "N/A" ? null : s.periodo_inicio,
+                            s.periodo_fim === "N/A" ? null : s.periodo_fim,
+                            s.drawdown_pct * 100,
+                            s.preco_final,
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <div className="flex items-center gap-3">
