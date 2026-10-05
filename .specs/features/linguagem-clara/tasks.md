@@ -140,6 +140,8 @@ T24 → T25
 
 ### T4: Frases de leitura de negócio
 
+**Status**: ✅ Done
+
 **What**: Em `lib/leitura.ts`: `leituraCenarios`, `leituraRisco`, `leituraMetas`, `leituraBreakeven`, `leituraRegDolar`, `leituraRegAcucar`, `leituraAtr`.
 **Where**: `frontend/lib/leitura.ts`
 **Depends on**: T3
@@ -149,9 +151,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Cada função tem teste com a frase exata do design
-- [ ] Probabilidade < 1% vira "menos de 1%"; P10 < 0 acrescenta "Há risco de prejuízo."
-- [ ] Gate passa
+- [x] Cada função tem teste com a frase exata do design
+- [x] Probabilidade < 1% vira "menos de 1%"; P10 < 0 acrescenta "Há risco de prejuízo."
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

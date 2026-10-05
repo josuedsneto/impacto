@@ -1,6 +1,6 @@
 // Frases que dizem, em português, o que o resultado de cada ferramenta significa (LING-03, LING-04).
 // Os textos seguem a tabela de .specs/features/linguagem-clara/design.md.
-import { formatDate, formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { formatBRL, formatCompactBRL, formatDate, formatNumber, formatPercent, formatPreco } from "@/lib/format";
 
 type N = number | null | undefined;
 
@@ -74,4 +74,61 @@ export function leituraPayoff(r: { precos: number[]; payoff: number[] }) {
 export function leituraCall(preco: N) {
   if (falta(preco)) return AUSENTE;
   return `O preço justo desta call é ${formatNumber(preco, 4)} por unidade do ativo.`;
+}
+
+// ── Negócio ─────────────────────────────────────────────────────────────────
+
+const VARIAVEL: Record<string, { nome: string; fmt: (v: number) => string }> = {
+  NY: { nome: "o açúcar NY", fmt: (v) => formatPreco("SB=F", v) },
+  "Câmbio": { nome: "o câmbio", fmt: (v) => formatPreco("USDBRL=X", v) },
+  Moagem: { nome: "a moagem", fmt: (v) => `${formatNumber(v, 0)} t de cana` },
+  "Preço Etanol": { nome: "o etanol", fmt: (v) => `${formatBRL(v)}/m³` },
+};
+
+/** Probabilidade legível: abaixo de 1% vira "menos de 1%". */
+export function probabilidade(p: number): string {
+  return p < 0.01 ? "menos de 1%" : formatPercent(p, 1);
+}
+
+export function leituraCenarios(r: { opcao: string; breakeven: N; prob: N }) {
+  const v = VARIAVEL[r.opcao];
+  if (!v || falta(r.breakeven, r.prob)) return AUSENTE;
+  return `O EBITDA zera com ${v.nome} em ${v.fmt(r.breakeven!)}. A chance de ficar abaixo disso é ${probabilidade(r.prob!)}.`;
+}
+
+export function leituraRisco(r: { media: N; p10: N }) {
+  if (falta(r.media, r.p10)) return AUSENTE;
+  const frase = `O EBITDA médio esperado é ${formatCompactBRL(r.media)}; em 1 de cada 10 cenários fica abaixo de ${formatCompactBRL(r.p10)}.`;
+  return r.p10! < 0 ? `${frase} Há risco de prejuízo.` : frase;
+}
+
+export function leituraMetas(r: { mtm: N; meta: number }) {
+  if (falta(r.mtm)) return AUSENTE;
+  const dif = r.mtm! - r.meta;
+  const posicao = dif === 0 ? "igual à meta" : `${formatBRL(Math.abs(dif))} ${dif > 0 ? "acima" : "abaixo"} da meta de ${formatBRL(r.meta)}/t`;
+  return `No último fechamento o açúcar valia ${formatBRL(r.mtm)}/t, ${posicao}.`;
+}
+
+export function leituraBreakeven(r: { acucar: N; dolar: N; breakeven: N }) {
+  if (falta(r.acucar, r.dolar, r.breakeven)) return AUSENTE;
+  return `Com açúcar a ${formatPreco("SB=F", r.acucar)} e dólar a ${formatPreco("USDBRL=X", r.dolar)}, o açúcar vale ${formatBRL(r.breakeven)}/saca.`;
+}
+
+export function leituraRegDolar(r: { taxa: N; rmse: N }) {
+  if (falta(r.taxa, r.rmse)) return AUSENTE;
+  return `Com estes indicadores o modelo estima o dólar em ${formatPreco("USDBRL=X", r.taxa)}, com erro médio de ${formatPreco("USDBRL=X", r.rmse)} para mais ou para menos.`;
+}
+
+export function leituraRegAcucar(r: { previsto: N; min: N; max: N }) {
+  if (falta(r.previsto, r.min, r.max)) return AUSENTE;
+  const p = (v: N) => formatPreco("SB=F", v);
+  return `O modelo estima o açúcar em ${p(r.previsto)}, provavelmente entre ${p(r.min)} e ${p(r.max)}.`;
+}
+
+export function leituraAtr(r: { chuva: N; impureza: N; atr: N; min: N; max: N; producao?: N }) {
+  if (falta(r.chuva, r.impureza, r.atr, r.min, r.max)) return AUSENTE;
+  const frase =
+    `Com ${formatNumber(r.chuva, 1)} mm de chuva e ${formatNumber(r.impureza, 1)}% de impureza, o ATR esperado é ` +
+    `${formatNumber(r.atr, 1)} kg/t (entre ${formatNumber(r.min, 1)} e ${formatNumber(r.max, 1)} em 90% dos casos).`;
+  return falta(r.producao) ? frase : `${frase} Produção estimada: ${formatNumber(r.producao! / 1000, 0)} mil toneladas.`;
 }
