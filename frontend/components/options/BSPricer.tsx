@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
+import { formatNumber } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
@@ -126,13 +127,11 @@ export default function BSPricer() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-negative">{error}</p>}
 
       <p className="text-2xl font-bold">
-        Preço BS:{" "}
-        <span className="text-primary">
-          {loading ? "—" : price !== null ? price.toFixed(4) : "—"}
-        </span>
+        Preço da call:{" "}
+        <span className="tabular-nums text-brand">{loading ? "—" : formatNumber(price, 4)}</span>
       </p>
     </div>
   );

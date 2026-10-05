@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { formatNumber } from "@/lib/format";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +18,9 @@ export default function MCPricer() {
   const [numSimulacoes, setNumSimulacoes] = useState(10000);
   const [price, setPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleCalculate() {
     setLoading(true);
-    setError(null);
     try {
       const data = await apiFetch<{ price: number }>("/api/options/mc-price", {
         method: "POST",
@@ -28,7 +28,7 @@ export default function MCPricer() {
       });
       setPrice(data.price);
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -109,17 +109,13 @@ export default function MCPricer() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
       <Button type="button" onClick={handleCalculate} disabled={loading}>
         {loading ? "Calculando..." : "Calcular (MC)"}
       </Button>
 
       <p className="text-2xl font-bold">
-        Preço MC:{" "}
-        <span className="text-primary">
-          {price !== null ? price.toFixed(4) : "—"}
-        </span>
+        Preço da call:{" "}
+        <span className="tabular-nums text-brand">{formatNumber(price, 4)}</span>
       </p>
     </div>
   );

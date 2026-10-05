@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,6 @@ function newLeg(): OptionLeg {
 export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
   const [legs, setLegs] = useState<OptionLeg[]>([newLeg()]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function addLeg() {
     setLegs((prev) => [...prev, newLeg()]);
@@ -65,14 +65,13 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
   async function handleCalculate() {
     if (legs.length === 0) return;
     setLoading(true);
-    setError(null);
     try {
       onPayoffResult(await apiFetch<PayoffResult>("/api/options/payoff", {
         method: "POST",
         body: JSON.stringify({ legs }),
       }));
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -90,7 +89,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             <button
               type="button"
               onClick={() => removeLeg(leg.id)}
-              className="text-sm text-red-600 hover:underline"
+              className="text-sm text-negative hover:underline"
             >
               Remover
             </button>
@@ -178,7 +177,6 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }

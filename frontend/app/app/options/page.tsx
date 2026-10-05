@@ -6,14 +6,18 @@ import PayoffBuilder, { PayoffResult } from "@/components/options/PayoffBuilder"
 import PayoffChart from "@/components/options/PayoffChart";
 import BSPricer from "@/components/options/BSPricer";
 import MCPricer from "@/components/options/MCPricer";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export default function OptionsPage() {
   const [payoffResult, setPayoffResult] = useState<PayoffResult | null>(null);
   const [activeTab, setActiveTab] = useState("payoff");
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Opções e Pricing</h1>
+    <div>
+      <PageHeader
+        titulo="Opções"
+        descricao="Monte estratégias com opções e veja o resultado no vencimento, ou calcule o preço justo de uma call."
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -34,15 +38,15 @@ export default function OptionsPage() {
 
         <TabsContent value="black-scholes" className="mt-6 space-y-4">
           <BSPricer />
-          <p className="text-sm text-muted-foreground mt-4">
-            OPT-02: volatilidade customizável. Recalcula automaticamente a cada mudança.
+          <p className="mt-4 text-sm text-muted-foreground">
+            O preço é recalculado a cada mudança nos campos.
           </p>
         </TabsContent>
 
         <TabsContent value="mc-pricer" className="mt-6 space-y-4">
           <MCPricer />
-          <p className="text-sm text-muted-foreground mt-4">
-            OPT-03: drift risk-neutral (r − 0.5σ²). Consistente com Black-Scholes no ATM.
+          <p className="mt-4 text-sm text-muted-foreground">
+            Simula milhares de preços no vencimento; o resultado converge para o Black-Scholes.
           </p>
         </TabsContent>
       </Tabs>

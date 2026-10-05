@@ -537,6 +537,8 @@ T36 → T37
 
 ### T22: Migrar Opções
 
+**Status**: ✅ Done
+
 **What**: página + `BSPricer`, `MCPricer`, `PayoffBuilder`, `PayoffChart`: `PageHeader`, `format.ts`, tokens.
 **Where**: `frontend/app/app/options/page.tsx`
 **Depends on**: T21
@@ -546,8 +548,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e 4 componentes fora de `PENDENTES`
-- [ ] Gate build passa (fim da fase)
+- [x] Página e 4 componentes fora de `PENDENTES`
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build
