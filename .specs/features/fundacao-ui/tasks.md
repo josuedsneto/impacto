@@ -240,6 +240,8 @@ T36 → T37
 
 ### T8: Criar estados de carregamento, erro e vazio
 
+**Status**: ✅ Done
+
 **What**: `Skeleton`, `ErrorState` (mensagem + "Tentar novamente") e `EmptyState` (frase + ação opcional).
 **Where**: `frontend/components/ui/feedback.tsx`
 **Depends on**: T7
@@ -249,8 +251,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Componentes exportados e tipados
-- [ ] Gate build passa
+- [x] Componentes exportados e tipados
+- [x] Gate build passa
 
 **Tests**: none
 **Gate**: build
