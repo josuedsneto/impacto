@@ -49,6 +49,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T1: Gerador de CSV
 
+**Status**: ✅ Done
+
 **What**: `lib/csv.ts`: `gerarCsv({ parametros, colunas, linhas })` (BOM, `;`, CRLF, vírgula decimal sem milhar, aspas quando preciso, vazio para null/NaN), `nomeArquivo(ferramenta, ativo, data)` sem acentos/espaços e `baixarCsv(nome, conteudo)` via Blob.
 **Where**: `frontend/lib/csv.ts`
 **Depends on**: None
@@ -58,8 +60,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Testes em `lib/csv.test.ts`: BOM, separador, CRLF, -1234.5 → "-1234,5", texto com `;` e aspas, null vazio, cabeçalho de parâmetros, nome do arquivo
-- [ ] Gate passa
+- [x] Testes em `lib/csv.test.ts`: BOM, separador, CRLF, -1234.5 → "-1234,5", texto com `;` e aspas, null vazio, cabeçalho de parâmetros, nome do arquivo
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
