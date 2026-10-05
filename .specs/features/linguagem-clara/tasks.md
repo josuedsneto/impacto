@@ -342,6 +342,8 @@ T24 → T25
 
 ### T13: Volatilidade
 
+**Status**: ✅ Done
+
 **What**: Frase `leituraVolatilidade`; atalhos por nome do ativo.
 **Where**: `frontend/app/app/volatilidade/page.tsx`
 **Depends on**: T12
@@ -351,8 +353,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatPercent } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraVolatilidade } from "@/lib/leitura";
+import { ATIVOS, nomeAtivo } from "@/lib/ativos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +93,7 @@ function VolPanel({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <Leitura>{leituraVolatilidade({ vol30: result.vol_30d, vol1a: result.vol_1y })}</Leitura>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Vol. Realizada 30d (a.a.)"
@@ -146,8 +150,8 @@ function VolPanel({ ticker }: { ticker: string }) {
 }
 
 const QUICK_TICKERS = [
-  { label: "Açúcar NY", value: "SB=F" },
-  { label: "USD/BRL", value: "USDBRL=X" },
+  { label: ATIVOS["SB=F"].nome, value: "SB=F" },
+  { label: ATIVOS["USDBRL=X"].nome, value: "USDBRL=X" },
 ];
 
 export default function VolatilityPage() {
@@ -164,13 +168,14 @@ export default function VolatilityPage() {
     <div className="space-y-6">
       <PageHeader
         titulo="Volatilidade Realizada"
+        atualizadoEm={`Ativo: ${nomeAtivo(ticker)}`}
         descricao="Quanto o preço oscilou de fato em 30 dias, 90 dias e 1 ano, em base anual."
       />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
         <Label htmlFor="vol-ticker">
-          Ticker{" "}
-          <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F, USDBRL=X, PETR4.SA" />
+          Ativo (código Yahoo){" "}
+          <FieldTooltip text="Escolha um dos atalhos ou digite o código do ativo no Yahoo Finance, ex.: PETR4.SA." />
         </Label>
         <div className="flex gap-2">
           <Input
