@@ -408,6 +408,8 @@ T24 → T25
 
 ### T16: Breakeven da safra (Cenários)
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design e frase `leituraCenarios`.
 **Where**: `frontend/app/app/cenarios/page.tsx`
 **Depends on**: T15
@@ -417,8 +419,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

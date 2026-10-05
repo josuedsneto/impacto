@@ -7,8 +7,11 @@ import { EmptyState } from "@/components/ui/feedback";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraCenarios } from "@/lib/leitura";
+import { lerNumero } from "@/lib/numero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
@@ -31,23 +34,33 @@ interface CenariosResult {
 
 const OPCOES: Opcao[] = ["Moagem", "Câmbio", "NY", "Preço Etanol"];
 
-const DEFAULTS: Record<Opcao, Record<string, number>> = {
-  "Moagem":       { ny: 20.0, cambio: 5.25, preco_etanol: 2768.90 },
-  "Câmbio":       { ny: 20.0, moagem: 1300000, preco_etanol: 2768.90 },
-  "NY":           { moagem: 1300000, cambio: 5.25, preco_etanol: 2768.90 },
-  "Preço Etanol": { ny: 20.0, moagem: 1300000, cambio: 5.25 },
+/** Nome de cada variável nos botões (o valor da API continua o mesmo). */
+const NOME_OPCAO: Record<Opcao, string> = {
+  Moagem: "Moagem",
+  "Câmbio": "Câmbio",
+  NY: "Açúcar NY",
+  "Preço Etanol": "Etanol",
 };
 
-const INPUT_LABELS: Record<string, { label: string; step: number; placeholder: string }> = {
-  ny:           { label: "NY (¢/lb)", step: 0.1, placeholder: "20.0" },
-  moagem:       { label: "Moagem Total", step: 10000, placeholder: "1300000" },
-  cambio:       { label: "Câmbio (R$)", step: 0.01, placeholder: "5.25" },
-  preco_etanol: { label: "Preço Etanol (R$/m³)", step: 10, placeholder: "2768.90" },
+const DEFAULTS: Record<Opcao, Record<string, string>> = {
+  "Moagem":       { ny: "20", cambio: "5,25", preco_etanol: "2.768,90" },
+  "Câmbio":       { ny: "20", moagem: "1.300.000", preco_etanol: "2.768,90" },
+  "NY":           { moagem: "1.300.000", cambio: "5,25", preco_etanol: "2.768,90" },
+  "Preço Etanol": { ny: "20", moagem: "1.300.000", cambio: "5,25" },
 };
+
+const CAMPOS: Record<string, { rotulo: string; unidade: string; ajuda: string }> = {
+  ny: { rotulo: "Açúcar NY", unidade: "¢/lb", ajuda: "Preço do açúcar em Nova York usado no cenário." },
+  moagem: { rotulo: "Moagem", unidade: "t de cana", ajuda: "Toneladas de cana moídas na safra." },
+  cambio: { rotulo: "Câmbio", unidade: "R$/US$", ajuda: "Dólar usado para converter a receita em reais." },
+  preco_etanol: { rotulo: "Etanol", unidade: "R$/m³", ajuda: "Preço de venda do etanol." },
+};
+
+const FAIXA = { min: 0.0001, max: 100_000_000 };
 
 export default function CenariosPage() {
   const [opcao, setOpcao] = useState<Opcao>("NY");
-  const [values, setValues] = useState<Record<string, number>>({ ...DEFAULTS["NY"] });
+  const [values, setValues] = useState<Record<string, string>>({ ...DEFAULTS["NY"] });
   const [result, setResult] = useState<CenariosResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -58,9 +71,14 @@ export default function CenariosPage() {
   }
 
   async function handleSimulate() {
+    if (!Object.values(values).every((v) => campoValido(v, FAIXA))) {
+      toast.error("Corrija os campos destacados antes de calcular.");
+      return;
+    }
     setLoading(true);
     try {
-      const body = { opcao, ny: 0, moagem: 0, cambio: 0, preco_etanol: 0, ...values };
+      const numeros = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, lerNumero(v)]));
+      const body = { opcao, ny: 0, moagem: 0, cambio: 0, preco_etanol: 0, ...numeros };
       const data = await apiFetch<CenariosResult>("/api/cenarios", {
         method: "POST",
         body: JSON.stringify(body),
@@ -107,29 +125,25 @@ export default function CenariosPage() {
                       opcao === o ? "border-primary bg-primary text-primary-foreground" : "border-input hover:bg-accent"
                     )}
                   >
-                    {o}
+                    {NOME_OPCAO[o]}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {otherInputs.map((key) => {
-                const cfg = INPUT_LABELS[key];
-                return (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={`cen-${key}`}>{cfg.label}</Label>
-                    <Input
-                      id={`cen-${key}`}
-                      type="number"
-                      step={cfg.step}
-                      placeholder={cfg.placeholder}
-                      value={values[key] ?? ""}
-                      onChange={(e) => setValues((prev) => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                    />
-                  </div>
-                );
-              })}
+              {otherInputs.map((key) => (
+                <CampoNumero
+                  key={key}
+                  id={`cen-${key}`}
+                  rotulo={CAMPOS[key].rotulo}
+                  unidade={CAMPOS[key].unidade}
+                  ajuda={CAMPOS[key].ajuda}
+                  valor={values[key] ?? ""}
+                  onChange={(t) => setValues((prev) => ({ ...prev, [key]: t }))}
+                  {...FAIXA}
+                />
+              ))}
             </div>
 
             <Button onClick={handleSimulate} disabled={loading} className="w-full">
@@ -142,10 +156,13 @@ export default function CenariosPage() {
 
         {result && (
           <div className="min-w-0 space-y-6">
+            <Leitura>
+              {leituraCenarios({ opcao: result.opcao, breakeven: result.breakeven, prob: result.probabilidade_abaixo })}
+            </Leitura>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Card>
                 <CardHeader className="pb-1">
-                  <CardTitle className="text-xs font-medium text-muted-foreground">Breakeven · {result.opcao}</CardTitle>
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Breakeven · {NOME_OPCAO[result.opcao]}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold tabular-nums">{fmt(result.breakeven)}</p>
@@ -178,7 +195,7 @@ export default function CenariosPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Distribuição de probabilidade · {result.opcao}</CardTitle>
+                <CardTitle className="text-sm font-medium">Distribuição de probabilidade · {NOME_OPCAO[result.opcao]}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={260}>
@@ -228,7 +245,7 @@ export default function CenariosPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Percentis · {result.opcao}</CardTitle>
+                <CardTitle className="text-sm font-medium">Percentis · {NOME_OPCAO[result.opcao]}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-1 text-sm sm:grid-cols-4 lg:grid-cols-5">
