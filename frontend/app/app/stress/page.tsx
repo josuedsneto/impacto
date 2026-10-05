@@ -68,7 +68,7 @@ export default function StressPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        titulo="Teste de Estresse"
+        titulo="Teste de estresse"
         descricao="As piores quedas do preço na história e em crises conhecidas (2008 e covid-19)."
       />
 

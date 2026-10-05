@@ -584,6 +584,8 @@ T24 → T25
 
 ### T24: Menu e títulos
 
+**Status**: ✅ Done
+
 **What**: Nomes do menu e títulos do `PageHeader` conforme o design.
 **Where**: `frontend/components/layout/NavLinks.tsx`
 **Depends on**: None
@@ -593,8 +595,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Teste em `regras-linguagem.test.ts` confere que cada link do menu tem o mesmo nome do título da página
-- [ ] Gate passa
+- [x] Teste em `regras-linguagem.test.ts` confere que cada link do menu tem o mesmo nome do título da página
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

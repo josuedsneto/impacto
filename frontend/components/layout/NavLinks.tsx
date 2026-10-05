@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 
 const NAV_SECTIONS = [
   {
-    label: "Fixações",
+    label: "Mercado",
     items: [
-      { href: "/app/fixacoes", label: "Mercado" },
-      { href: "/app/market", label: "Análise Técnica" },
+      { href: "/app/fixacoes", label: "Mercado e sinais" },
+      { href: "/app/market", label: "Preços diários" },
       { href: "/app/metas", label: "Metas" },
       { href: "/app/options", label: "Opções" },
     ],
@@ -18,19 +18,19 @@ const NAV_SECTIONS = [
     label: "Simulação",
     items: [
       { href: "/app/simulation", label: "Monte Carlo" },
-      { href: "/app/jump-diffusion", label: "Jump Diffusion" },
-      { href: "/app/arima", label: "ARIMA" },
+      { href: "/app/jump-diffusion", label: "Simulação com saltos" },
+      { href: "/app/arima", label: "Previsão de preço (ARIMA)" },
       { href: "/app/volatilidade", label: "Volatilidade" },
     ],
   },
   {
     label: "Risco",
     items: [
-      { href: "/app/var", label: "VaR" },
-      { href: "/app/breakeven", label: "Breakeven" },
-      { href: "/app/stress", label: "Stress Test" },
-      { href: "/app/risco", label: "Risco (EBITDA)" },
-      { href: "/app/cenarios", label: "Cenários" },
+      { href: "/app/var", label: "Perda máxima (VaR)" },
+      { href: "/app/breakeven", label: "Breakeven do açúcar" },
+      { href: "/app/stress", label: "Teste de estresse" },
+      { href: "/app/risco", label: "Risco do EBITDA" },
+      { href: "/app/cenarios", label: "Breakeven da safra" },
     ],
   },
   {
@@ -38,9 +38,9 @@ const NAV_SECTIONS = [
     items: [
       { href: "/app/noticias", label: "Notícias" },
       { href: "/app/focus", label: "Boletim Focus" },
-      { href: "/app/regressao-dolar", label: "Regressão Dólar" },
-      { href: "/app/regressao-acucar", label: "Regressão Açúcar" },
-      { href: "/app/atr", label: "ATR" },
+      { href: "/app/regressao-dolar", label: "Modelo do dólar" },
+      { href: "/app/regressao-acucar", label: "Modelo do açúcar" },
+      { href: "/app/atr", label: "ATR da usina" },
     ],
   },
   {

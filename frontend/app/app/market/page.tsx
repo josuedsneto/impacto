@@ -46,7 +46,7 @@ export default function MarketPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        titulo="Análise Técnica"
+        titulo="Preços diários"
         descricao="Consulte a série diária de preços de qualquer ativo e sugira novos ativos para o catálogo."
       />
 

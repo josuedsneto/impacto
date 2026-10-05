@@ -82,7 +82,7 @@ export default function JumpDiffusionPage() {
   return (
     <div>
       <PageHeader
-        titulo="Jump Diffusion"
+        titulo="Simulação com saltos"
         descricao="Simula um caminho de preço com oscilação diária e saltos bruscos ocasionais (modelo de Merton)."
       />
 

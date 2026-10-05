@@ -66,7 +66,7 @@ export default function RegressaoDolarPage() {
 
   return (
     <div>
-      <PageHeader titulo="Regressão do dólar" descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)." />
+      <PageHeader titulo="Modelo do dólar" descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)." />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

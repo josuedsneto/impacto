@@ -102,7 +102,7 @@ export default function CenariosPage() {
   return (
     <div>
       <PageHeader
-        titulo="Cenários"
+        titulo="Breakeven da safra"
         descricao="Encontra o valor de uma variável em que o EBITDA zera e a chance de o mercado ficar abaixo dele."
       />
 

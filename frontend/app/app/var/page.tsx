@@ -132,7 +132,7 @@ export default function VarPage() {
   return (
     <div>
       <PageHeader
-        titulo="Value at Risk (VaR)"
+        titulo="Perda máxima (VaR)"
         descricao="A maior queda de preço esperada em 1 dia, para o nível de confiança escolhido."
       />
 

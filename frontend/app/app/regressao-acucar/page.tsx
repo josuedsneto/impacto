@@ -66,7 +66,7 @@ export default function RegressaoAcucarPage() {
 
   return (
     <div>
-      <PageHeader titulo="Regressão do açúcar" descricao="Estima o preço do açúcar em NY a partir de oferta e demanda mundiais, câmbio e petróleo." />
+      <PageHeader titulo="Modelo do açúcar" descricao="Estima o preço do açúcar em NY a partir de oferta e demanda mundiais, câmbio e petróleo." />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

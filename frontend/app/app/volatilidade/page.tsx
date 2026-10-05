@@ -167,7 +167,7 @@ export default function VolatilityPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        titulo="Volatilidade Realizada"
+        titulo="Volatilidade"
         atualizadoEm={`Ativo: ${nomeAtivo(ticker)}`}
         descricao="Quanto o preço oscilou de fato em 30 dias, 90 dias e 1 ano, em base anual."
       />

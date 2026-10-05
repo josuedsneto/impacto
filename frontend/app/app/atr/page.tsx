@@ -109,7 +109,7 @@ export default function AtrPage() {
   return (
     <div>
       <PageHeader
-        titulo="ATR"
+        titulo="ATR da usina"
         descricao="Estima o açúcar total recuperável (kg por tonelada de cana) a partir de chuva e impureza, com faixa de 90%."
       />
 

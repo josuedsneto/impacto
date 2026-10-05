@@ -75,3 +75,18 @@ describe("regras de linguagem", () => {
     expect(FERRAMENTAS.filter((f) => !arquivos.includes(f))).toEqual([]);
   });
 });
+
+describe("menu e títulos (LING-06)", () => {
+  // Cada link do menu leva a uma página cujo título no PageHeader é o mesmo nome.
+  const nav = readFileSync(join(RAIZ, "components/layout/NavLinks.tsx"), "utf-8");
+  const links = [...nav.matchAll(/href: "\/app\/([\w-]+)", label: "([^"]+)"/g)].map((m) => [m[1], m[2]]);
+
+  it("o menu tem os links das ferramentas", () => {
+    expect(links.length).toBeGreaterThanOrEqual(18);
+  });
+
+  it.each(links)("/app/%s tem o título \"%s\"", (rota, nome) => {
+    const pagina = readFileSync(join(RAIZ, `app/app/${rota}/page.tsx`), "utf-8");
+    expect(pagina).toContain(`titulo="${nome}"`);
+  });
+});

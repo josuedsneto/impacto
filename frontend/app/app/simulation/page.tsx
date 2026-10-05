@@ -88,7 +88,7 @@ export default function SimulationPage() {
   return (
     <div>
       <PageHeader
-        titulo="Simulação Monte Carlo"
+        titulo="Monte Carlo"
         descricao="Milhares de cenários de preço futuro a partir da volatilidade histórica do ativo."
       />
 

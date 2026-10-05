@@ -84,7 +84,7 @@ export default function FixacoesPage() {
   return (
     <div>
       <PageHeader
-        titulo="Fixações"
+        titulo="Mercado e sinais"
         descricao="Preços, indicadores técnicos e sinais de entrada e saída para planejar fixações."
       />
 

@@ -166,7 +166,7 @@ export default function ArimaPage() {
   return (
     <div>
       <PageHeader
-        titulo="Previsão ARIMA"
+        titulo="Previsão de preço (ARIMA)"
         descricao="Projeção estatística do preço para os próximos dias, com intervalo de 95% de confiança."
       />
 
