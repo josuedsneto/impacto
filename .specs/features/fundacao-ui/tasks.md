@@ -855,6 +855,8 @@ T36 → T37
 
 ### T37: Fechar a lista de pendentes
 
+**Status**: ✅ Done
+
 **What**: `PENDENTES` vazia; login revisado nos dois temas.
 **Where**: `frontend/lib/regras-ui.test.ts`
 **Depends on**: T36
@@ -864,7 +866,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `PENDENTES = []` e gate build completo passa
+- [x] `PENDENTES = []` e gate build completo passa
 
 **Tests**: unit
 **Gate**: build

@@ -2,15 +2,12 @@
 // - UI-06 AC5: sem cor literal (hex, rgb, hsl, oklch) fora de components/ui e globals.css
 // - UI-02: sem toFixed em texto de tela (use lib/format.ts)
 // - UI-09 AC2: <h1> só dentro do PageHeader
-// Arquivos ainda não migrados ficam em PENDENTES; cada task de migração remove o seu.
+// Vale para todo arquivo de app/ e components/ (exceto components/ui/, gerado pelo shadcn).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const RAIZ = join(__dirname, "..");
-
-const PENDENTES = new Set<string>([
-]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [
   { nome: "cor literal", re: /(?<![&\w])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|\b(?:rgba?|hsla?|oklch)\(/ },
@@ -37,18 +34,13 @@ const arquivos = [...arquivosTsx(join(RAIZ, "app")), ...arquivosTsx(join(RAIZ, "
   .map((a) => relative(RAIZ, a).replaceAll("\\", "/"))
   .filter((a) => !a.startsWith("components/ui/"));
 
-export function violacoes(arquivo: string): string[] {
+function violacoes(arquivo: string): string[] {
   const texto = readFileSync(join(RAIZ, arquivo), "utf-8");
   return REGRAS.filter((r) => r.exceto !== arquivo && (!r.so || r.so.test(arquivo)) && r.re.test(texto)).map((r) => r.nome);
 }
 
 describe("regras de UI", () => {
-  it.each(arquivos.filter((a) => !PENDENTES.has(a)))("%s segue as regras", (arquivo) => {
+  it.each(arquivos)("%s segue as regras", (arquivo) => {
     expect(violacoes(arquivo)).toEqual([]);
-  });
-
-  it("PENDENTES só lista arquivos que existem e ainda violam alguma regra", () => {
-    const parados = [...PENDENTES].filter((a) => !arquivos.includes(a) || violacoes(a).length === 0);
-    expect(parados).toEqual([]);
   });
 });
