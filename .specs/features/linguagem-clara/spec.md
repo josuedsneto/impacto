@@ -112,13 +112,13 @@ O app fala a língua de quem o programou, não de quem o usa. Campos aparecem co
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| LING-01 | P1: Campos (rótulos e unidades) | - | Pending |
-| LING-02 | P1: Campos (entrada em %, vírgula, validação) | - | Pending |
-| LING-03 | P1: Resultado com leitura (VaR, MC, Cenários) | - | Pending |
-| LING-04 | P1: Resultado com leitura (demais ferramentas) | - | Pending |
-| LING-05 | P1: Ativos pelo nome | - | Pending |
-| LING-06 | P2: Menu com nomes claros | - | Pending |
-| LING-07 | P3: Glossário | - | Pending |
+| LING-01 | P1: Campos (rótulos e unidades) | - | Verified |
+| LING-02 | P1: Campos (entrada em %, vírgula, validação) | - | Verified |
+| LING-03 | P1: Resultado com leitura (VaR, MC, Cenários) | - | Verified |
+| LING-04 | P1: Resultado com leitura (demais ferramentas) | - | Verified |
+| LING-05 | P1: Ativos pelo nome | - | Verified |
+| LING-06 | P2: Menu com nomes claros | - | Verified |
+| LING-07 | P3: Glossário | - | Implementing |
 
 **Coverage:** 7 total, 0 mapeados (Large: precisa de design.md com o texto de cada tela).
 

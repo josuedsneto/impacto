@@ -29,8 +29,8 @@ As features dependem umas das outras nesta ordem. Cada uma tem `spec.md` em `fea
 
 ## Handoff
 
-- **Branch:** `refactor/auditoria` (sem push).
-- **Concluído:** `cliente-api`, `fundacao-ui` (validações PASS em `features/*/validation.md`), `limpeza-legado` exceto LEG-01.
-- **Pendente do usuário:** UAT de `fundacao-ui` (4 passos no fim de `features/fundacao-ui/validation.md`) e de `cliente-api` (2 passos); `git rm` do Streamlit (LEG-01).
-- **Próximo passo:** `linguagem-clara` — escrever `design.md` com o texto de cada tela (frases de leitura) e `tasks.md`.
-- **Ambiente:** testes do front `npm test` (vitest, 103); gate por task com lint por arquivo.
+- **Branch:** `refactor/auditoria` (com push).
+- **Concluído:** `cliente-api`, `fundacao-ui`, `linguagem-clara` (validações PASS em `features/*/validation.md`); `limpeza-legado` exceto LEG-01.
+- **Pendente do usuário:** UAT das três features (passos no fim de cada `validation.md`); `git rm` do Streamlit (LEG-01).
+- **Próximo passo:** `exportar-csv` (Medium: tarefas inline, usa `lib/format.ts` e `PageHeader.acoes`).
+- **Ambiente:** testes do front `npm test` (vitest); gate por task com tsc + lint por arquivo; rodar `lessons.py` sempre da raiz do repo.

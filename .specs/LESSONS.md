@@ -38,6 +38,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: lib/regras-linguagem.test.ts FERRAMENTAS (tooling)
 - last seen: 2026-10-05T18:31:27Z
 
+### L-005 - Testes de conversão numérica precisam de entradas que geram erro de ponto flutuante (0,07 × 100), não só valores que dão conta exata.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `frontend/lib` · harmful: 0
+- features: linguagem-clara
+- evidence: frontend/lib/numero.ts:fracaoParaPercentual (frontend/lib)
+- last seen: 2026-10-05T18:42:32Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

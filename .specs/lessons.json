@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 5,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -76,6 +76,24 @@
       ],
       "created": "2026-10-05T18:31:27Z",
       "last_seen": "2026-10-05T18:31:27Z"
+    },
+    {
+      "id": "L-005",
+      "key": "surviving_mutant::testes de conversao numerica precisam de entradas que geram erro de ponto flutuante 0 07 100 nao so valores que dao conta exata",
+      "text": "Testes de conversão numérica precisam de entradas que geram erro de ponto flutuante (0,07 × 100), não só valores que dão conta exata.",
+      "signal": "surviving_mutant",
+      "scope": "frontend/lib",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "frontend/lib/numero.ts:fracaoParaPercentual (frontend/lib)"
+      ],
+      "created": "2026-10-05T18:42:32Z",
+      "last_seen": "2026-10-05T18:42:32Z"
     }
   ]
 }
