@@ -84,6 +84,8 @@ T36 → T37
 
 ### T1: Criar formatador pt-BR
 
+**Status**: ✅ Done
+
 **What**: `lib/format.ts` com `formatNumber`, `formatBRL`, `formatCents`, `formatFX`, `formatPercent`, `formatCompactBRL`, `formatDate`.
 **Where**: `frontend/lib/format.ts`
 **Depends on**: None
@@ -93,8 +95,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Testes em `frontend/lib/format.test.ts` cobrem UI-01 AC2–AC7 e os edge cases (negativo, ≥ 1 milhão)
-- [ ] Gate quick passa
+- [x] Testes em `frontend/lib/format.test.ts` cobrem UI-01 AC2–AC7 e os edge cases (negativo, ≥ 1 milhão)
+- [x] Gate quick passa
 
 **Tests**: unit
 **Gate**: quick
