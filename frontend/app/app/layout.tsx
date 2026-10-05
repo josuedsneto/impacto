@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/dashboard/UserMenu";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { formatCents, formatFX, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -49,8 +52,8 @@ async function fetchMarketStatus(token: string): Promise<{ open: boolean; state:
   }
 }
 
-function getTickerStats(rows: any[]) {
-  const valid = rows.filter((r: any) => r.close !== null);
+function getTickerStats(rows: { close: number | null }[]) {
+  const valid = rows.filter((r) => r.close !== null) as { close: number }[];
   const latest = valid.at(-1);
   const prev = valid.at(-2);
   const change =
@@ -80,92 +83,58 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const fxStats = getTickerStats(fxRows);
   const initials = (user.email ?? "?").split("@")[0].slice(0, 2).toUpperCase();
 
+  // Variações chegam em pontos percentuais (1.2 = 1,2%); format.ts recebe fração.
+  const pct = (v: number | null | undefined) => (v == null ? null : v / 100);
   const tickerItems = [
-    { label: "AÇÚCAR NY", value: sugarStats.value?.toFixed(2), unit: "¢", change: sugarStats.change },
-    { label: "USD/BRL", value: fxStats.value?.toFixed(4), unit: "R$", change: fxStats.change },
-    { label: "SELIC", value: focusData?.selic?.value ? `${focusData.selic.value.toFixed(2)}%` : null, change: null },
-    { label: "IPCA EXP.", value: focusData?.ipca?.value ? `${focusData.ipca.value.toFixed(2)}%` : null, change: focusData?.ipca?.delta },
+    { label: "AÇÚCAR NY", value: formatCents(sugarStats.value), change: pct(sugarStats.change) },
+    { label: "USD/BRL", value: formatFX(fxStats.value), change: pct(fxStats.change) },
+    { label: "SELIC", value: formatPercent(pct(focusData?.selic?.value)), change: null },
+    { label: "IPCA EXP.", value: formatPercent(pct(focusData?.ipca?.value)), change: pct(focusData?.ipca?.delta) },
   ];
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-
-      {/* ── Sticky header ── */}
-      <header className="flex-shrink-0 z-50">
-        {/* Top bar */}
-        <div
-          className="flex items-center justify-end px-7"
-          style={{
-            background: "#fff",
-            borderBottom: "1px solid #e5e7eb",
-            paddingTop: 14,
-            paddingBottom: 14,
-          }}
-        >
-          <div className="flex items-center gap-4">
-            {/* Market status badge */}
+    <div className="flex h-screen flex-col overflow-hidden">
+      <header className="z-40 shrink-0">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 sm:px-7">
+          <MobileNav />
+          <div className="ml-auto flex items-center gap-3 sm:gap-4">
             <div
-              className="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold"
-              style={{
-                background: marketStatus.open ? "#dcfce7" : "#fee2e2",
-                color: marketStatus.open ? "#15803d" : "#dc2626",
-                fontSize: 11,
-              }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold",
+                marketStatus.open ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"
+              )}
             >
               <span
-                className="rounded-full flex-shrink-0"
-                style={{
-                  width: 6,
-                  height: 6,
-                  background: marketStatus.open ? "#22c55e" : "#ef4444",
-                  animation: marketStatus.open ? "pulse-dot 2s infinite" : "none",
-                }}
+                aria-hidden
+                className={cn("size-1.5 shrink-0 rounded-full", marketStatus.open ? "animate-pulse bg-positive" : "bg-negative")}
               />
               {marketStatus.open ? "Mercado aberto" : "Mercado fechado"}
             </div>
-            {/* User menu */}
-            <UserMenu
-              email={user.email!}
-              initials={initials}
-              role={user.app_metadata?.role}
-            />
+            <UserMenu email={user.email!} initials={initials} role={user.app_metadata?.role} />
           </div>
         </div>
 
-        {/* Ticker tape */}
-        <div
-          className="flex items-center gap-7 px-7 overflow-x-auto"
-          style={{ background: "#1f2937", paddingTop: 8, paddingBottom: 8 }}
-        >
-          {tickerItems.map(({ label, value, unit, change }, i, arr) => (
-            <div key={label} className="flex items-center gap-2 flex-shrink-0">
-              <span style={{ color: "#6b7280", fontSize: 11, fontWeight: 600, letterSpacing: "0.5px" }}>
-                {label}
-              </span>
-              <span style={{ color: "#f9fafb", fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                {value ?? "—"}{unit && value ? ` ${unit}` : ""}
-              </span>
-              {change !== null && change !== undefined && (
-                <span style={{ fontSize: 11, color: change > 0 ? "#4ade80" : change < 0 ? "#f87171" : "#6b7280" }}>
-                  {change > 0 ? "+" : ""}{change.toFixed(2)}%
+        {/* Faixa de cotações: rola sozinha no celular, sem empurrar a página */}
+        <div className="flex items-center gap-6 overflow-x-auto border-b border-border bg-muted px-4 py-2 sm:px-7">
+          {tickerItems.map(({ label, value, change }) => (
+            <div key={label} className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+              <span className="font-semibold tracking-wide text-muted-foreground">{label}</span>
+              <span className="font-semibold text-foreground">{value}</span>
+              {change != null && (
+                <span className={change > 0 ? "text-positive" : change < 0 ? "text-negative" : "text-muted-foreground"}>
+                  {change > 0 ? "+" : ""}
+                  {formatPercent(change)}
                 </span>
-              )}
-              {i < arr.length - 1 && (
-                <span style={{ color: "#374151", marginLeft: 4 }}>·</span>
               )}
             </div>
           ))}
         </div>
       </header>
 
-      {/* ── Body ── */}
       <div className="flex flex-1 overflow-hidden">
         <AppSidebar />
-        <main className="flex-1 overflow-auto" style={{ background: "#f4f6f9" }}>
-          {children}
-        </main>
+        <main className="min-w-0 flex-1 overflow-auto bg-background px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
-
     </div>
   );
 }

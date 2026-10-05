@@ -304,6 +304,8 @@ T36 → T37
 
 ### T11: Layout /app responsivo
 
+**Status**: ✅ Done
+
 **What**: cabeçalho com `MobileNav`, faixa de cotações com `format.ts` e tokens, espaçamento padrão do conteúdo.
 **Where**: `frontend/app/app/layout.tsx`
 **Depends on**: T10
@@ -313,8 +315,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `app/app/layout.tsx` fora de `PENDENTES`
-- [ ] Gate build passa (fim da fase)
+- [x] `app/app/layout.tsx` fora de `PENDENTES`
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build
