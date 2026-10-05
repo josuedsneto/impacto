@@ -117,6 +117,8 @@ T24 → T25
 
 ### T3: Frases de leitura de mercado
 
+**Status**: ✅ Done
+
 **What**: `lib/leitura.ts`: `leituraVaR`, `leituraMonteCarlo`, `leituraVolatilidade`, `leituraStress`, `leituraArima`, `leituraJump`, `leituraPayoff`, `leituraCall`; testes com as frases do design.
 **Where**: `frontend/lib/leitura.ts`
 **Depends on**: T2
@@ -126,9 +128,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Cada função tem teste com a frase exata do design
-- [ ] Valor ausente → "Sem dados suficientes para este cálculo."
-- [ ] Gate passa
+- [x] Cada função tem teste com a frase exata do design
+- [x] Valor ausente → "Sem dados suficientes para este cálculo."
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
