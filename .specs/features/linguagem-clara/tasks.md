@@ -275,6 +275,8 @@ T24 → T25
 
 ### T10: Simulação com saltos
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design, campos em %, frase `leituraJump`.
 **Where**: `frontend/app/app/jump-diffusion/page.tsx`
 **Depends on**: T9
@@ -284,8 +286,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

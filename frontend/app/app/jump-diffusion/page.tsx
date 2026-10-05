@@ -7,10 +7,13 @@ import { EmptyState } from "@/components/ui/feedback";
 import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraJump } from "@/lib/leitura";
+import { lerNumero } from "@/lib/numero";
+import { ATIVOS, nomeAtivo } from "@/lib/ativos";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -24,31 +27,48 @@ interface JDResult {
   prices: { step: number; price: number }[];
 }
 
-const TICKERS = [
-  { label: "Açúcar NY", value: "SB=F" },
-  { label: "USD/BRL", value: "USDBRL=X" },
-];
+const TICKERS = ["SB=F", "USDBRL=X"].map((value) => ({ label: ATIVOS[value].nome, value }));
+
+// Faixas aceitas pela API (backend/main.py JumpDiffusionRequest); campos em % na tela.
+const FAIXAS = {
+  sigma: { min: 0.01, max: 20, opcional: true },
+  steps: { min: 10, max: 1260 },
+  lambda: { min: 0, max: 5 },
+  muJump: { min: -100, max: 100 },
+  sigmaJump: { min: 0, max: 100 },
+};
 
 export default function JumpDiffusionPage() {
   const [ticker, setTicker] = useState("SB=F");
   const [sigma, setSigma] = useState("");
-  const [lambdaJumps, setLambdaJumps] = useState("0.1");
-  const [muJump, setMuJump] = useState("-0.02");
-  const [sigmaJump, setSigmaJump] = useState("0.05");
+  const [lambdaJumps, setLambdaJumps] = useState("0,1");
+  const [muJump, setMuJump] = useState("-2");
+  const [sigmaJump, setSigmaJump] = useState("5");
   const [steps, setSteps] = useState("252");
   const [result, setResult] = useState<JDResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSimulate() {
+    const ok =
+      campoValido(sigma, FAIXAS.sigma) &&
+      campoValido(steps, FAIXAS.steps) &&
+      campoValido(lambdaJumps, FAIXAS.lambda) &&
+      campoValido(muJump, FAIXAS.muJump) &&
+      campoValido(sigmaJump, FAIXAS.sigmaJump);
+    if (!ok) {
+      toast.error("Corrija os campos destacados antes de simular.");
+      return;
+    }
     setLoading(true);
     try {
+      // Percentuais da tela viram fração para a API.
       const body = {
         ticker,
-        sigma: sigma ? parseFloat(sigma) : null,
-        lambda_jumps: parseFloat(lambdaJumps),
-        mu_jump: parseFloat(muJump),
-        sigma_jump: parseFloat(sigmaJump),
-        steps: parseInt(steps),
+        sigma: sigma.trim() ? lerNumero(sigma)! / 100 : null,
+        lambda_jumps: lerNumero(lambdaJumps),
+        mu_jump: lerNumero(muJump)! / 100,
+        sigma_jump: lerNumero(sigmaJump)! / 100,
+        steps: Math.round(lerNumero(steps)!),
       };
       const data = await apiFetch<JDResult>("/api/jump-diffusion", {
         method: "POST",
@@ -90,42 +110,54 @@ export default function JumpDiffusionPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="jd-sigma">
-                Sigma (vol) <FieldTooltip text="Volatilidade diária. Deixe em branco para usar a histórica." />
-              </Label>
-              <Input id="jd-sigma" type="number" step={0.001} min={0} value={sigma}
-                onChange={(e) => setSigma(e.target.value)} placeholder="automático" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-steps">
-                Steps <FieldTooltip text="Número de passos diários (252 = 1 ano útil)" />
-              </Label>
-              <Input id="jd-steps" type="number" min={10} max={1260} value={steps}
-                onChange={(e) => setSteps(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-lambda">
-                λ saltos <FieldTooltip text="Frequência esperada de saltos por ano (ex: 0.1 = ~1 a cada 10 anos)" />
-              </Label>
-              <Input id="jd-lambda" type="number" step={0.01} min={0} value={lambdaJumps}
-                onChange={(e) => setLambdaJumps(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-mu-jump">
-                μ salto <FieldTooltip text="Magnitude média do salto (ex: -0.02 = queda de 2%)" />
-              </Label>
-              <Input id="jd-mu-jump" type="number" step={0.01} value={muJump}
-                onChange={(e) => setMuJump(e.target.value)} />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label htmlFor="jd-sigma-jump">
-                σ salto <FieldTooltip text="Desvio padrão do tamanho do salto" />
-              </Label>
-              <Input id="jd-sigma-jump" type="number" step={0.01} min={0} value={sigmaJump}
-                onChange={(e) => setSigmaJump(e.target.value)} />
-            </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CampoNumero
+              id="jd-sigma"
+              rotulo="Volatilidade diária"
+              unidade="%"
+              opcional
+              ajuda="Quanto o preço oscila em um dia normal. Em branco, usa a volatilidade dos últimos 3 anos."
+              valor={sigma}
+              onChange={setSigma}
+              {...FAIXAS.sigma}
+              placeholder="automática"
+            />
+            <CampoNumero
+              id="jd-steps"
+              rotulo="Prazo"
+              unidade="dias úteis"
+              ajuda="Até onde o caminho vai. 252 dias úteis são cerca de 1 ano."
+              valor={steps}
+              onChange={setSteps}
+              {...FAIXAS.steps}
+            />
+            <CampoNumero
+              id="jd-lambda"
+              rotulo="Saltos por ano"
+              ajuda="Quantos choques bruscos de preço esperar por ano. 0,1 é cerca de um a cada 10 anos."
+              valor={lambdaJumps}
+              onChange={setLambdaJumps}
+              {...FAIXAS.lambda}
+            />
+            <CampoNumero
+              id="jd-mu-jump"
+              rotulo="Tamanho médio do salto"
+              unidade="%"
+              ajuda="Variação típica do preço em cada choque. -2 significa uma queda de 2%."
+              valor={muJump}
+              onChange={setMuJump}
+              {...FAIXAS.muJump}
+            />
+            <CampoNumero
+              id="jd-sigma-jump"
+              rotulo="Variação do tamanho do salto"
+              unidade="%"
+              ajuda="Quanto os choques variam em torno do tamanho médio. Maior valor gera saltos mais imprevisíveis."
+              valor={sigmaJump}
+              onChange={setSigmaJump}
+              {...FAIXAS.sigmaJump}
+              className="sm:col-span-2"
+            />
           </div>
 
           <Button onClick={handleSimulate} disabled={loading} className="w-full">
@@ -137,10 +169,14 @@ export default function JumpDiffusionPage() {
       {!result && <EmptyState mensagem="Ajuste os parâmetros e clique em Simular para ver um caminho de preço." />}
 
       {result && (
+        <div className="min-w-0 space-y-4">
+        <Leitura>
+          {leituraJump({ ticker: result.ticker, s0: result.s0, final: result.prices.at(-1)?.price })}
+        </Leitura>
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              {result.ticker} · Preço inicial: {formatPreco(result.ticker, result.s0)} · Média do caminho: {formatPreco(result.ticker, result.mean)}
+              {nomeAtivo(result.ticker)} · Preço inicial: {formatPreco(result.ticker, result.s0)} · Média do caminho: {formatPreco(result.ticker, result.mean)}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -163,6 +199,7 @@ export default function JumpDiffusionPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </div>
       )}
       </div>
     </div>
