@@ -8,6 +8,9 @@ import { formatDate, formatPercent } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraVolatilidade } from "@/lib/leitura";
 import { ATIVOS, nomeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,6 +96,27 @@ function VolPanel({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <div className="flex justify-end">
+        <BotaoExportar
+          arquivo={nomeArquivo("Volatilidade", ticker)}
+          montar={() =>
+            gerarCsv({
+              parametros: [
+                ["Ativo", nomeAtivo(ticker)],
+                ["Volatilidade 30 dias (% a.a.)", result.vol_30d == null ? null : result.vol_30d * 100],
+                ["Volatilidade 90 dias (% a.a.)", result.vol_90d == null ? null : result.vol_90d * 100],
+                ["Volatilidade 1 ano (% a.a.)", result.vol_1y * 100],
+              ],
+              tabelas: [
+                {
+                  colunas: ["Data", "Volatilidade 30 dias (% a.a.)"],
+                  linhas: result.rolling_30d.map((p) => [p.date, p.vol * 100]),
+                },
+              ],
+            })
+          }
+        />
+      </div>
       <Leitura>{leituraVolatilidade({ vol30: result.vol_30d, vol1a: result.vol_1y })}</Leitura>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard

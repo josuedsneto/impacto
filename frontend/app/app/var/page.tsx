@@ -7,7 +7,10 @@ import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraVaR } from "@/lib/leitura";
-import { nomeAtivo } from "@/lib/ativos";
+import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -80,7 +83,7 @@ function VarPanel({ ticker }: { ticker: string }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium">Nível de confiança:</span>
         <Select value={confidence} onValueChange={handleConfidenceChange}>
           <SelectTrigger className="w-28">
@@ -92,6 +95,36 @@ function VarPanel({ ticker }: { ticker: string }) {
             <SelectItem value="0.99">99%</SelectItem>
           </SelectContent>
         </Select>
+        <div className="ml-auto">
+          <BotaoExportar
+            arquivo={nomeArquivo("Perda maxima VaR", ticker)}
+            montar={
+              result && !loading
+                ? () => {
+                    const u = unidadeAtivo(ticker) ? ` (${unidadeAtivo(ticker)})` : "";
+                    return gerarCsv({
+                      parametros: [
+                        ["Ativo", nomeAtivo(ticker)],
+                        ["Nível de confiança (%)", result.confidence * 100],
+                        ["Horizonte (dias)", 1],
+                        ["Dias de histórico usados", result.n_observations],
+                      ],
+                      tabelas: [
+                        {
+                          colunas: ["Métrica", `Valor${u}`, "Percentual (%)"],
+                          linhas: [
+                            ["Último preço", result.last_price, null],
+                            ["Perda máxima histórica", perda(result.var_historico_abs), perda(result.var_historico_pct) * 100],
+                            ["Perda máxima paramétrica", perda(result.var_parametrico_abs), perda(result.var_parametrico_pct) * 100],
+                          ],
+                        },
+                      ],
+                    });
+                  }
+                : null
+            }
+          />
+        </div>
       </div>
 
       {loading && (
