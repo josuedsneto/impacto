@@ -664,6 +664,8 @@ T36 → T37
 
 ### T28: Migrar Metas
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `formatBRL`, mapa de calor com tokens `--positive`/`--negative`, tabela com rolagem própria.
 **Where**: `frontend/app/app/metas/page.tsx`
 **Depends on**: T27
@@ -673,8 +675,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate build passa (fim da fase)
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build

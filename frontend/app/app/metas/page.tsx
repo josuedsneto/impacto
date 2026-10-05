@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatBRL, formatDate, formatNumber } from "@/lib/format";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -19,37 +23,39 @@ interface MetasResult {
   dolares: number[];
 }
 
-function cellColor(v: number): string {
-  if (v >= 200) return "#16a34a";
-  if (v >= 0) return "#4ade80";
-  if (v >= -200) return "#f87171";
-  return "#dc2626";
+// Escala divergente: verde acima da meta, vermelho abaixo; mais forte além de ±200 R$/t.
+function cellClass(v: number): string {
+  if (v >= 200) return "bg-positive/25 text-positive font-bold";
+  if (v >= 0) return "bg-positive/10 text-positive";
+  if (v >= -200) return "bg-negative/10 text-negative";
+  return "bg-negative/25 text-negative font-bold";
 }
 
 export default function MetasPage() {
   const [meta, setMeta] = useState(2600);
   const [result, setResult] = useState<MetasResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleCalc() {
     setLoading(true);
-    setError(null);
     try {
       setResult(await apiFetch<MetasResult>(`/api/metas?meta=${meta}`));
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Metas</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Metas"
+        descricao="Compara o valor de mercado do açúcar em R$/t com a sua meta, no histórico e em cenários de preço e câmbio."
+      />
 
       <Card className="max-w-sm">
-        <CardHeader><CardTitle className="text-sm font-medium">Meta (R$/Ton)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm font-medium">Meta (R$/t)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Meta: <span className="font-bold">{meta}</span></Label>
+            <Label>Meta: <span className="font-bold tabular-nums">{formatBRL(meta)}/t</span></Label>
           </div>
           <Slider
             min={2400} max={2800} step={10}
@@ -59,9 +65,10 @@ export default function MetasPage() {
           <Button onClick={handleCalc} disabled={loading} className="w-full">
             {loading ? "Calculando..." : "Calcular"}
           </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </CardContent>
       </Card>
+
+      {!result && <EmptyState mensagem="Escolha a meta e clique em Calcular para ver o mapa de cenários e o histórico." />}
 
       {result && (
         <>
@@ -69,17 +76,17 @@ export default function MetasPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
-                Produto − Meta (R$/Ton) · 22.0462 × 1.04 × Açúcar × Dólar − {result.meta}
+                Diferença para a meta (R$/t) por preço do açúcar (¢/lb) e câmbio (R$/US$)
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1 text-muted-foreground font-normal">Açúcar\Dólar</th>
+                    <th className="px-2 py-1 font-normal text-muted-foreground">Açúcar \ Dólar</th>
                     {result.dolares.map((d) => (
                       <th key={d} className="px-2 py-1 text-center font-normal text-muted-foreground">
-                        {d.toFixed(2)}
+                        {formatNumber(d, 2)}
                       </th>
                     ))}
                   </tr>
@@ -87,14 +94,14 @@ export default function MetasPage() {
                 <tbody>
                   {result.acucares.map((a, i) => (
                     <tr key={a}>
-                      <td className="px-2 py-1 font-medium text-muted-foreground">{a.toFixed(2)}</td>
+                      <td className="px-2 py-1 font-medium text-muted-foreground">{formatNumber(a, 2)}</td>
                       {result.heatmap[i].map((v, j) => (
                         <td
                           key={j}
-                          className="px-2 py-1 text-center font-semibold text-white"
-                          style={{ background: cellColor(v), minWidth: 72 }}
+                          className={`min-w-[72px] px-2 py-1 text-center tabular-nums ${cellClass(v)}`}
                         >
-                          {v > 0 ? "+" : ""}{v.toFixed(0)}
+                          {v > 0 ? "+" : ""}
+                          {formatNumber(v, 0)}
                         </td>
                       ))}
                     </tr>
@@ -107,7 +114,7 @@ export default function MetasPage() {
           {/* MTM Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">MTM Histórico vs Meta</CardTitle>
+              <CardTitle className="text-sm font-medium">Valor de mercado (R$/t) no histórico e meta</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={320}>
@@ -115,15 +122,33 @@ export default function MetasPage() {
                   data={result.mtm_series.filter((_, i) => i % 5 === 0)}
                   margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(0, 7)} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v: number, name: string) => [v.toFixed(2), name === "mtm" ? "MTM" : "Meta"]}
-                    labelFormatter={(l) => l}
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    minTickGap={32}
+                    tickFormatter={(v: string) => formatDate(v).slice(3)}
                   />
-                  <ReferenceLine y={result.meta} stroke="#ef4444" strokeDasharray="4 2" label={{ value: `Meta ${result.meta}`, position: "right", fontSize: 10 }} />
-                  <Line type="monotone" dataKey="mtm" stroke="#3b82f6" dot={false} strokeWidth={1.5} name="mtm" />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={64}
+                    tickFormatter={(v: number) => formatNumber(v, 0)}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number) => [`${formatBRL(v)}/t`, "Valor de mercado"]}
+                    labelFormatter={(l: string) => formatDate(l)}
+                  />
+                  <ReferenceLine
+                    y={result.meta}
+                    stroke="var(--negative)"
+                    strokeDasharray="4 2"
+                    label={{ value: `Meta ${formatNumber(result.meta, 0)}`, position: "insideTopRight", fontSize: 10, fill: "var(--negative)" }}
+                  />
+                  <Line type="monotone" dataKey="mtm" stroke="var(--chart-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
