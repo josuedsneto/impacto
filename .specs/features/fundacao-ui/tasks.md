@@ -151,6 +151,8 @@ T36 → T37
 
 ### T4: Tema segue o sistema e unifica o provider
 
+**Status**: ✅ Done
+
 **What**: `ThemeProvider` e script anti-flash usam a preferência salva ou o sistema; `ui/sonner.tsx` usa o `useTheme` próprio; `next-themes` sai do `package.json`.
 **Where**: `frontend/components/ThemeProvider.tsx`
 **Depends on**: T3
@@ -160,9 +162,9 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Sem preferência salva, abre no tema do sistema; com `localStorage` bloqueado, não lança erro
-- [ ] `grep next-themes` vazio em `frontend/` (fora de `node_modules`)
-- [ ] Gate build passa
+- [x] Sem preferência salva, abre no tema do sistema; com `localStorage` bloqueado, não lança erro
+- [x] `grep next-themes` vazio em `frontend/` (fora de `node_modules`)
+- [x] Gate build passa
 
 **Tests**: none
 **Gate**: build
