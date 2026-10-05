@@ -74,6 +74,8 @@ T1 → T2 → T3 → T4 → T5 → T6
 
 ### T2: VaR e Volatilidade pelo cache
 
+**Status**: ✅ Done
+
 **What**: helper `fechamentos()`; `/api/var` e `/api/volatility` leem por `get_prices`, devolvem `ultimo_dado` e 503 com a mensagem da spec sem dados.
 **Where**: `backend/main.py`
 **Depends on**: T1
@@ -83,7 +85,7 @@ T1 → T2 → T3 → T4 → T5 → T6
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Testes com TestClient: 200 com `ultimo_dado`; 503 com a mensagem; nenhuma chamada ao Yahoo quando o cache cobre o período
+- [x] Testes com TestClient: 200 com `ultimo_dado`; 503 com a mensagem; nenhuma chamada ao Yahoo quando o cache cobre o período
 
 **Tests**: integration
 **Gate**: quick

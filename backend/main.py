@@ -1010,6 +1010,28 @@ def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dic
     return {"user_ids": [r["user_id"] for r in rows]}
 
 
+# ── Fechamentos do cache ───────────────────────────────────────────────────────
+
+def fechamentos(ticker: str, inicio: date, fim: date | None = None):
+    """
+    Série de fechamentos (pandas, índice de datas) e a data do último dado, lidas pelo cache.
+    503 com mensagem em português quando não há nenhum preço (Yahoo fora e cache vazio).
+    """
+    import pandas as pd
+
+    linhas = [r for r in get_prices(ticker, inicio, fim or date.today()) if r["close"] is not None]
+    if not linhas:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Não foi possível obter os preços de {ticker} agora. Tente novamente em alguns minutos.",
+        )
+    serie = pd.Series(
+        [float(r["close"]) for r in linhas],
+        index=pd.to_datetime([r["date"] for r in linhas]),
+    )
+    return serie, linhas[-1]["date"]
+
+
 # ── VaR ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/var")
@@ -1037,11 +1059,11 @@ def get_var(
     if horizon < 1:
         raise HTTPException(status_code=400, detail="O horizonte precisa ser de pelo menos 1 dia.")
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 10:
+    serie, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=365))
+    if len(serie) < 10:
         raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
-    closes = data["Close"].dropna().values.flatten()
+    closes = serie.values
     returns = np.diff(closes) / closes[:-1]
     last_price = float(closes[-1])
 
@@ -1063,6 +1085,7 @@ def get_var(
         "var_parametrico_abs": round(var_parametrico, 4),
         "var_parametrico_pct": round(var_parametrico / last_price, 6) if last_price else None,
         "n_observations": len(returns),
+        "ultimo_dado": ultimo_dado,
     }
 
 
@@ -1480,11 +1503,10 @@ def get_volatility(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
+    closes, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=365))
+    if len(closes) < 30:
         raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
-    closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])
     log_returns = np.log(closes / closes.shift(1)).dropna()
 
@@ -1516,6 +1538,7 @@ def get_volatility(
         "vol_1y": round(vol_1y, 6),
         "last_price": round(last_price, 4),
         "rolling_30d": rolling_30d_list,
+        "ultimo_dado": ultimo_dado,
     }
 
 
