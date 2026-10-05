@@ -115,7 +115,6 @@ export default function JumpDiffusionPage() {
               id="jd-sigma"
               rotulo="Volatilidade diária"
               unidade="%"
-              opcional
               ajuda="Quanto o preço oscila em um dia normal. Em branco, usa a volatilidade dos últimos 3 anos."
               valor={sigma}
               onChange={setSigma}
