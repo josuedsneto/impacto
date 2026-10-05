@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 3,
+  "next_id": 5,
   "lessons": [
     {
       "id": "L-001",
@@ -40,6 +40,42 @@
       ],
       "created": "2026-10-05T17:51:37Z",
       "last_seen": "2026-10-05T17:51:37Z"
+    },
+    {
+      "id": "L-003",
+      "key": "gate_fail::com set o pipefail cmd grep falha nao dispara quando cmd sai com erro capture a saida numa variavel e teste se esta vazia",
+      "text": "Com set -o pipefail, 'cmd | grep . && falha' não dispara quando cmd sai com erro; capture a saída numa variável e teste se está vazia.",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "commit cac7ac3 (tooling)"
+      ],
+      "created": "2026-10-05T18:12:55Z",
+      "last_seen": "2026-10-05T18:12:55Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::ao remover itens de uma lista por sed com padrao de linha confira se o mesmo texto aparece em outra lista do arquivo prefira editar por bloco nomeado ou indentacoes distintas",
+      "text": "Ao remover itens de uma lista por sed com padrão de linha, confira se o mesmo texto aparece em outra lista do arquivo; prefira editar por bloco nomeado (ou indentações distintas).",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "lib/regras-linguagem.test.ts FERRAMENTAS (tooling)"
+      ],
+      "created": "2026-10-05T18:31:27Z",
+      "last_seen": "2026-10-05T18:31:27Z"
     }
   ]
 }

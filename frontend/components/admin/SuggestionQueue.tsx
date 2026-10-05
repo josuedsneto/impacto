@@ -46,7 +46,7 @@ export function SuggestionQueue() {
         timeoutMs: 120_000,
         body: JSON.stringify({ action: "approve" }),
       });
-      toast.success(`Ticker '${ticker}' aprovado. Backfill iniciado.`);
+      toast.success(`Ativo ${ticker} aprovado. O histórico de preços já foi carregado.`);
       setSuggestions((prev) => prev.filter((s) => s.id !== id));
     } catch (e) {
       toast.error((e as Error).message);
@@ -63,7 +63,7 @@ export function SuggestionQueue() {
         method: "PATCH",
         body: JSON.stringify({ action: "reject", review_note: note }),
       });
-      toast.success(`Ticker '${ticker}' rejeitado.`);
+      toast.success(`Ativo ${ticker} rejeitado.`);
       setSuggestions((prev) => prev.filter((s) => s.id !== id));
     } catch (e) {
       toast.error((e as Error).message);
@@ -87,7 +87,7 @@ export function SuggestionQueue() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4 font-medium">Ticker</th>
+                  <th className="pb-2 pr-4 font-medium">Código</th>
                   <th className="pb-2 pr-4 font-medium">Nome</th>
                   <th className="pb-2 pr-4 font-medium">Tipo</th>
                   <th className="pb-2 pr-4 font-medium">Sugerido em</th>

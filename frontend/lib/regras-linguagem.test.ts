@@ -10,9 +10,6 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
-  "app/app/market/page.tsx",
-  "components/admin/SuggestionQueue.tsx",
-  "components/market/IndicatorSelector.tsx",
 ]);
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */

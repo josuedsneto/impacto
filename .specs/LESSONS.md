@@ -26,6 +26,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: commit d5f072d (tooling)
 - last seen: 2026-10-05T17:51:37Z
 
+### L-003 - Com set -o pipefail, 'cmd | grep . && falha' não dispara quando cmd sai com erro; capture a saída numa variável e teste se está vazia.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `tooling` · harmful: 0
+- features: linguagem-clara
+- evidence: commit cac7ac3 (tooling)
+- last seen: 2026-10-05T18:12:55Z
+
+### L-004 - Ao remover itens de uma lista por sed com padrão de linha, confira se o mesmo texto aparece em outra lista do arquivo; prefira editar por bloco nomeado (ou indentações distintas).
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `tooling` · harmful: 0
+- features: linguagem-clara
+- evidence: lib/regras-linguagem.test.ts FERRAMENTAS (tooling)
+- last seen: 2026-10-05T18:31:27Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -4,7 +4,7 @@ import ast
 import re
 from pathlib import Path
 
-INGLES = re.compile(r"\b(must|not found|failed|invalid|insufficient|could not|provided|between|configured)\b", re.I)
+INGLES = re.compile(r"\b(must|not found|failed|invalid|insufficient|could not|provided|between|configured|submitted|already exists)\b", re.I)
 
 
 def mensagens(arquivo: str) -> list[tuple[int, str]]:
@@ -12,6 +12,13 @@ def mensagens(arquivo: str) -> list[tuple[int, str]]:
     tree = ast.parse(Path(arquivo).read_text(encoding="utf-8"))
     out = []
     for node in ast.walk(tree):
+        # Campo "message" das respostas de sucesso também é lido pelo usuário.
+        if isinstance(node, ast.Dict):
+            for k, v in zip(node.keys, node.values):
+                if isinstance(k, ast.Constant) and k.value == "message":
+                    texto = "".join(c.value for c in ast.walk(v) if isinstance(c, ast.Constant) and isinstance(c.value, str))
+                    out.append((node.lineno, texto))
+            continue
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
             continue
         if node.func.id == "HTTPException":

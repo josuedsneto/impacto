@@ -562,6 +562,8 @@ T24 → T25
 
 ### T23: Indicadores de Fixações e Preços diários
 
+**Status**: ✅ Done
+
 **What**: Rótulos dos indicadores e datas "De/Até". (`TickerSelect` com nomes de `ativos.ts` foi adiantado na T7, que o usa.)
 **Where**: `frontend/components/market/IndicatorSelector.tsx`
 **Depends on**: T22
@@ -571,8 +573,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `IndicatorSelector.tsx`, `TickerSelect.tsx`, `TickerSuggestForm.tsx` e `app/app/market/page.tsx` fora de `PENDENTES`
-- [ ] Gate passa
+- [x] `IndicatorSelector.tsx`, `TickerSelect.tsx`, `TickerSuggestForm.tsx` e `app/app/market/page.tsx` fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: build

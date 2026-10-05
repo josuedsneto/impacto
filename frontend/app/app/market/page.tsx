@@ -57,7 +57,7 @@ export default function MarketPage() {
         <CardContent>
           <form onSubmit={handleQuery} className="flex flex-wrap gap-4 items-end mb-6">
             <div className="space-y-1">
-              <Label htmlFor="q-ticker">Ticker</Label>
+              <Label htmlFor="q-ticker">Ativo (código Yahoo)</Label>
               <Input
                 id="q-ticker"
                 value={ticker}
@@ -68,7 +68,7 @@ export default function MarketPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="q-start">Início</Label>
+              <Label htmlFor="q-start">De</Label>
               <Input
                 id="q-start"
                 type="date"
@@ -78,7 +78,7 @@ export default function MarketPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="q-end">Fim</Label>
+              <Label htmlFor="q-end">Até</Label>
               <Input
                 id="q-end"
                 type="date"
@@ -102,8 +102,8 @@ export default function MarketPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Sugira um símbolo do yfinance para revisão pelo administrador.
-            Símbolos inválidos são rejeitados antes de serem salvos.
+            Sugira um ativo pelo código do Yahoo Finance. O administrador revisa antes de ele entrar no catálogo;
+            códigos sem dados são recusados na hora.
           </p>
           <TickerSuggestForm />
         </CardContent>

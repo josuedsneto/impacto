@@ -418,6 +418,9 @@ def market_status(
     return {"ticker": ticker, "state": state, "open": state == "REGULAR"}
 
 
+STATUS_PT = {"pending": "aguardando revisão", "approved": "aprovado", "rejected": "rejeitado"}
+
+
 @app.post("/api/market/suggest")
 @limiter.limit("10/minute")
 def suggest_ticker(
@@ -459,7 +462,7 @@ def suggest_ticker(
         return {
             "ticker": ticker,
             "status": existing.data[0]["status"],
-            "message": f"Ticker '{ticker}' already exists with status '{existing.data[0]['status']}'.",
+            "message": f"O ativo {ticker} já está no catálogo ({STATUS_PT.get(existing.data[0]['status'], existing.data[0]['status'])}).",
         }
 
     client.table("tickers_catalog").insert({
@@ -471,7 +474,7 @@ def suggest_ticker(
         "adicionado_por": user["id"],
     }).execute()
 
-    return {"ticker": ticker, "status": "pending", "message": f"Ticker '{ticker}' submitted for admin review."}
+    return {"ticker": ticker, "status": "pending", "message": f"Ativo {ticker} enviado para revisão do administrador."}
 
 
 @app.get("/api/admin/suggestions")

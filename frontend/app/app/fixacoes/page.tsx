@@ -98,7 +98,7 @@ export default function FixacoesPage() {
           <div className="flex flex-wrap gap-4 items-end">
             <TickerSelect value={ticker} onChange={setTicker} disabled={loading} />
             <div className="space-y-1">
-              <Label>Início</Label>
+              <Label>De</Label>
               <Input
                 type="date"
                 value={start}
@@ -108,7 +108,7 @@ export default function FixacoesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Fim</Label>
+              <Label>Até</Label>
               <Input
                 type="date"
                 value={end}

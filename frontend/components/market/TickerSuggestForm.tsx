@@ -33,7 +33,7 @@ export function TickerSuggestForm() {
         method: "POST",
         body: JSON.stringify({ ticker: ticker.trim().toUpperCase(), nome, tipo }),
       });
-      toast.success(data.message ?? `Ticker '${ticker}' enviado para revisão.`);
+      toast.success(data.message ?? `Ativo ${ticker.trim().toUpperCase()} enviado para revisão do administrador.`);
       setTicker("");
       setNome("");
     } catch (e) {
@@ -47,7 +47,7 @@ export function TickerSuggestForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
       <div className="space-y-1">
-        <Label htmlFor="ticker">Símbolo <FieldTooltip text="Código do ativo no Yahoo Finance. Ex: SB=F, PETR4.SA, USDBRL=X" /></Label>
+        <Label htmlFor="ticker">Código no Yahoo Finance <FieldTooltip text="Como o ativo aparece no Yahoo Finance, ex.: SB=F (açúcar NY), PETR4.SA." /></Label>
         <Input
           id="ticker"
           value={ticker}
@@ -57,7 +57,7 @@ export function TickerSuggestForm() {
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="nome">Nome legível (opcional) <FieldTooltip text="Nome amigável para exibição na plataforma" /></Label>
+        <Label htmlFor="nome">Nome para exibição <span className="font-normal text-muted-foreground">· opcional</span> <FieldTooltip text="Como o ativo vai aparecer nas telas, ex.: Petrobras PN." /></Label>
         <Input
           id="nome"
           value={nome}
