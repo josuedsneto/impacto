@@ -44,7 +44,8 @@ interface Props {
 }
 
 // Plotly precisa da cor resolvida (não aceita var(--x)); lemos os tokens do tema ativo.
-function lerCores() {
+// O tema é parâmetro só para deixar explícito que as cores mudam com ele.
+function lerCores(_tema: string) {  // eslint-disable-line @typescript-eslint/no-unused-vars
   const css = typeof window === "undefined" ? null : getComputedStyle(document.documentElement);
   const v = (nome: string) => css?.getPropertyValue(`--${nome}`).trim() ?? "";
   return {
@@ -65,11 +66,7 @@ export function FixacoesChart({
   chartType,
 }: Props) {
   const { theme } = useTheme();
-  const cor = useMemo(lerCores, [theme]);
-  const [c1, c2, c3, c4, c5] = cor.serie;
-  const SMA_COLORS = [c3, c4, c5];
-  const EMA_COLORS = [c1, c2];
-  const INDICATOR_COLORS: Record<string, string> = { bollinger: c4, rsi: c5, macd: c1, stoch: c3, cci: c2 };
+  const cor = useMemo(() => lerCores(theme), [theme]);
 
   const oscillators = selectedIndicators.filter((i) =>
     ["rsi", "macd", "stoch", "cci"].includes(i)
@@ -78,6 +75,10 @@ export function FixacoesChart({
   const dates = rows.map((r) => r.date);
 
   const traces = useMemo(() => {
+    const [c1, c2, c3, c4, c5] = cor.serie;
+    const SMA_COLORS = [c3, c4, c5];
+    const EMA_COLORS = [c1, c2];
+    const INDICATOR_COLORS: Record<string, string> = { bollinger: c4, rsi: c5, macd: c1, stoch: c3, cci: c2 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t: any[] = [];
 
@@ -254,7 +255,7 @@ export function FixacoesChart({
     });
 
     return t;
-  }, [rows, signals, selectedIndicators, smaPeriods, emaPeriods, chartType, dates, oscillators, cor]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, signals, selectedIndicators, smaPeriods, emaPeriods, chartType, dates, oscillators, cor]);
 
   // Reference line shapes for oscillator panels
   const shapes = useMemo(() => {
