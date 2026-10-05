@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { TickerSuggestForm } from "@/components/market/TickerSuggestForm";
@@ -21,8 +22,8 @@ interface PriceRow {
 
 export default function MarketPage() {
   const [ticker, setTicker] = useState("SB=F");
-  const [start, setStart] = useState("2024-01-01");
-  const [end, setEnd] = useState("2024-01-31");
+  const [start, setStart] = useState(() => new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10));
+  const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState<PriceRow[]>([]);
   const [queriedTicker, setQueriedTicker] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,8 +44,11 @@ export default function MarketPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <h1 className="text-2xl font-semibold">Dados de Mercado</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Análise Técnica"
+        descricao="Consulte a série diária de preços de qualquer ativo e sugira novos ativos para o catálogo."
+      />
 
       <Card>
         <CardHeader>

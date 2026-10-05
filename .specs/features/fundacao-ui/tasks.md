@@ -431,6 +431,8 @@ T36 → T37
 
 ### T17: Migrar Análise Técnica (market)
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `PriceChart` com tokens e `format.ts`, sucesso do `TickerSuggestForm` mantido em toast.
 **Where**: `frontend/app/app/market/page.tsx`
 **Depends on**: T16
@@ -440,8 +442,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e `PriceChart.tsx` fora de `PENDENTES`
-- [ ] Gate build passa (fim da fase)
+- [x] Página e `PriceChart.tsx` fora de `PENDENTES`
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build

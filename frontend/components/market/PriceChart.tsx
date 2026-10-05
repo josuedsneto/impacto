@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDate, formatNumber } from "@/lib/format";
 
 interface PriceRow {
   date: string;
@@ -23,10 +24,7 @@ interface PriceChartProps {
   rows: PriceRow[];
 }
 
-function fmt(v: number | null, decimals = 4) {
-  if (v === null) return "—";
-  return v.toFixed(decimals);
-}
+const fmt = (v: number | null) => formatNumber(v, 4);
 
 export function PriceChart({ ticker, rows }: PriceChartProps) {
   if (rows.length === 0) {
@@ -52,12 +50,12 @@ export function PriceChart({ ticker, rows }: PriceChartProps) {
         <TableBody>
           {rows.map((r) => (
             <TableRow key={r.date}>
-              <TableCell>{r.date}</TableCell>
-              <TableCell className="text-right">{fmt(r.open)}</TableCell>
-              <TableCell className="text-right">{fmt(r.high)}</TableCell>
-              <TableCell className="text-right">{fmt(r.low)}</TableCell>
-              <TableCell className="text-right">{fmt(r.close)}</TableCell>
-              <TableCell className="text-right">
+              <TableCell>{formatDate(r.date)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(r.open)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(r.high)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(r.low)}</TableCell>
+              <TableCell className="text-right tabular-nums">{fmt(r.close)}</TableCell>
+              <TableCell className="text-right tabular-nums">
                 {r.volume !== null ? r.volume.toLocaleString("pt-BR") : "—"}
               </TableCell>
             </TableRow>
