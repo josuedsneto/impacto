@@ -749,6 +749,8 @@ T36 → T37
 
 ### T32: Migrar Regressão Açúcar e trocar Plotly por Recharts
 
+**Status**: ✅ Done
+
 **What**: página + `AcucarForm`, `AcucarMetrics`, `AcucarCharts` (Recharts).
 **Where**: `frontend/app/app/regressao-acucar/page.tsx`
 **Depends on**: T31
@@ -758,7 +760,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e 3 componentes fora de `PENDENTES`; `AcucarCharts.tsx` sem import de plotly; gate quick passa
+- [x] Página e 3 componentes fora de `PENDENTES`; `AcucarCharts.tsx` sem import de plotly; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

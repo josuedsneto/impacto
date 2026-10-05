@@ -1,46 +1,38 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatCents, formatNumber } from "@/lib/format";
 import { AcucarResult } from "./AcucarForm";
 
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+const eixo = { fontSize: 11, fill: "var(--muted-foreground)" };
 
-interface AcucarChartsProps {
-  result: AcucarResult;
-}
-
-export function AcucarHistoricoChart({ result }: AcucarChartsProps) {
+/** Preço anual real contra o previsto pelo modelo. */
+export function AcucarHistoricoChart({ result }: { result: AcucarResult }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <h3 className="text-sm font-semibold mb-3">SB=F: Real vs Previsto (Anual)</h3>
-      <Plot
-        data={[
-          {
-            type: "scatter",
-            mode: "lines+markers",
-            x: result.historico.map((h) => h.year),
-            y: result.historico.map((h) => h.sb_f_real),
-            name: "Real",
-          },
-          {
-            type: "scatter",
-            mode: "lines+markers",
-            x: result.historico.map((h) => h.year),
-            y: result.historico.map((h) => h.sb_f_previsto),
-            name: "Previsto",
-            line: { dash: "dash" },
-          },
-        ]}
-        layout={{
-          title: { text: "SB=F: Real vs Previsto (Anual)" },
-          xaxis: { title: { text: "Ano" } },
-          yaxis: { title: { text: "Preço (¢/lb)" } },
-          height: 400,
-          margin: { t: 50, l: 60, r: 20, b: 60 },
-        }}
-        style={{ width: "100%" }}
-        config={{ responsive: true, displayModeBar: false }}
-      />
+    <div className="rounded-xl border border-border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold">Açúcar NY: real e previsto por ano (¢/lb)</h3>
+      <ResponsiveContainer width="100%" height={360}>
+        <LineChart data={result.historico} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+          <XAxis dataKey="year" tick={eixo} tickLine={false} />
+          <YAxis tick={eixo} tickLine={false} axisLine={false} width={48} tickFormatter={(v: number) => formatNumber(v, 0)} />
+          <Tooltip
+            contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+            formatter={(v: number, nome: string) => [formatCents(v), nome]}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Line dataKey="sb_f_real" name="Real" stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+          <Line
+            dataKey="sb_f_previsto"
+            name="Previsto"
+            stroke="var(--chart-1)"
+            strokeWidth={2}
+            strokeDasharray="5 3"
+            dot={{ r: 4 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

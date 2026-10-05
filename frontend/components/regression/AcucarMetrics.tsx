@@ -1,50 +1,27 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCents, formatNumber } from "@/lib/format";
 import { AcucarResult } from "./AcucarForm";
 
-interface AcucarMetricsProps {
-  result: AcucarResult;
-}
+export function AcucarMetrics({ result }: { result: AcucarResult }) {
+  const metricas = [
+    { rotulo: "Açúcar previsto", valor: formatCents(result.sb_f_previsto) },
+    { rotulo: "Faixa provável", valor: `${formatCents(result.sb_f_min)} a ${formatCents(result.sb_f_max)}`, menor: true },
+    { rotulo: "R² (ajuste)", valor: formatNumber(result.r2, 4) },
+    { rotulo: "Erro médio (RMSE)", valor: formatCents(result.rmse) },
+  ];
 
-export function AcucarMetrics({ result }: AcucarMetricsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-            Preço Previsto SB=F
-          </p>
-          <p className="text-2xl font-bold">{result.sb_f_previsto.toFixed(2)}</p>
-          <p className="text-xs text-muted-foreground">¢/lb</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-            Intervalo
-          </p>
-          <p className="text-lg font-bold">
-            {result.sb_f_min.toFixed(2)} – {result.sb_f_max.toFixed(2)}
-          </p>
-          <p className="text-xs text-muted-foreground">¢/lb</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">R²</p>
-          <p className="text-2xl font-bold">{result.r2.toFixed(4)}</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">RMSE</p>
-          <p className="text-2xl font-bold">{result.rmse.toFixed(4)}</p>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+      {metricas.map(({ rotulo, valor, menor }) => (
+        <Card key={rotulo}>
+          <CardContent className="pt-6">
+            <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+            <p className={menor ? "text-lg font-bold tabular-nums" : "text-2xl font-bold tabular-nums"}>{valor}</p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

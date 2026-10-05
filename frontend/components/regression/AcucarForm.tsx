@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface AcucarDefaults {
   sb_f: number | null;
@@ -47,7 +48,6 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
   const [clF, setClF] = useState<string>("");
   const [modelType, setModelType] = useState<string>("ridge");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!defaults) return;
@@ -63,7 +63,6 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const data = await apiFetch<AcucarResult>("/api/regression/acucar/run", {
@@ -81,8 +80,9 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
         }),
       });
       onResult(data);
+      toast.success("Previsão calculada e salva no histórico.");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="usdbrl">USD/BRL</Label>
           <Input
@@ -199,9 +199,7 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Calculando..." : "Calcular Previsão SB=F"}
       </Button>
     </form>
