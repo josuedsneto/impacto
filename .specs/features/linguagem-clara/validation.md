@@ -35,7 +35,7 @@ T1–T25 concluídas. Commits de correção dentro da feature:
 | LING-05 AC1–AC2 | nome do ativo; código se desconhecido | `frontend/lib/ativos.test.ts:6` - `toBe("Açúcar NY nº 11")`; `:12` - `toBe("PETR4.SA")` | ✅ |
 | LING-06 AC1–AC2 | menu com nomes novos = título da página | `frontend/lib/regras-linguagem.test.ts:82` - `expect(pagina).toContain(\`titulo="${nome}"\`)` (19 links) | ✅ |
 | LING-07 AC1 | glossário alfabético, até 3 frases | `frontend/lib/glossario.test.ts:7` e `:12` | ✅ |
-| LING-07 AC2 | "Ver no glossário" no tooltip com termo | `frontend/components/ui/field-tooltip.tsx:30` (código) | ⏳ UAT |
+| LING-07 AC2 | "Ver no glossário" no tooltip com termo | `frontend/components/ui/field-tooltip.tsx:29` (código) | ⏳ UAT |
 
 ## Edge Cases
 
