@@ -26,10 +26,15 @@ const PENDENTES = new Set<string>([
   "app/app/var/page.tsx",
   "app/app/volatilidade/page.tsx",
   "components/admin/SuggestionQueue.tsx",
+  "components/atr/AtrForm.tsx",
+  "components/market/IndicatorSelector.tsx",
   "components/market/TickerSelect.tsx",
   "components/options/BSPricer.tsx",
   "components/options/MCPricer.tsx",
+  "components/options/PayoffBuilder.tsx",
   "components/params/ParamsForm.tsx",
+  "components/regression/AcucarForm.tsx",
+  "components/regression/DolarForm.tsx",
   "components/simulation/SimulationForm.tsx",
 ]);
 
@@ -55,7 +60,8 @@ const FERRAMENTAS = [
 
 const REGRAS: { nome: string; falha: (texto: string, arquivo: string) => boolean }[] = [
   // Só campos de formulário; eixos do Recharts também usam type="number" e são legítimos.
-  { nome: 'input type="number"', falha: (t) => /<[Ii]nput[^>]*type="number"/.test(t) },
+  // Analisa cada <Input ... /> inteiro: props com arrow function (=>) contêm ">".
+  { nome: 'input type="number"', falha: (t) => (t.match(/<[Ii]nput\b[\s\S]*?\/>/g) ?? []).some((tag) => /type="number"/.test(tag)) },
   {
     nome: "rótulo técnico",
     falha: (t) =>
