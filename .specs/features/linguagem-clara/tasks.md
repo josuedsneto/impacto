@@ -94,6 +94,8 @@ T24 → T25
 
 ### T2: Leitura e validação de números
 
+**Status**: ✅ Done
+
 **What**: `lib/numero.ts` com `lerNumero` e `erroFaixa`; testes em `lib/numero.test.ts`.
 **Where**: `frontend/lib/numero.ts`
 **Depends on**: T1
@@ -103,9 +105,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] "10,5" → 10.5; "1.234,5" → 1234.5; "1234.5" → 1234.5; "abc" e "" → null
-- [ ] `erroFaixa(150, 1, 100, "%")` = "Use um valor entre 1 e 100 %."
-- [ ] Gate passa
+- [x] "10,5" → 10.5; "1.234,5" → 1234.5; "1234.5" → 1234.5; "abc" e "" → null
+- [x] `erroFaixa(150, 1, 100, "%")` = "Use um valor entre 1 e 100 %."
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
