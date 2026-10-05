@@ -686,6 +686,8 @@ T36 → T37
 
 ### T29: Migrar Notícias
 
+**Status**: ✅ Done
+
 **What**: `PageHeader` com "Atualizado às", `Skeleton`, `ErrorState`, `EmptyState`.
 **Where**: `frontend/app/app/noticias/page.tsx`
 **Depends on**: None
@@ -695,7 +697,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

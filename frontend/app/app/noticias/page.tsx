@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -43,50 +45,55 @@ export default function NoticiasPage() {
   }, [fetchNews]);
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Notícias — Açúcar &amp; Câmbio</h1>
-        {lastUpdate && (
-          <span className="text-sm text-muted-foreground">
-            Última atualização: {lastUpdate}
-          </span>
-        )}
-      </div>
+    <div>
+      <PageHeader
+        titulo="Notícias"
+        descricao="Últimas notícias sobre açúcar, dólar e mercado, atualizadas a cada 30 minutos."
+        atualizadoEm={lastUpdate ? `Atualizado às ${lastUpdate}` : undefined}
+      />
 
       {loading && (
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-20" />
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState mensagem={error} onRetry={fetchNews} />}
 
-      {!loading && !error && (
+      {!loading && !error && news.length === 0 && <EmptyState mensagem="Nenhuma notícia disponível agora." />}
+
+      {!loading && !error && news.length > 0 && (
         <div className="space-y-3">
-          {news.map((item, i) => (
-            <Card key={i}>
-              <CardContent className="pt-4 pb-4">
+          {news.map((item) => (
+            <Card key={item.link}>
+              <CardContent className="py-4">
                 <a
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-blue-600 hover:underline"
+                  className="font-medium text-brand underline-offset-4 hover:underline"
                 >
                   {item.title}
                 </a>
-                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>{item.source}</span>
-                  <span>·</span>
-                  <span>{item.published}</span>
+                  <span aria-hidden>·</span>
+                  <span>
+                    {item.published
+                      ? new Date(item.published).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </span>
                 </div>
               </CardContent>
             </Card>
           ))}
-          {news.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma notícia disponível.</p>
-          )}
         </div>
       )}
     </div>
