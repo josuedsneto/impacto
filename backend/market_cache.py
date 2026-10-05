@@ -181,13 +181,11 @@ def get_prices(ticker: str, start: date, end: date) -> list[dict]:
             continue  # Yahoo fora: segue com o que há no cache, sem mexer na cobertura
         if not df.empty:
             _upsert_prices(client, df)
-            # Use actual dates from yfinance (may differ from requested if history is shorter)
-            _update_coverage(client, ticker, df["date"].min(), df["date"].max())
-        elif coverage.data:
-            # MKT-04: yfinance returned nothing for this gap (history starts later or no trading).
-            # Record the checked range so the same empty gap is not queried again.
+            # Cobertura = intervalo consultado (fins de semana e feriados nas pontas incluídos),
+            # para a próxima leitura do mesmo período não voltar ao Yahoo.
             _update_coverage(client, ticker, gap_start, gap_end)
         else:
+            # Resposta vazia pode ser bloqueio do Yahoo: não marca cobertura, tenta de novo depois.
             logger.warning("Yahoo sem dados para %s de %s a %s", ticker, gap_start, gap_end)
 
     if rebuscar:
@@ -196,7 +194,7 @@ def get_prices(ticker: str, start: date, end: date) -> list[dict]:
             _ultima_rebusca[ticker] = time.time()
             if not df.empty:
                 _upsert_prices(client, df, sobrescrever=True)
-                _update_coverage(client, ticker, df["date"].min(), df["date"].max())
+                _update_coverage(client, ticker, max(start, inicio_recente), end)
 
     # Read from DB, page by page (PostgREST returns at most PAGINA rows per request)
     linhas: list[dict] = []

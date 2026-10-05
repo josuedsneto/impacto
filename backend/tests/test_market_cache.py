@@ -78,3 +78,21 @@ def test_falha_nao_bloqueia_a_proxima_tentativa(supa, yahoo):
     antes = len(yahoo.chamadas)
     market_cache.get_prices("SB=F", HOJE - timedelta(days=10), HOJE)
     assert len(yahoo.chamadas) == antes + 1
+
+
+def test_periodo_que_comeca_no_fim_de_semana_nao_volta_ao_yahoo(supa, yahoo):
+    """A cobertura vale o intervalo pedido, não só os dias com pregão."""
+    sabado = date(2021, 1, 2)
+    market_cache.get_prices("SB=F", sabado, date(2021, 3, 31))
+    chamadas = len(yahoo.chamadas)
+    market_cache.get_prices("SB=F", sabado, date(2021, 3, 31))
+    assert len(yahoo.chamadas) == chamadas
+
+
+def test_resposta_vazia_nao_marca_cobertura(supa, yahoo, caplog):
+    """CACHE-04 AC1: resposta vazia é tratada como falha (o yfinance devolve vazio quando bloqueado)."""
+    yahoo.vazio = True
+    with caplog.at_level(logging.WARNING, logger="market_cache"):
+        assert market_cache.get_prices("SB=F", date(2021, 1, 4), date(2021, 1, 29)) == []
+    assert ("SB=F",) not in supa.db.get("market_coverage", {})
+    assert any("Yahoo sem dados para SB=F" in m for m in caplog.messages)

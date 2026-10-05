@@ -100,13 +100,13 @@ class FakeYahoo:
     """Substitui _fetch_from_yfinance: devolve pregões em dias úteis com close = preco(dia)."""
 
     def __init__(self, preco=lambda d: 20.0):
-        self.preco, self.chamadas, self.falhar = preco, [], False
+        self.preco, self.chamadas, self.falhar, self.vazio = preco, [], False, False
 
     def __call__(self, ticker, start, end):
         self.chamadas.append((ticker, start, end))
         if self.falhar:
             raise ConnectionError("Yahoo fora do ar")
-        dias = list(dias_uteis(start, end))
+        dias = [] if self.vazio else list(dias_uteis(start, end))
         if not dias:
             return pd.DataFrame()
         return pd.DataFrame(
