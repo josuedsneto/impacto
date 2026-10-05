@@ -141,18 +141,18 @@ O visual do app é montado peça por peça: cores escritas direto no código em 
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| UI-01 | P1: Números no padrão brasileiro (módulo e regras) | - | Pending |
-| UI-02 | P1: Números no padrão brasileiro (sem toFixed) | - | Pending |
-| UI-03 | P1: Layout responsivo (gaveta) | - | Pending |
-| UI-04 | P1: Layout responsivo (grades e tabelas) | - | Pending |
-| UI-05 | P1: Tema claro e escuro (alternância e persistência) | - | Pending |
-| UI-06 | P1: Tema claro e escuro (tokens, sem hex) | - | Pending |
-| UI-07 | P1: Feedback consistente (toasts) | - | Pending |
-| UI-08 | P1: Feedback consistente (carregando, erro, vazio) | - | Pending |
-| UI-09 | P2: Página padrão (PageHeader) | - | Pending |
-| UI-10 | P2: Página padrão (formulário + resultado) | - | Pending |
-| UI-11 | P2: Gráficos com um só estilo (cores e formato) | - | Pending |
-| UI-12 | P2: Gráficos com um só estilo (migrar Plotly) | - | Pending |
+| UI-01 | P1: Números no padrão brasileiro (módulo e regras) | - | Verified |
+| UI-02 | P1: Números no padrão brasileiro (sem toFixed) | - | Verified |
+| UI-03 | P1: Layout responsivo (gaveta) | - | Implementing |
+| UI-04 | P1: Layout responsivo (grades e tabelas) | - | Implementing |
+| UI-05 | P1: Tema claro e escuro (alternância e persistência) | - | Implementing |
+| UI-06 | P1: Tema claro e escuro (tokens, sem hex) | - | Verified |
+| UI-07 | P1: Feedback consistente (toasts) | - | Implementing |
+| UI-08 | P1: Feedback consistente (carregando, erro, vazio) | - | Implementing |
+| UI-09 | P2: Página padrão (PageHeader) | - | Verified |
+| UI-10 | P2: Página padrão (formulário + resultado) | - | Implementing |
+| UI-11 | P2: Gráficos com um só estilo (cores e formato) | - | Implementing |
+| UI-12 | P2: Gráficos com um só estilo (migrar Plotly) | - | Verified |
 
 **Coverage:** 12 total, 0 mapeados (Large: precisa de design.md e tasks.md antes de executar).
 

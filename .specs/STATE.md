@@ -30,7 +30,7 @@ As features dependem umas das outras nesta ordem. Cada uma tem `spec.md` em `fea
 ## Handoff
 
 - **Branch:** `refactor/auditoria` (sem push).
-- **Concluído:** `cliente-api` (validação em `features/cliente-api/validation.md`, PASS; UAT de 2 telas pendente). `limpeza-legado` LEG-02..04.
-- **Pendente do usuário:** rodar o `git rm` do Streamlit (LEG-01, comando em `features/limpeza-legado/spec.md`); UAT do login (2 passos em `features/cliente-api/validation.md`).
-- **Próximo passo:** `fundacao-ui` — escrever `design.md` e `tasks.md` (feature Large) antes de implementar.
-- **Ambiente:** `frontend/node_modules` instalado; testes do front com `npm test` (vitest).
+- **Concluído:** `cliente-api`, `fundacao-ui` (validações PASS em `features/*/validation.md`), `limpeza-legado` exceto LEG-01.
+- **Pendente do usuário:** UAT de `fundacao-ui` (4 passos no fim de `features/fundacao-ui/validation.md`) e de `cliente-api` (2 passos); `git rm` do Streamlit (LEG-01).
+- **Próximo passo:** `linguagem-clara` — escrever `design.md` com o texto de cada tela (frases de leitura) e `tasks.md`.
+- **Ambiente:** testes do front `npm test` (vitest, 103); gate por task com lint por arquivo.
