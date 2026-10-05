@@ -320,6 +320,8 @@ T24 → T25
 
 ### T12: VaR
 
+**Status**: ✅ Done
+
 **What**: Frase `leituraVaR` e nomes dos ativos nas abas.
 **Where**: `frontend/app/app/var/page.tsx`
 **Depends on**: None
@@ -329,8 +331,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

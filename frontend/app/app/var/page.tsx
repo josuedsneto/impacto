@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraVaR } from "@/lib/leitura";
+import { nomeAtivo } from "@/lib/ativos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -100,6 +103,17 @@ function VarPanel({ ticker }: { ticker: string }) {
       )}
       {error && <ErrorState mensagem={error} onRetry={() => fetchVar(confidence)} />}
       {!loading && !error && result && (
+        <Leitura>
+          {leituraVaR({
+            ticker,
+            confianca: result.confidence,
+            horizonte: 1,
+            perda: perda(result.var_historico_abs),
+            perdaPct: perda(result.var_historico_pct),
+          })}
+        </Leitura>
+      )}
+      {!loading && !error && result && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard label="Último preço" value={formatPreco(ticker, result.last_price)} />
           <MetricCard label={`Perda máxima histórica (${confLabel})`} value={formatPreco(ticker, perda(result.var_historico_abs))} />
@@ -124,8 +138,8 @@ export default function VarPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="acucar">Açúcar NY</TabsTrigger>
-          <TabsTrigger value="dolar">USD/BRL</TabsTrigger>
+          <TabsTrigger value="acucar">{nomeAtivo("SB=F")}</TabsTrigger>
+          <TabsTrigger value="dolar">{nomeAtivo("USDBRL=X")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="acucar">
