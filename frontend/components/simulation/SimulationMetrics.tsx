@@ -1,37 +1,35 @@
 "use client";
 
+import { formatPreco } from "@/lib/format";
 import { SimulationResult } from "./SimulationForm";
 
-interface SimulationMetricsProps {
-  result: SimulationResult;
-}
+export default function SimulationMetrics({ result }: { result: SimulationResult }) {
+  const fmt = (v: number) => formatPreco(result.ticker, v);
+  const metricas = [
+    { rotulo: "P5 (pessimista)", valor: result.p5 },
+    { rotulo: "P50 (mediana)", valor: result.p50, destaque: true },
+    { rotulo: "P95 (otimista)", valor: result.p95 },
+  ];
 
-export default function SimulationMetrics({ result }: SimulationMetricsProps) {
   return (
-    <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-4">
-      <div className="border-b pb-2">
-        <h3 className="text-lg font-semibold">
-          {result.ticker} — {result.dias_simulados} dias
-        </h3>
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 text-card-foreground">
+      <div className="border-b border-border pb-2">
+        <h2 className="text-lg font-semibold">
+          {result.ticker} · {result.dias_simulados} dias úteis
+        </h2>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P5</p>
-          <p className="text-xl font-bold">{result.p5.toFixed(2)}</p>
-        </div>
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P50 (mediana)</p>
-          <p className="text-xl font-bold">{result.p50.toFixed(2)}</p>
-        </div>
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P95</p>
-          <p className="text-xl font-bold">{result.p95.toFixed(2)}</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {metricas.map(({ rotulo, valor, destaque }) => (
+          <div key={rotulo} className="space-y-1 text-center">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+            <p className={destaque ? "text-2xl font-bold tabular-nums" : "text-xl font-bold tabular-nums"}>{fmt(valor)}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="border-t pt-2 text-sm text-muted-foreground">
-        Preço inicial: {result.preco_inicial.toFixed(2)}
+      <div className="border-t border-border pt-2 text-sm text-muted-foreground">
+        Preço inicial: {fmt(result.preco_inicial)}
       </div>
     </div>
   );

@@ -7,6 +7,10 @@ import SimulationForm, {
   SimulationResult,
 } from "@/components/simulation/SimulationForm";
 import FanChart from "@/components/simulation/FanChart";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatPreco } from "@/lib/format";
+import { toast } from "sonner";
 import SimulationMetrics from "@/components/simulation/SimulationMetrics";
 
 interface HistorySummary {
@@ -50,35 +54,40 @@ export default function SimulationPage() {
     setHistory((prev) => [toSummary(result), ...prev]);
   }
 
-  async function handleTabChange(value: string) {
-    setActiveTab(value);
-    if (value === "historico" && !historyLoaded) {
-      setHistoryLoading(true);
-      setHistoryError(null);
-      try {
-        const data = await apiFetch<{ simulations: HistorySummary[] }>("/api/simulations");
-        setHistory(data.simulations);
-        setHistoryLoaded(true);
-      } catch (e) {
-        setHistoryError((e as Error).message);
-      } finally {
-        setHistoryLoading(false);
-      }
+  async function carregarHistorico() {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const data = await apiFetch<{ simulations: HistorySummary[] }>("/api/simulations");
+      setHistory(data.simulations);
+      setHistoryLoaded(true);
+    } catch (e) {
+      setHistoryError((e as Error).message);
+    } finally {
+      setHistoryLoading(false);
     }
+  }
+
+  function handleTabChange(value: string) {
+    setActiveTab(value);
+    if (value === "historico" && !historyLoaded) carregarHistorico();
   }
 
   async function handleHistoryItemClick(id: string) {
     try {
       setActiveResult(await apiFetch<SimulationResult>(`/api/simulations/${id}`));
       setActiveTab("simular");
-    } catch {
-      // silent — user remains on Histórico tab
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Simulação Monte Carlo</h1>
+    <div>
+      <PageHeader
+        titulo="Simulação Monte Carlo"
+        descricao="Milhares de cenários de preço futuro a partir da volatilidade histórica do ativo."
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
@@ -86,31 +95,34 @@ export default function SimulationPage() {
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="simular" className="space-y-6 mt-6">
-          <SimulationForm onResult={handleNewResult} />
-
-          {activeResult && (
-            <div className="space-y-6">
-              <SimulationMetrics result={activeResult} />
-              <FanChart
-                series={activeResult.percentiles_series}
-                dias_simulados={activeResult.dias_simulados}
-              />
+        <TabsContent value="simular" className="mt-6">
+          <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
+            <div className="rounded-xl border border-border bg-card p-6">
+              <SimulationForm onResult={handleNewResult} />
             </div>
-          )}
+
+            {activeResult ? (
+              <div className="min-w-0 space-y-6">
+                <SimulationMetrics result={activeResult} />
+                <FanChart series={activeResult.percentiles_series} dias_simulados={activeResult.dias_simulados} />
+              </div>
+            ) : (
+              <EmptyState mensagem="Preencha os parâmetros e clique em Simular para ver a faixa de preços." />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="historico" className="mt-6">
           {historyLoading && (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
           )}
-          {historyError && (
-            <p className="text-sm text-red-600">{historyError}</p>
-          )}
+          {historyError && <ErrorState mensagem={historyError} onRetry={carregarHistorico} />}
           {!historyLoading && !historyError && history.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma simulação encontrada.
-            </p>
+            <EmptyState mensagem="Nenhuma simulação salva ainda." />
           )}
           {!historyLoading && history.length > 0 && (
             <ul className="space-y-2">
@@ -118,7 +130,7 @@ export default function SimulationPage() {
                 <li key={item.id}>
                   <button
                     onClick={() => handleHistoryItemClick(item.id)}
-                    className="w-full text-left rounded-lg border bg-card px-4 py-3 hover:bg-accent transition-colors"
+                    className="w-full rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-accent"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{item.ticker}</span>
@@ -126,9 +138,8 @@ export default function SimulationPage() {
                         {new Date(item.created_at).toLocaleDateString("pt-BR")}
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {item.label ?? "—"} &middot; P50:{" "}
-                      {item.p50.toFixed(2)}
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {item.label ?? "Sem nome"} · Mediana: {formatPreco(item.ticker, item.p50)}
                     </div>
                   </button>
                 </li>

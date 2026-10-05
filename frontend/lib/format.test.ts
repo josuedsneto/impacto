@@ -7,6 +7,7 @@ import {
   formatFX,
   formatNumber,
   formatPercent,
+  formatPreco,
 } from "./format";
 
 describe("format.ts (UI-01)", () => {
@@ -52,5 +53,12 @@ describe("format.ts (UI-01)", () => {
 
   it("data ISO em dd/mm/aaaa sem deslocar o dia", () => {
     expect(formatDate("2026-10-05")).toBe("05/10/2026");
+  });
+
+  it("preço no formato do ativo", () => {
+    expect(formatPreco("SB=F", 21.456)).toBe("21,46 ¢/lb");
+    expect(formatPreco("USDBRL=X", 5.43219)).toBe("R$ 5,4322");
+    expect(formatPreco("CL=F", 70.5)).toBe("70,50");
+    expect(formatPreco("SB=F", null)).toBe("—");
   });
 });

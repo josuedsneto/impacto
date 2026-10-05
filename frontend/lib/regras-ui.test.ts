@@ -24,7 +24,6 @@ const PENDENTES = new Set<string>([
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/risco/page.tsx",
-  "app/app/simulation/page.tsx",
   "app/app/stress/page.tsx",
   "app/app/var/page.tsx",
   "app/app/volatilidade/page.tsx",
@@ -37,8 +36,6 @@ const PENDENTES = new Set<string>([
   "components/regression/AcucarMetrics.tsx",
   "components/regression/DolarCharts.tsx",
   "components/regression/DolarMetrics.tsx",
-  "components/simulation/FanChart.tsx",
-  "components/simulation/SimulationMetrics.tsx",
 ]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [

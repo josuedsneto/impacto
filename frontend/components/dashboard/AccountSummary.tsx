@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/feedback";
-import { formatCents, formatFX, formatNumber } from "@/lib/format";
+import { formatPreco } from "@/lib/format";
 
 interface SimulationRow {
   id: string;
@@ -19,14 +19,8 @@ interface AccountSummaryProps {
   simCountMonth: number;
 }
 
-function precoDo(ticker: string) {
-  if (ticker === "SB=F") return formatCents;
-  if (ticker === "USDBRL=X") return formatFX;
-  return (v: number) => formatNumber(v, 2);
-}
-
 export function AccountSummary({ lastSim, simCountMonth }: AccountSummaryProps) {
-  const fmt = lastSim ? precoDo(lastSim.ticker) : formatCents;
+  const fmt = (v: number) => formatPreco(lastSim?.ticker ?? "", v);
   const rows = lastSim
     ? [
         {

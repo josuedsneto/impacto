@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface SimulationResult {
   id: string;
@@ -36,7 +37,6 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [pctBound, setPctBound] = useState<number>(0.5);
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadParams() {
@@ -55,7 +55,6 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const data = await apiFetch<SimulationResult>("/api/simulations", {
@@ -71,15 +70,16 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         }),
       });
       onResult(data);
+      toast.success("Simulação concluída e salva no histórico.");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="ticker">Ticker <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F (açúcar NY #11), USDBRL=X (dólar/real)" /></Label>
         <Input
@@ -154,9 +154,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Simulando..." : "Simular"}
       </Button>
     </form>

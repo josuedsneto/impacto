@@ -53,3 +53,10 @@ export function formatDate(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return VAZIO;
   return new Intl.DateTimeFormat("pt-BR", iso.length === 10 ? { timeZone: "UTC" } : {}).format(d);
 }
+
+/** Preço no formato do ativo: SB=F em ¢/lb, USDBRL=X em R$ com 4 casas, demais com 2 casas. */
+export function formatPreco(ticker: string, v: Valor): string {
+  if (ticker === "SB=F") return formatCents(v);
+  if (ticker === "USDBRL=X") return formatFX(v);
+  return formatNumber(v, 2);
+}

@@ -453,6 +453,8 @@ T36 → T37
 
 ### T18: Migrar Monte Carlo
 
+**Status**: ✅ Done
+
 **What**: página, `SimulationForm`, `SimulationMetrics`, `FanChart`: `PageHeader`, layout formulário + resultado, `format.ts`, tokens, toast "Simulação salva", `ErrorState`/`EmptyState` no histórico.
 **Where**: `frontend/app/app/simulation/page.tsx`
 **Depends on**: None
@@ -462,7 +464,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e 3 componentes fora de `PENDENTES`; gate quick passa
+- [x] Página e 3 componentes fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
