@@ -1,37 +1,34 @@
 "use client";
 
+import { formatNumber } from "@/lib/format";
 import { AtrResult } from "./AtrForm";
 
-interface AtrMetricsProps {
-  result: AtrResult;
-}
+const kg = (v: number) => `${formatNumber(v, 1)} kg/t`;
 
-export function AtrMetrics({ result }: AtrMetricsProps) {
+export function AtrMetrics({ result }: { result: AtrResult }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">ATR Mínimo</p>
-          <p className="mt-1 text-xl font-medium">{result.atr_min.toFixed(1)} kg/tc</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">ATR mínimo</p>
+          <p className="mt-1 text-xl font-medium tabular-nums">{kg(result.atr_min)}</p>
         </div>
 
-        <div className="rounded-lg border bg-card px-4 py-3 border-blue-200">
-          <p className="text-sm text-muted-foreground">ATR Esperado</p>
-          <p className="mt-1 text-2xl font-semibold text-blue-700">{result.atr_esperado.toFixed(1)} kg/tc</p>
+        <div className="rounded-xl border-2 border-brand bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">ATR esperado</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-brand">{kg(result.atr_esperado)}</p>
         </div>
 
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">ATR Máximo</p>
-          <p className="mt-1 text-xl font-medium">{result.atr_max.toFixed(1)} kg/tc</p>
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">ATR máximo</p>
+          <p className="mt-1 text-xl font-medium tabular-nums">{kg(result.atr_max)}</p>
         </div>
       </div>
 
       {result.producao_total != null && (
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">Produção Total Estimada</p>
-          <p className="mt-1 text-xl font-medium">
-            {(result.producao_total / 1000).toFixed(0)} mil toneladas
-          </p>
+        <div className="rounded-xl border border-border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">Produção total estimada</p>
+          <p className="mt-1 text-xl font-medium tabular-nums">{formatNumber(result.producao_total / 1000, 0)} mil toneladas</p>
         </div>
       )}
     </div>

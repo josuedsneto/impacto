@@ -11,11 +11,8 @@ const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
   "app/app/admin/page.tsx",
-  "app/app/atr/page.tsx",
   "app/app/params/page.tsx",
   "app/page.tsx",
-  "components/atr/AtrHistorico.tsx",
-  "components/atr/AtrMetrics.tsx",
 ]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [

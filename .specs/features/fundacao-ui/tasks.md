@@ -770,6 +770,8 @@ T36 → T37
 
 ### T33: Migrar ATR e trocar Plotly por Recharts
 
+**Status**: ✅ Done
+
 **What**: página + `AtrForm`, `AtrMetrics`, `AtrHistorico` (Recharts); toast ao compartilhar.
 **Where**: `frontend/app/app/atr/page.tsx`
 **Depends on**: T32
@@ -779,7 +781,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e 3 componentes fora de `PENDENTES`; `grep -rl plotly components` lista só `FixacoesChart.tsx`; gate quick passa
+- [x] Página e 3 componentes fora de `PENDENTES`; `grep -rl plotly components` lista só `FixacoesChart.tsx`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

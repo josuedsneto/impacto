@@ -1,16 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDate, formatNumber } from "@/lib/format";
 
 export interface HistoricoItem {
   id: string;
@@ -31,99 +23,75 @@ interface AtrHistoricoProps {
   currentUserId: string;
 }
 
+const eixo = { fontSize: 11, fill: "var(--muted-foreground)" };
+const kg = (v: number) => `${formatNumber(v, 1)} kg/t`;
+
 export function AtrHistorico({ historico, onToggleShare, currentUserId }: AtrHistoricoProps) {
-  const datas = historico.map((h) => new Date(h.created_at).toLocaleDateString("pt-BR"));
+  // A API devolve do mais recente para o mais antigo; o gráfico corre no tempo.
+  const serie = [...historico].reverse().map((h) => ({
+    data: formatDate(h.created_at),
+    faixa: [h.atr_min, h.atr_max],
+    esperado: h.atr_esperado,
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Trend chart */}
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="text-sm font-semibold mb-3">Tendência ATR (kg/tc)</h3>
-        <Plot
-          data={[
-            {
-              type: "scatter",
-              mode: "lines",
-              x: datas,
-              y: historico.map((h) => h.atr_min),
-              name: "ATR Mínimo",
-              line: { color: "rgba(99,102,241,0.3)", width: 0 },
-              showlegend: false,
-            },
-            {
-              type: "scatter",
-              mode: "lines",
-              x: datas,
-              y: historico.map((h) => h.atr_max),
-              name: "Intervalo Min–Max",
-              fill: "tonexty",
-              fillcolor: "rgba(99,102,241,0.15)",
-              line: { color: "rgba(99,102,241,0.3)", width: 0 },
-            },
-            {
-              type: "scatter",
-              mode: "lines+markers",
-              x: datas,
-              y: historico.map((h) => h.atr_esperado),
-              name: "ATR Esperado",
-              line: { color: "#6366f1", width: 2 },
-              marker: { size: 6, color: "#6366f1" },
-            },
-          ]}
-          layout={{
-            title: { text: "Tendência ATR (kg/tc)" },
-            xaxis: { title: { text: "Data" } },
-            yaxis: { title: { text: "ATR (kg/tc)" } },
-            height: 300,
-            margin: { t: 50, l: 60, r: 20, b: 60 },
-          }}
-          style={{ width: "100%" }}
-          config={{ responsive: true, displayModeBar: false }}
-        />
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="mb-3 text-sm font-semibold">Tendência do ATR (kg/t de cana)</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={serie} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+            <XAxis dataKey="data" tick={eixo} tickLine={false} minTickGap={24} />
+            <YAxis tick={eixo} tickLine={false} axisLine={false} width={48} domain={["auto", "auto"]} />
+            <Tooltip
+              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+              formatter={(v: number | number[], nome: string) => [
+                Array.isArray(v) ? `${kg(v[0])} a ${kg(v[1])}` : kg(v),
+                nome,
+              ]}
+            />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Area dataKey="faixa" name="Faixa de 90%" fill="var(--chart-3)" fillOpacity={0.2} stroke="none" isAnimationActive={false} />
+            <Line dataKey="esperado" name="ATR esperado" stroke="var(--chart-3)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* History table */}
-      <div className="rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
-              <TableHead>Chuva (mm)</TableHead>
-              <TableHead>Impureza (%)</TableHead>
-              <TableHead>ATR Esperado</TableHead>
-              <TableHead>Produção Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="text-right">Chuva (mm)</TableHead>
+              <TableHead className="text-right">Impureza (%)</TableHead>
+              <TableHead className="text-right">ATR esperado</TableHead>
+              <TableHead className="text-right">Produção total</TableHead>
+              <TableHead>Visibilidade</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {historico.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="text-sm">
-                  {new Date(item.created_at).toLocaleDateString("pt-BR")}
-                </TableCell>
-                <TableCell className="text-sm">{item.chuva_mm.toFixed(1)}</TableCell>
-                <TableCell className="text-sm">{item.impureza_pct.toFixed(1)}</TableCell>
-                <TableCell className="text-sm font-medium">{item.atr_esperado.toFixed(1)} kg/tc</TableCell>
-                <TableCell className="text-sm">
-                  {item.producao_total != null
-                    ? `${(item.producao_total / 1000).toFixed(0)} mil t`
-                    : "—"}
+                <TableCell className="text-sm">{formatDate(item.created_at)}</TableCell>
+                <TableCell className="text-right text-sm tabular-nums">{formatNumber(item.chuva_mm, 1)}</TableCell>
+                <TableCell className="text-right text-sm tabular-nums">{formatNumber(item.impureza_pct, 1)}</TableCell>
+                <TableCell className="text-right text-sm font-medium tabular-nums">{kg(item.atr_esperado)}</TableCell>
+                <TableCell className="text-right text-sm tabular-nums">
+                  {item.producao_total != null ? `${formatNumber(item.producao_total / 1000, 0)} mil t` : "—"}
                 </TableCell>
                 <TableCell>
                   {item.compartilhado && (
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-                      Compartilhado
-                    </span>
+                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs text-brand">Compartilhada</span>
                   )}
                 </TableCell>
                 <TableCell>
                   {item.user_id === currentUserId && (
                     <button
                       onClick={() => onToggleShare(item.id, !item.compartilhado)}
-                      className="px-3 py-1 rounded text-xs font-medium border border-input bg-background hover:bg-muted"
+                      className="rounded border border-input bg-background px-3 py-1 text-xs font-medium hover:bg-muted"
                     >
-                      {item.compartilhado ? "Privado" : "Compartilhar"}
+                      {item.compartilhado ? "Tornar privada" : "Compartilhar"}
                     </button>
                   )}
                 </TableCell>

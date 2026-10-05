@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface Usina {
   id: string;
@@ -30,7 +31,6 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
   const [impureza, setImpureza] = useState<string>("");
   const [volume, setVolume] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (usinas.length > 0 && !usinaId) {
@@ -48,7 +48,6 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const body: Record<string, unknown> = {
@@ -64,8 +63,9 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
         method: "POST",
         body: JSON.stringify(body),
       }));
+      toast.success("Simulação de ATR salva no histórico.");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -136,9 +136,7 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" disabled={loading || usinas.length === 0}>
+      <Button type="submit" disabled={loading || usinas.length === 0} className="w-full">
         {loading ? "Simulando..." : "Simular"}
       </Button>
     </form>
