@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/app') && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = `?voltar=${encodeURIComponent(pathname + request.nextUrl.search)}`
     return NextResponse.redirect(url)
   }
 

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { destinoSeguro } from '@/lib/api'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
 
   // Email + senha state
@@ -15,6 +16,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const [tab, setTab] = useState('senha')
+
+  // Vindo de sessão expirada: mostra o aviso e guarda para onde voltar.
+  const params = useSearchParams()
+  const expirada = params.get('expirada') === '1'
+  const voltar = destinoSeguro(params.get('voltar'))
 
   // Magic link state
   const [magicEmail, setMagicEmail] = useState('')
@@ -36,7 +42,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/app/dashboard')
+    router.push(voltar)
     router.refresh()
   }
 
@@ -69,6 +75,12 @@ export default function LoginPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Sugarcane</h1>
         <p className="mt-1 text-sm text-muted-foreground">Entre com sua conta</p>
       </div>
+
+      {expirada && (
+        <p role="status" className="rounded-md border border-input bg-muted px-3 py-2 text-sm">
+          Sua sessão expirou. Entre novamente para continuar.
+        </p>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full">
@@ -153,5 +165,13 @@ export default function LoginPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
