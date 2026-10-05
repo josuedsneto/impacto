@@ -580,6 +580,8 @@ T36 → T37
 
 ### T24: Migrar Breakeven
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, layout formulário + resultado, `formatBRL`, toast "Simulação salva".
 **Where**: `frontend/app/app/breakeven/page.tsx`
 **Depends on**: T23
@@ -589,7 +591,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
