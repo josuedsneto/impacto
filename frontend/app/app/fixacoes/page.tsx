@@ -12,6 +12,16 @@ import { IndicatorSelector, DEFAULT_CONFIG, type IndicatorConfig } from "@/compo
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/feedback";
 import { formatDate } from "@/lib/format";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
+// Nomes das colunas do CSV; indicadores sem nome aqui (sma_20, ema_9…) usam o próprio código.
+const COLUNAS_CSV: Record<string, string> = {
+  date: "Data", open: "Abertura", high: "Máxima", low: "Mínima", close: "Fechamento", volume: "Volume",
+  bb_upper: "Bollinger superior", bb_mid: "Bollinger média", bb_lower: "Bollinger inferior",
+  rsi: "RSI", macd: "MACD", macd_signal: "MACD sinal", macd_hist: "MACD histograma",
+  stoch_k: "Estocástico %K", stoch_d: "Estocástico %D", cci: "CCI",
+};
 import { FixacoesChart, type OhlcvRow, type AnalysisSignal } from "@/components/market/FixacoesChart";
 
 function defaultDateRange(): { start: string; end: string } {
@@ -86,6 +96,33 @@ export default function FixacoesPage() {
       <PageHeader
         titulo="Mercado e sinais"
         descricao="Preços, indicadores técnicos e sinais de entrada e saída para planejar fixações."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Mercado e sinais", queriedTicker)}
+            montar={
+              queriedTicker && rows.length
+                ? () => {
+                    const chaves = Object.keys(rows[0]);
+                    return gerarCsv({
+                      parametros: [
+                        ["Ativo", queriedTicker],
+                        ["De", formatDate(start)],
+                        ["Até", formatDate(end)],
+                        ["Indicadores", config.indicators.join(", ")],
+                      ],
+                      tabelas: [
+                        { colunas: chaves.map((k) => COLUNAS_CSV[k] ?? k), linhas: rows.map((r) => chaves.map((k) => r[k])) },
+                        {
+                          colunas: ["Data", "Sinal", "Indicador", "Preço"],
+                          linhas: signals.map((s) => [s.date, s.type === "buy" ? "entrada" : "saída", s.indicator, s.price]),
+                        },
+                      ],
+                    });
+                  }
+                : null
+            }
+          />
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">

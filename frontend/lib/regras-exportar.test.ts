@@ -24,7 +24,6 @@ const TELAS = [
 ];
 
 const PENDENTES = new Set<string>([
-  "app/app/fixacoes/page.tsx",
 ]);
 
 const exporta = (tela: string) => readFileSync(join(RAIZ, tela), "utf-8").includes("<BotaoExportar");

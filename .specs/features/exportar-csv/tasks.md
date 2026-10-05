@@ -225,6 +225,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T9: Mercado e sinais
 
+**Status**: ✅ Done
+
 **What**: CSV da série de preços com indicadores e da lista de sinais; `PENDENTES = []`.
 **Where**: `frontend/app/app/fixacoes/page.tsx`
 **Depends on**: T8
@@ -234,8 +236,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `PENDENTES = []`; gate build completo
-- [ ] Gate passa
+- [x] `PENDENTES = []`; gate build completo
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: build
