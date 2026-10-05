@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraRegDolar } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatFX, formatNumber } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,7 +69,36 @@ export default function RegressaoDolarPage() {
 
   return (
     <div>
-      <PageHeader titulo="Modelo do dólar" descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)." />
+      <PageHeader
+        titulo="Modelo do dólar"
+        descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Modelo do dolar", null)}
+            montar={
+              activeResult
+                ? () => {
+                    const vars = Object.keys(activeResult.correlacao);
+                    return gerarCsv({
+                      parametros: [
+                        ["Dólar previsto (R$/US$)", activeResult.taxa_prevista],
+                        ["R² (ajuste)", activeResult.r2],
+                        ["Erro médio, RMSE (R$/US$)", activeResult.rmse],
+                      ],
+                      tabelas: [
+                        { colunas: ["Variável", "Coeficiente"], linhas: Object.entries(activeResult.coeficientes) },
+                        {
+                          colunas: ["Correlação", ...vars],
+                          linhas: vars.map((r) => [r, ...vars.map((c) => activeResult.correlacao[r][c])]),
+                        },
+                      ],
+                    });
+                  }
+                : null
+            }
+          />
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

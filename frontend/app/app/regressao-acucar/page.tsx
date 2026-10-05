@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraRegAcucar } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatCents, formatNumber } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,7 +69,35 @@ export default function RegressaoAcucarPage() {
 
   return (
     <div>
-      <PageHeader titulo="Modelo do açúcar" descricao="Estima o preço do açúcar em NY a partir de oferta e demanda mundiais, câmbio e petróleo." />
+      <PageHeader
+        titulo="Modelo do açúcar"
+        descricao="Estima o preço do açúcar em NY a partir de oferta e demanda mundiais, câmbio e petróleo."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Modelo do acucar", "SB=F")}
+            montar={
+              activeResult
+                ? () =>
+                    gerarCsv({
+                      parametros: [
+                        ["Açúcar previsto (¢/lb)", activeResult.sb_f_previsto],
+                        ["Faixa provável: mínimo (¢/lb)", activeResult.sb_f_min],
+                        ["Faixa provável: máximo (¢/lb)", activeResult.sb_f_max],
+                        ["R² (ajuste)", activeResult.r2],
+                        ["Erro médio, RMSE (¢/lb)", activeResult.rmse],
+                      ],
+                      tabelas: [
+                        {
+                          colunas: ["Ano", "Real (¢/lb)", "Previsto pelo modelo (¢/lb)"],
+                          linhas: activeResult.historico.map((h) => [h.year, h.sb_f_real, h.sb_f_previsto]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

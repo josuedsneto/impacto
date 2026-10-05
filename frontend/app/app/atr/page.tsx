@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraAtr } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -111,6 +114,43 @@ export default function AtrPage() {
       <PageHeader
         titulo="ATR da usina"
         descricao="Estima o açúcar total recuperável (kg por tonelada de cana) a partir de chuva e impureza, com faixa de 90%."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("ATR da usina", usinas.find((u) => u.id === selectedUsinaId)?.nome)}
+            montar={
+              historico.length
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Usina", usinas.find((u) => u.id === selectedUsinaId)?.nome ?? ""]],
+                      tabelas: [
+                        {
+                          colunas: [
+                            "Data",
+                            "Chuva (mm)",
+                            "Impureza (%)",
+                            "ATR mínimo (kg/t)",
+                            "ATR esperado (kg/t)",
+                            "ATR máximo (kg/t)",
+                            "Produção total (t)",
+                            "Compartilhada",
+                          ],
+                          linhas: historico.map((h) => [
+                            h.created_at.slice(0, 10),
+                            h.chuva_mm,
+                            h.impureza_pct,
+                            h.atr_min,
+                            h.atr_esperado,
+                            h.atr_max,
+                            h.producao_total,
+                            h.compartilhado ? "sim" : "não",
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       {usinasError && <ErrorState mensagem={usinasError} onRetry={() => window.location.reload()} />}
