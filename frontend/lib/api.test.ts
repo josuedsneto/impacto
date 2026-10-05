@@ -129,5 +129,7 @@ describe("destinoSeguro (API-05)", () => {
     const { destinoSeguro } = await carregar();
     expect(destinoSeguro("https://malicioso.com")).toBe("/app/dashboard");
     expect(destinoSeguro(null)).toBe("/app/dashboard");
+    expect(destinoSeguro("//malicioso.com/app/")).toBe("/app/dashboard");
+    expect(destinoSeguro("/login")).toBe("/app/dashboard");
   });
 });
