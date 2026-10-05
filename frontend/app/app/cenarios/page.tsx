@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatNumber, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +50,6 @@ export default function CenariosPage() {
   const [values, setValues] = useState<Record<string, number>>({ ...DEFAULTS["NY"] });
   const [result, setResult] = useState<CenariosResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function handleOpcaoChange(o: Opcao) {
     setOpcao(o);
@@ -55,7 +59,6 @@ export default function CenariosPage() {
 
   async function handleSimulate() {
     setLoading(true);
-    setError(null);
     try {
       const body = { opcao, ny: 0, moagem: 0, cambio: 0, preco_etanol: 0, ...values };
       const data = await apiFetch<CenariosResult>("/api/cenarios", {
@@ -63,163 +66,190 @@ export default function CenariosPage() {
         body: JSON.stringify(body),
       });
       setResult(data);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   const otherInputs = Object.keys(DEFAULTS[opcao]);
 
+  // Casas decimais por variável: moagem em toneladas inteiras, preços com 2 casas.
+  const fmt = (v: number) => formatNumber(v, result?.opcao === "Moagem" ? 0 : 2);
+
+  // Posição do breakeven no eixo x (0 a 1), para dividir a área em vermelho e verde.
+  const xs = result?.distribuicao.map((d) => d.x) ?? [0, 1];
+  const corte = result
+    ? Math.min(1, Math.max(0, (result.breakeven - xs[0]) / (xs[xs.length - 1] - xs[0])))
+    : 0;
+
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Cenários</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Encontra o valor mínimo de uma variável para o EBITDA ser positivo e calcula o risco
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        titulo="Cenários"
+        descricao="Encontra o valor de uma variável em que o EBITDA zera e a chance de o mercado ficar abaixo dele."
+      />
 
-      <Card className="max-w-md">
-        <CardContent className="pt-6 space-y-4">
-          {/* Opcao */}
-          <div className="space-y-1">
-            <Label>
-              Variável de análise <FieldTooltip text="A variável para a qual o breakeven será calculado" />
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {OPCOES.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => handleOpcaoChange(o)}
-                  className={`px-3 py-1.5 rounded border text-sm transition-colors ${
-                    opcao === o
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-input hover:bg-accent"
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Other inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            {otherInputs.map((key) => {
-              const cfg = INPUT_LABELS[key];
-              return (
-                <div key={key} className="space-y-1">
-                  <Label htmlFor={`cen-${key}`}>{cfg.label}</Label>
-                  <Input
-                    id={`cen-${key}`}
-                    type="number"
-                    step={cfg.step}
-                    placeholder={cfg.placeholder}
-                    value={values[key] ?? ""}
-                    onChange={(e) => setValues((prev) => ({ ...prev, [key]: parseFloat(e.target.value) }))}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          <Button onClick={handleSimulate} disabled={loading} className="w-full">
-            {loading ? "Calculando..." : "Calcular Cenário"}
-          </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </CardContent>
-      </Card>
-
-      {result && (
-        <>
-          {/* KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
-            <Card>
-              <CardHeader className="pb-1">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Breakeven — {result.opcao}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{result.breakeven.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-1">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Risco (abaixo do breakeven)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className={`text-2xl font-bold ${result.probabilidade_abaixo > 0.3 ? "text-red-600" : "text-green-600"}`}>
-                  {(result.probabilidade_abaixo * 100).toFixed(1)}%
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-1">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Média esperada</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{result.media.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Distribution chart */}
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Distribuição de probabilidade — {result.opcao}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={result.distribuicao} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                  <defs>
-                    <linearGradient id="colorRisk" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#ef4444" stopOpacity={0.6} />
-                      <stop offset={`${result.probabilidade_abaixo * 100}%`} stopColor="#ef4444" stopOpacity={0.6} />
-                      <stop offset={`${result.probabilidade_abaixo * 100}%`} stopColor="#22c55e" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="x" tick={{ fontSize: 10 }} tickFormatter={(v) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} />
-                  <YAxis hide />
-                  <Tooltip
-                    formatter={(v: number) => [v.toFixed(6), "Densidade"]}
-                    labelFormatter={(v) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                  />
-                  <ReferenceLine
-                    x={result.breakeven}
-                    stroke="#1f2937"
-                    strokeDasharray="4 2"
-                    label={{ value: "Breakeven", position: "top", fontSize: 11 }}
-                  />
-                  <Area type="monotone" dataKey="y" stroke="#3b82f6" fill="url(#colorRisk)" strokeWidth={2} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Percentis table */}
-          <Card className="max-w-md">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Percentis — {result.opcao}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-4 gap-1 text-sm">
-                {result.percentis.map(({ p, v }) => (
-                  <div
-                    key={p}
-                    className={`rounded px-2 py-1 text-center ${
-                      v < result.breakeven ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
-                    }`}
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div className="space-y-1">
+              <Label>
+                Variável de análise <FieldTooltip text="A variável para a qual o breakeven será calculado" />
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {OPCOES.map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => handleOpcaoChange(o)}
+                    aria-pressed={opcao === o}
+                    className={cn(
+                      "rounded border px-3 py-1.5 text-sm transition-colors",
+                      opcao === o ? "border-primary bg-primary text-primary-foreground" : "border-input hover:bg-accent"
+                    )}
                   >
-                    <span className="text-xs text-muted-foreground block">P{p}</span>
-                    <span className="font-medium">{v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</span>
-                  </div>
+                    {o}
+                  </button>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {otherInputs.map((key) => {
+                const cfg = INPUT_LABELS[key];
+                return (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={`cen-${key}`}>{cfg.label}</Label>
+                    <Input
+                      id={`cen-${key}`}
+                      type="number"
+                      step={cfg.step}
+                      placeholder={cfg.placeholder}
+                      value={values[key] ?? ""}
+                      onChange={(e) => setValues((prev) => ({ ...prev, [key]: parseFloat(e.target.value) }))}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <Button onClick={handleSimulate} disabled={loading} className="w-full">
+              {loading ? "Calculando..." : "Calcular cenário"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {!result && <EmptyState mensagem="Escolha a variável, ajuste as demais e clique em Calcular cenário." />}
+
+        {result && (
+          <div className="min-w-0 space-y-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Breakeven · {result.opcao}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold tabular-nums">{fmt(result.breakeven)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Chance de ficar abaixo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p
+                    className={cn(
+                      "text-2xl font-bold tabular-nums",
+                      result.probabilidade_abaixo > 0.3 ? "text-negative" : "text-positive"
+                    )}
+                  >
+                    {result.probabilidade_abaixo < 0.01 ? "menos de 1%" : formatPercent(result.probabilidade_abaixo, 1)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">Média esperada</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold tabular-nums">{fmt(result.media)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Distribuição de probabilidade · {result.opcao}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={result.distribuicao} margin={{ top: 16, right: 16, left: 0, bottom: 4 }}>
+                    <defs>
+                      <linearGradient id="colorRisk" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="var(--negative)" stopOpacity={0.5} />
+                        <stop offset={`${corte * 100}%`} stopColor="var(--negative)" stopOpacity={0.5} />
+                        <stop offset={`${corte * 100}%`} stopColor="var(--positive)" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="var(--positive)" stopOpacity={0.35} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                    <XAxis
+                      dataKey="x"
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      tickFormatter={(v: number) => fmt(v)}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                      formatter={(v: number) => [formatNumber(v, 6), "Densidade"]}
+                      labelFormatter={(v: number) => fmt(v)}
+                    />
+                    <ReferenceLine
+                      x={result.breakeven}
+                      stroke="var(--foreground)"
+                      strokeDasharray="4 2"
+                      label={{ value: "Breakeven", position: "top", fontSize: 11, fill: "var(--foreground)" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="y"
+                      stroke="var(--chart-1)"
+                      fill="url(#colorRisk)"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Percentis · {result.opcao}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-1 text-sm sm:grid-cols-4 lg:grid-cols-5">
+                  {result.percentis.map(({ p, v }) => (
+                    <div
+                      key={p}
+                      className={cn(
+                        "rounded px-2 py-1 text-center",
+                        v < result.breakeven ? "bg-negative/10 text-negative" : "bg-positive/10 text-positive"
+                      )}
+                    >
+                      <span className="block text-xs text-muted-foreground">P{p}</span>
+                      <span className="font-medium tabular-nums">{fmt(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

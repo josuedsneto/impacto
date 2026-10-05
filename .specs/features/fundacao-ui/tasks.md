@@ -643,6 +643,8 @@ T36 → T37
 
 ### T27: Migrar Cenários
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, layout formulário + resultado, `format.ts`, tokens no gráfico.
 **Where**: `frontend/app/app/cenarios/page.tsx`
 **Depends on**: T26
@@ -652,7 +654,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
