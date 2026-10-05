@@ -606,6 +606,8 @@ T24 → T25
 
 ### T25: Glossário
 
+**Status**: ✅ Done
+
 **What**: Página `/app/glossario`, link no menu Conta e prop `termo` no `FieldTooltip`.
 **Where**: `frontend/app/app/glossario/page.tsx`
 **Depends on**: T24
@@ -615,9 +617,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Termos em ordem alfabética, cada um com até 3 frases
-- [ ] `PENDENTES = []`; gate build completo
-- [ ] Gate passa
+- [x] Termos em ordem alfabética, cada um com até 3 frases
+- [x] `PENDENTES = []`; gate build completo
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: build

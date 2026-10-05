@@ -61,6 +61,7 @@ export function CamposOpcao({
       <CampoNumero
         id={`${prefixo}-K`}
         rotulo="Preço de exercício (strike)"
+        termo="strike"
         ajuda="Preço pelo qual a call dá o direito de comprar o ativo no vencimento."
         valor={valor.K}
         onChange={set("K")}
@@ -90,6 +91,7 @@ export function CamposOpcao({
       <CampoNumero
         id={`${prefixo}-sigma`}
         rotulo="Volatilidade anual (σ)"
+        termo="volatilidade"
         unidade="%"
         ajuda="Quanto o preço costuma oscilar em um ano. Mais volatilidade deixa a opção mais cara."
         valor={valor.sigma}

@@ -45,7 +45,10 @@ const NAV_SECTIONS = [
   },
   {
     label: "Conta",
-    items: [{ href: "/app/params", label: "Parâmetros" }],
+    items: [
+      { href: "/app/params", label: "Parâmetros" },
+      { href: "/app/glossario", label: "Glossário" },
+    ],
   },
 ];
 

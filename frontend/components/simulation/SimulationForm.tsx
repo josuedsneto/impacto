@@ -132,6 +132,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       <CampoNumero
         id="num_simulacoes"
         rotulo="Quantidade de cenários"
+        termo="monte-carlo"
         ajuda="Mais cenários deixam o resultado mais estável, mas a simulação demora mais."
         valor={numSimulacoes}
         onChange={setNumSimulacoes}

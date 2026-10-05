@@ -166,6 +166,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             <CampoNumero
               id={`${leg.id}-premio`}
               rotulo="Prêmio por contrato"
+              termo="premio"
               ajuda="Quanto se paga (comprado) ou se recebe (vendido) por esta opção."
               valor={leg.premium}
               onChange={(t) => updateLeg(leg.id, "premium", t)}

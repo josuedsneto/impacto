@@ -19,6 +19,8 @@ interface CampoNumeroProps extends Faixa {
   unidade?: string;
   /** Até 2 frases sobre o efeito do campo no resultado. */
   ajuda: string;
+  /** id de um termo do glossário, para o link "Ver no glossário". */
+  termo?: string;
   /** Texto digitado; quem usa converte com lerNumero (e divide por 100 quando a unidade é %). */
   valor: string;
   onChange: (texto: string) => void;
@@ -40,7 +42,7 @@ export function campoValido(texto: string, faixa: Faixa = {}): boolean {
 
 /** Campo numérico que aceita vírgula, mostra a unidade no rótulo e avisa quando sai da faixa. */
 export function CampoNumero({
-  id, rotulo, unidade, ajuda, valor, onChange, min, max, opcional, disabled, placeholder, className,
+  id, rotulo, unidade, ajuda, termo, valor, onChange, min, max, opcional, disabled, placeholder, className,
 }: CampoNumeroProps) {
   // Só reclama de campo vazio depois que a pessoa digitou algo; vazio inicial não é erro visível.
   const erro = valor.trim() ? erroCampo(valor, { min, max, opcional }, unidade) : null;
@@ -50,7 +52,7 @@ export function CampoNumero({
         {rotulo}
         {unidade && ` (${unidade})`}
         {opcional && <span className="font-normal text-muted-foreground"> · opcional</span>}
-        <FieldTooltip text={ajuda} />
+        <FieldTooltip text={ajuda} termo={termo} />
       </Label>
       <Input
         id={id}

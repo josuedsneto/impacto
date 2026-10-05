@@ -224,6 +224,7 @@ export default function BreakevenPage() {
             <CampoNumero
               id="m-acucar"
               rotulo="Açúcar NY"
+              termo="vhp"
               unidade="¢/lb"
               ajuda="Preço do açúcar em Nova York, em centavos de dólar por libra."
               valor={acucar}

@@ -118,6 +118,7 @@ export default function ParamsForm() {
           <CampoNumero
             id="params-volatilidade"
             rotulo="Volatilidade anual"
+            termo="volatilidade"
             unidade="%"
             ajuda="Substitui a volatilidade histórica na simulação Monte Carlo. Em branco, usa a dos últimos 3 anos."
             valor={volatilidade}
