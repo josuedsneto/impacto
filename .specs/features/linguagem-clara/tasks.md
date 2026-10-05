@@ -253,6 +253,8 @@ T24 → T25
 
 ### T9: Opções: payoff
 
+**Status**: ✅ Done
+
 **What**: Rótulos do construtor de estratégia e frase `leituraPayoff`.
 **Where**: `frontend/components/options/PayoffBuilder.tsx`
 **Depends on**: T8
@@ -262,8 +264,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `PayoffBuilder.tsx` e `app/app/options/page.tsx` fora de `PENDENTES`
-- [ ] Gate passa
+- [x] `PayoffBuilder.tsx` e `app/app/options/page.tsx` fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

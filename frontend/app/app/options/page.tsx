@@ -7,6 +7,8 @@ import PayoffChart from "@/components/options/PayoffChart";
 import BSPricer from "@/components/options/BSPricer";
 import MCPricer from "@/components/options/MCPricer";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraPayoff } from "@/lib/leitura";
 
 export default function OptionsPage() {
   const [payoffResult, setPayoffResult] = useState<PayoffResult | null>(null);
@@ -21,13 +23,16 @@ export default function OptionsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="payoff">Payoff</TabsTrigger>
+          <TabsTrigger value="payoff">Estratégia</TabsTrigger>
           <TabsTrigger value="black-scholes">Black-Scholes</TabsTrigger>
-          <TabsTrigger value="mc-pricer">MC Pricer</TabsTrigger>
+          <TabsTrigger value="mc-pricer">Monte Carlo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payoff" className="space-y-6 mt-6">
           <PayoffBuilder onPayoffResult={setPayoffResult} />
+          {payoffResult !== null && (
+            <Leitura>{leituraPayoff({ precos: payoffResult.prices, payoff: payoffResult.payoff })}</Leitura>
+          )}
           {payoffResult !== null && (
             <PayoffChart
               prices={payoffResult.prices}

@@ -4,18 +4,26 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { lerNumero } from "@/lib/numero";
 
 interface OptionLeg {
   id: string;
   type: "call" | "put";
-  strike: number;
-  premium: number;
+  // Texto digitado; convertido com lerNumero só no envio.
+  strike: string;
+  premium: string;
   position: "long" | "short";
-  quantity: number;
+  quantity: string;
 }
+
+const FAIXAS = {
+  strike: { min: 0.0001, max: 1_000_000 },
+  premium: { min: 0, max: 1_000_000 },
+  quantity: { min: 1, max: 100_000 },
+};
 
 export interface PayoffResult {
   prices: number[];
@@ -33,10 +41,10 @@ function newLeg(): OptionLeg {
   return {
     id: `leg-${legCounter}`,
     type: "call",
-    strike: 20,
-    premium: 1,
+    strike: "20",
+    premium: "1",
     position: "long",
-    quantity: 1,
+    quantity: "1",
   };
 }
 
@@ -64,11 +72,28 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
 
   async function handleCalculate() {
     if (legs.length === 0) return;
+    const validas = legs.every(
+      (l) =>
+        campoValido(l.strike, FAIXAS.strike) &&
+        campoValido(l.premium, FAIXAS.premium) &&
+        campoValido(l.quantity, FAIXAS.quantity)
+    );
+    if (!validas) {
+      toast.error("Corrija os campos destacados antes de calcular.");
+      return;
+    }
     setLoading(true);
     try {
+      const payload = legs.map((l) => ({
+        type: l.type,
+        position: l.position,
+        strike: lerNumero(l.strike),
+        premium: lerNumero(l.premium),
+        quantity: Math.round(lerNumero(l.quantity)!),
+      }));
       onPayoffResult(await apiFetch<PayoffResult>("/api/options/payoff", {
         method: "POST",
-        body: JSON.stringify({ legs }),
+        body: JSON.stringify({ legs: payload }),
       }));
     } catch (e) {
       toast.error((e as Error).message);
@@ -82,10 +107,10 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
       {legs.map((leg, idx) => (
         <div
           key={leg.id}
-          className="rounded-lg border p-4 space-y-3"
+          className="space-y-3 rounded-xl border border-border bg-card p-4"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Leg {idx + 1}</span>
+            <span className="text-sm font-medium">Perna {idx + 1}</span>
             <button
               type="button"
               onClick={() => removeLeg(leg.id)}
@@ -95,24 +120,26 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
-              <Label>Tipo <FieldTooltip text="Call = opção de compra; Put = opção de venda" /></Label>
+              <Label htmlFor={`${leg.id}-tipo`}>Tipo <FieldTooltip text="Call dá o direito de comprar o ativo no strike; put dá o direito de vender." /></Label>
               <select
+                id={`${leg.id}-tipo`}
                 value={leg.type}
                 onChange={(e) =>
                   updateLeg(leg.id, "type", e.target.value as "call" | "put")
                 }
                 className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
-                <option value="call">Call</option>
-                <option value="put">Put</option>
+                <option value="call">Call (direito de comprar)</option>
+                <option value="put">Put (direito de vender)</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <Label>Posição <FieldTooltip text="Long = comprado (paga prêmio); Short = vendido (recebe prêmio)" /></Label>
+              <Label htmlFor={`${leg.id}-posicao`}>Posição <FieldTooltip text="Comprado paga o prêmio e ganha se a opção valer a pena; vendido recebe o prêmio e assume o risco." /></Label>
               <select
+                id={`${leg.id}-posicao`}
                 value={leg.position}
                 onChange={(e) =>
                   updateLeg(
@@ -123,57 +150,45 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
                 }
                 className="w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
-                <option value="long">Long</option>
-                <option value="short">Short</option>
+                <option value="long">Comprado (paga o prêmio)</option>
+                <option value="short">Vendido (recebe o prêmio)</option>
               </select>
             </div>
 
-            <div className="space-y-1">
-              <Label>Strike <FieldTooltip text="Preço de exercício desta perna" /></Label>
-              <Input
-                type="number"
-                step={0.5}
-                value={leg.strike}
-                onChange={(e) =>
-                  updateLeg(leg.id, "strike", parseFloat(e.target.value))
-                }
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Prêmio <FieldTooltip text="Prêmio pago (long) ou recebido (short) por contrato" /></Label>
-              <Input
-                type="number"
-                step={0.01}
-                min={0}
-                value={leg.premium}
-                onChange={(e) =>
-                  updateLeg(leg.id, "premium", parseFloat(e.target.value))
-                }
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Quantidade <FieldTooltip text="Número de contratos desta perna" /></Label>
-              <Input
-                type="number"
-                min={1}
-                value={leg.quantity}
-                onChange={(e) =>
-                  updateLeg(leg.id, "quantity", parseInt(e.target.value, 10))
-                }
-              />
-            </div>
+            <CampoNumero
+              id={`${leg.id}-strike`}
+              rotulo="Preço de exercício"
+              ajuda="Preço do ativo em que a opção desta perna passa a valer a pena."
+              valor={leg.strike}
+              onChange={(t) => updateLeg(leg.id, "strike", t)}
+              {...FAIXAS.strike}
+            />
+            <CampoNumero
+              id={`${leg.id}-premio`}
+              rotulo="Prêmio por contrato"
+              ajuda="Quanto se paga (comprado) ou se recebe (vendido) por esta opção."
+              valor={leg.premium}
+              onChange={(t) => updateLeg(leg.id, "premium", t)}
+              {...FAIXAS.premium}
+            />
+            <CampoNumero
+              id={`${leg.id}-qtd`}
+              rotulo="Contratos"
+              ajuda="Quantidade de opções desta perna."
+              valor={leg.quantity}
+              onChange={(t) => updateLeg(leg.id, "quantity", t)}
+              {...FAIXAS.quantity}
+            />
           </div>
         </div>
       ))}
 
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={addLeg}>
-          Adicionar Leg
+          Adicionar perna
         </Button>
         <Button type="button" onClick={handleCalculate} disabled={loading || legs.length === 0}>
-          {loading ? "Calculando..." : "Calcular Payoff"}
+          {loading ? "Calculando..." : "Calcular resultado"}
         </Button>
       </div>
 

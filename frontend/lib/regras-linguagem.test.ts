@@ -17,7 +17,6 @@ const PENDENTES = new Set<string>([
   "app/app/jump-diffusion/page.tsx",
   "app/app/market/page.tsx",
   "app/app/metas/page.tsx",
-  "app/app/options/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/risco/page.tsx",
@@ -27,7 +26,6 @@ const PENDENTES = new Set<string>([
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
-  "components/options/PayoffBuilder.tsx",
   "components/params/ParamsForm.tsx",
   "components/regression/AcucarForm.tsx",
   "components/regression/DolarForm.tsx",
@@ -47,7 +45,6 @@ const FERRAMENTAS = [
   "app/app/regressao-dolar/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/atr/page.tsx",
-  "app/app/options/page.tsx",
 ];
 
 const REGRAS: { nome: string; falha: (texto: string, arquivo: string) => boolean }[] = [
