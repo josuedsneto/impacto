@@ -12,7 +12,10 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraMonteCarlo } from "@/lib/leitura";
-import { nomeAtivo } from "@/lib/ativos";
+import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { toast } from "sonner";
 import SimulationMetrics from "@/components/simulation/SimulationMetrics";
 
@@ -85,11 +88,38 @@ export default function SimulationPage() {
     }
   }
 
+  // CSV: percentis por dia útil, com os parâmetros da simulação no cabeçalho.
+  function montarCsv(r: SimulationResult) {
+    const u = unidadeAtivo(r.ticker);
+    const chaves = ["p5", "p20", "p25", "p50", "p75", "p80", "p95"].filter((k) => r.percentiles_series[k]);
+    return gerarCsv({
+      parametros: [
+        ["Ativo", nomeAtivo(r.ticker)],
+        [`Preço de partida${u ? ` (${u})` : ""}`, r.preco_inicial],
+        ["Prazo (dias úteis)", r.dias_simulados],
+        ["Cenários", r.num_simulacoes],
+        ["Variação máxima (%)", r.pct_bound * 100],
+      ],
+      tabelas: [
+        {
+          colunas: ["Dia útil", ...chaves.map((k) => `${k.toUpperCase()}${u ? ` (${u})` : ""}`)],
+          linhas: Array.from({ length: r.dias_simulados }, (_, i) => [i + 1, ...chaves.map((k) => r.percentiles_series[k][i])]),
+        },
+      ],
+    });
+  }
+
   return (
     <div>
       <PageHeader
         titulo="Monte Carlo"
         descricao="Milhares de cenários de preço futuro a partir da volatilidade histórica do ativo."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Monte Carlo", activeResult?.ticker)}
+            montar={activeResult ? () => montarCsv(activeResult) : null}
+          />
+        }
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>

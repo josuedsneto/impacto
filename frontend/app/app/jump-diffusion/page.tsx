@@ -13,7 +13,10 @@ import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraJump } from "@/lib/leitura";
 import { lerNumero } from "@/lib/numero";
-import { ATIVOS, nomeAtivo } from "@/lib/ativos";
+import { ATIVOS, nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -84,6 +87,33 @@ export default function JumpDiffusionPage() {
       <PageHeader
         titulo="Simulação com saltos"
         descricao="Simula um caminho de preço com oscilação diária e saltos bruscos ocasionais (modelo de Merton)."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Simulacao com saltos", result?.ticker)}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      parametros: [
+                        ["Ativo", nomeAtivo(result.ticker)],
+                        ["Preço inicial", result.s0],
+                        ["Volatilidade diária usada (%)", result.sigma * 100],
+                        ["Tendência diária (%)", result.mu * 100],
+                        ["Saltos por ano", lerNumero(lambdaJumps)],
+                        ["Tamanho médio do salto (%)", lerNumero(muJump)],
+                        ["Variação do tamanho do salto (%)", lerNumero(sigmaJump)],
+                      ],
+                      tabelas: [
+                        {
+                          colunas: ["Dia útil", `Preço${unidadeAtivo(result.ticker) ? ` (${unidadeAtivo(result.ticker)})` : ""}`],
+                          linhas: result.prices.map((p) => [p.step, p.price]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">

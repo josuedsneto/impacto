@@ -93,6 +93,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T3: Monte Carlo e Simulação com saltos
 
+**Status**: ✅ Done
+
 **What**: CSV da série de percentis por dia (P5…P95) e do caminho simulado, com parâmetros no cabeçalho.
 **Where**: `frontend/app/app/simulation/page.tsx`
 **Depends on**: T2
@@ -102,8 +104,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivos fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivos fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
