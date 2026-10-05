@@ -283,6 +283,8 @@ T36 → T37
 
 ### T10: Criar a gaveta de menu para celular
 
+**Status**: ✅ Done
+
 **What**: `MobileNav` com botão "Menu" (`lg:hidden`) e `<dialog>`; fecha com Esc, clique fora ou ao navegar; foco no primeiro link.
 **Where**: `frontend/components/layout/MobileNav.tsx`
 **Depends on**: T9
@@ -292,7 +294,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Gate build passa
+- [x] Gate build passa
 
 **Tests**: none
 **Gate**: build
