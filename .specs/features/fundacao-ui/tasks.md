@@ -601,6 +601,8 @@ T36 → T37
 
 ### T25: Migrar Stress Test
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `ErrorState`, `formatPercent`, `formatDate`, tabela com rolagem própria.
 **Where**: `frontend/app/app/stress/page.tsx`
 **Depends on**: T24
@@ -610,7 +612,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

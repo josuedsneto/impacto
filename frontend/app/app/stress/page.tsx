@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate, formatPercent, formatPreco } from "@/lib/format";
 import {
   Select,
   SelectContent,
@@ -27,21 +30,13 @@ interface StressScenario {
   preco_final: number;
 }
 
+// Queda acima de 20%: severa; de 10% a 20%: forte; abaixo: moderada.
 function DrawdownBadge({ value }: { value: number }) {
-  const pct = Math.abs(value * 100);
-  if (pct > 20) {
-    return (
-      <Badge variant="destructive">{(value * 100).toFixed(2)}%</Badge>
-    );
-  }
-  if (pct > 10) {
-    return (
-      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
-        {(value * 100).toFixed(2)}%
-      </Badge>
-    );
-  }
-  return <span className="text-sm">{(value * 100).toFixed(2)}%</span>;
+  const pct = Math.abs(value);
+  const texto = formatPercent(value);
+  if (pct > 0.2) return <Badge variant="destructive">{texto} · severa</Badge>;
+  if (pct > 0.1) return <span className="text-sm font-semibold text-negative">{texto} · forte</span>;
+  return <span className="text-sm">{texto}</span>;
 }
 
 export default function StressPage() {
@@ -49,6 +44,7 @@ export default function StressPage() {
   const [scenarios, setScenarios] = useState<StressScenario[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     async function fetchStress() {
@@ -64,11 +60,14 @@ export default function StressPage() {
       }
     }
     fetchStress();
-  }, [ticker]);
+  }, [ticker, tentativa]);
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Teste de Estresse</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Teste de Estresse"
+        descricao="As piores quedas do preço na história e em crises conhecidas (2008 e covid-19)."
+      />
 
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium">Ativo:</span>
@@ -86,22 +85,22 @@ export default function StressPage() {
       {loading && (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState mensagem={error} onRetry={() => setTentativa((t) => t + 1)} />}
 
       {!loading && !error && scenarios.length > 0 && (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cenário</TableHead>
                 <TableHead>Período</TableHead>
-                <TableHead>Drawdown (%)</TableHead>
-                <TableHead>Preço Final</TableHead>
+                <TableHead>Queda do pico ao fundo</TableHead>
+                <TableHead className="text-right">Preço no fundo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,12 +108,12 @@ export default function StressPage() {
                 <TableRow key={i}>
                   <TableCell className="font-medium">{s.cenario}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {s.periodo_inicio} – {s.periodo_fim}
+                    {s.periodo_inicio === "N/A" ? "Sem dados no período" : `${formatDate(s.periodo_inicio)} a ${formatDate(s.periodo_fim)}`}
                   </TableCell>
                   <TableCell>
                     <DrawdownBadge value={s.drawdown_pct} />
                   </TableCell>
-                  <TableCell>{s.preco_final.toFixed(4)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatPreco(ticker, s.preco_final)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -123,7 +122,7 @@ export default function StressPage() {
       )}
 
       {!loading && !error && scenarios.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum cenário disponível.</p>
+        <EmptyState mensagem="Nenhum cenário disponível para este ativo." />
       )}
     </div>
   );
