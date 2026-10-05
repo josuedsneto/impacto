@@ -728,6 +728,8 @@ T36 → T37
 
 ### T31: Migrar Regressão Dólar e trocar Plotly por Recharts
 
+**Status**: ✅ Done
+
 **What**: página + `DolarForm`, `DolarMetrics`, `DolarCharts` (Recharts): `PageHeader`, layout formulário + resultado, `format.ts`.
 **Where**: `frontend/app/app/regressao-dolar/page.tsx`
 **Depends on**: T30
@@ -737,7 +739,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e 3 componentes fora de `PENDENTES`; `DolarCharts.tsx` sem import de plotly; gate quick passa
+- [x] Página e 3 componentes fora de `PENDENTES`; `DolarCharts.tsx` sem import de plotly; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

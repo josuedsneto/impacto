@@ -14,13 +14,10 @@ const PENDENTES = new Set<string>([
   "app/app/atr/page.tsx",
   "app/app/params/page.tsx",
   "app/app/regressao-acucar/page.tsx",
-  "app/app/regressao-dolar/page.tsx",
   "app/page.tsx",
   "components/atr/AtrHistorico.tsx",
   "components/atr/AtrMetrics.tsx",
   "components/regression/AcucarMetrics.tsx",
-  "components/regression/DolarCharts.tsx",
-  "components/regression/DolarMetrics.tsx",
 ]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface DolarResult {
   taxa_prevista: number;
@@ -36,7 +37,6 @@ export default function DolarForm({ defaults, onResult }: DolarFormProps) {
   const [m2Fred, setM2Fred] = useState<string>("");
   const [indpro, setIndpro] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!defaults) return;
@@ -51,7 +51,6 @@ export default function DolarForm({ defaults, onResult }: DolarFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const data = await apiFetch<DolarResult>("/api/regression/dolar/run", {
@@ -67,8 +66,9 @@ export default function DolarForm({ defaults, onResult }: DolarFormProps) {
         }),
       });
       onResult(data);
+      toast.success("Previsão calculada e salva no histórico.");
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -156,9 +156,7 @@ export default function DolarForm({ defaults, onResult }: DolarFormProps) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? "Calculando..." : "Calcular Previsão"}
       </Button>
     </form>

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate, formatFX, formatNumber } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DolarForm, { DolarDefaults, DolarResult } from "@/components/regression/DolarForm";
 import { DolarMetrics } from "@/components/regression/DolarMetrics";
@@ -40,28 +43,28 @@ export default function RegressaoDolarPage() {
     loadDefaults();
   }, []);
 
-  async function handleTabChange(value: string) {
-    setActiveTab(value);
-    if (value === "historico" && !historyLoaded) {
-      setHistoryLoading(true);
-      setHistoryError(null);
-      try {
-        const data = await apiFetch<{ runs: HistoryItem[] }>("/api/regression/runs?tipo=dolar");
-        setHistory(data.runs);
-        setHistoryLoaded(true);
-      } catch (e) {
-        setHistoryError((e as Error).message);
-      } finally {
-        setHistoryLoading(false);
-      }
+  async function carregarHistorico() {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const data = await apiFetch<{ runs: HistoryItem[] }>("/api/regression/runs?tipo=dolar");
+      setHistory(data.runs);
+      setHistoryLoaded(true);
+    } catch (e) {
+      setHistoryError((e as Error).message);
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
-  return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Regressão Dólar (USD/BRL)</h1>
+  function handleTabChange(value: string) {
+    setActiveTab(value);
+    if (value === "historico" && !historyLoaded) carregarHistorico();
+  }
 
-      {defaultsError && <p className="text-sm text-red-600">{defaultsError}</p>}
+  return (
+    <div>
+      <PageHeader titulo="Regressão do dólar" descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)." />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
@@ -69,50 +72,60 @@ export default function RegressaoDolarPage() {
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="simular" className="space-y-6 mt-6">
-          {defaultsLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando dados padrão...</p>
-          ) : (
-            <DolarForm defaults={defaults} onResult={setActiveResult} />
-          )}
-
-          {activeResult && (
-            <div className="space-y-6">
-              <DolarMetrics result={activeResult} />
-              <CorrelationHeatmap result={activeResult} />
-              <CoeficientesChart result={activeResult} />
+        <TabsContent value="simular" className="mt-6">
+          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-start">
+            <div className="space-y-3 rounded-xl border border-border bg-card p-6">
+              {defaultsError && (
+                <p role="status" className="text-sm text-negative">
+                  Não foi possível carregar os valores atuais ({defaultsError}). Preencha os campos manualmente.
+                </p>
+              )}
+              {defaultsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10" />
+                  ))}
+                </div>
+              ) : (
+                <DolarForm defaults={defaults} onResult={setActiveResult} />
+              )}
             </div>
-          )}
+
+            {activeResult ? (
+              <div className="min-w-0 space-y-6">
+                <DolarMetrics result={activeResult} />
+                <CorrelationHeatmap result={activeResult} />
+                <CoeficientesChart result={activeResult} />
+              </div>
+            ) : (
+              <EmptyState mensagem="Confira os valores e clique em Calcular previsão para ver o resultado." />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="historico" className="mt-6">
           {historyLoading && (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
           )}
-          {historyError && (
-            <p className="text-sm text-red-600">{historyError}</p>
-          )}
-          {!historyLoading && history.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma execução encontrada.</p>
+          {historyError && <ErrorState mensagem={historyError} onRetry={carregarHistorico} />}
+          {!historyLoading && !historyError && history.length === 0 && (
+            <EmptyState mensagem="Nenhuma previsão calculada ainda." />
           )}
           {!historyLoading && history.length > 0 && (
             <ul className="space-y-2">
               {history.map((item) => (
-                <li key={item.id}>
-                  <div className="rounded-lg border bg-card px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">
-                        USD/BRL Previsão: {item.resultado.taxa_prevista.toFixed(4)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(item.created_at).toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      R²: {item.resultado.r2.toFixed(4)} &middot; RMSE:{" "}
-                      {item.resultado.rmse.toFixed(4)}
-                    </div>
+                <li key={item.id} className="rounded-lg border border-border bg-card px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">Dólar previsto: {formatFX(item.resultado.taxa_prevista)}</span>
+                    <span className="text-sm text-muted-foreground">{formatDate(item.created_at)}</span>
                   </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      R²: {formatNumber(item.resultado.r2, 4)} · Erro médio: {formatFX(item.resultado.rmse)}
+                    </div>
                 </li>
               ))}
             </ul>
