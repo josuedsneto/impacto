@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -12,8 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface VarResult {
   ticker: string;
   last_price: number;
@@ -23,15 +21,6 @@ interface VarResult {
   var_parametrico_abs: number;
   var_parametrico_pct: number;
   n_observations: number;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -60,19 +49,10 @@ function VarPanel({ ticker }: { ticker: string }) {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
         const params = new URLSearchParams({ ticker, confidence: conf });
-        const res = await fetch(`${API}/api/var?${params}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar VaR.");
-          return;
-        }
-        setResult(data as VarResult);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        setResult(await apiFetch<VarResult>(`/api/var?${params}`));
+      } catch (e) {
+        setError((e as Error).message);
       } finally {
         setLoading(false);
       }

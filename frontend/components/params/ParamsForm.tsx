@@ -5,18 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-import { createBrowserClient } from "@supabase/ssr";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
+import { apiFetch, type ApiError } from "@/lib/api";
 
 export default function ParamsForm() {
   const [ticker, setTicker] = useState("SB=F");
@@ -37,28 +26,18 @@ export default function ParamsForm() {
     setSaved(false);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/params/${selectedTicker}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      if (res.status === 404) {
-        // No params saved yet for this ticker — leave fields empty
-        return;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.detail ?? "Erro ao carregar parâmetros.");
-        return;
-      }
+      const data = await apiFetch<{
+        volatilidade_custom: number | null;
+        taxa_livre_risco: number | null;
+        pct_bound_preferido: number | null;
+      }>(`/api/params/${selectedTicker}`);
 
       setVolatilidade(data.volatilidade_custom != null ? String(data.volatilidade_custom) : "");
       setTaxaLivreRisco(data.taxa_livre_risco != null ? String(data.taxa_livre_risco) : "");
       setPctBound(data.pct_bound_preferido != null ? String(data.pct_bound_preferido) : "");
-    } catch {
-      setError("Erro de conexão com o servidor.");
+    } catch (e) {
+      // 404 = ainda não há parâmetros salvos para este ativo; campos ficam vazios
+      if ((e as ApiError).status !== 404) setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -80,30 +59,18 @@ export default function ParamsForm() {
     setSaved(false);
 
     try {
-      const token = await getAccessToken();
       const body: Record<string, number> = {};
       if (volatilidade !== "") body.volatilidade_custom = parseFloat(volatilidade);
       if (taxaLivreRisco !== "") body.taxa_livre_risco = parseFloat(taxaLivreRisco);
       if (pctBound !== "") body.pct_bound_preferido = parseFloat(pctBound);
 
-      const res = await fetch(`${API}/api/params/${ticker}`, {
+      await apiFetch(`/api/params/${ticker}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify(body),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.detail ?? "Erro ao salvar parâmetros.");
-      } else {
-        setSaved(true);
-      }
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      setSaved(true);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setSaving(false);
     }

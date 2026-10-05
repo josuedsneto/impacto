@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
 
 export interface AcucarDefaults {
   sb_f: number | null;
@@ -37,17 +37,6 @@ interface AcucarFormProps {
   onResult: (r: AcucarResult) => void;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
   const [estoqueInicial, setEstoqueInicial] = useState<string>("");
   const [producao, setProducao] = useState<string>("");
@@ -77,13 +66,9 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
     setError(null);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/regression/acucar/run`, {
+      const data = await apiFetch<AcucarResult>("/api/regression/acucar/run", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        timeoutMs: 120_000,
         body: JSON.stringify({
           model: modelType,
           estoque_inicial: estoqueInicial !== "" ? parseFloat(estoqueInicial) : null,
@@ -95,21 +80,9 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
           cl_f: clF !== "" ? parseFloat(clF) : null,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const detail = data.detail;
-        setError(
-          Array.isArray(detail)
-            ? detail.map((e: { msg: string }) => e.msg).join(", ")
-            : (detail ?? "Erro ao executar regressão.")
-        );
-      } else {
-        onResult(data as AcucarResult);
-      }
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      onResult(data);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
 
 export interface SimulationResult {
   id: string;
@@ -28,17 +28,6 @@ interface SimulationFormProps {
   onResult: (result: SimulationResult) => void;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [ticker, setTicker] = useState("SB=F");
   const [precoInicial, setPrecoInicial] = useState<number>(0);
@@ -52,14 +41,10 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   useEffect(() => {
     async function loadParams() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${BACKEND_URL}/api/params/${encodeURIComponent(ticker)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
-        }
+        const data = await apiFetch<{ pct_bound_preferido?: number | null }>(
+          `/api/params/${encodeURIComponent(ticker)}`
+        );
+        if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
       } catch {
         // silently ignore — defaults remain
       }
@@ -73,13 +58,9 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
     setError(null);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/simulations`, {
+      const data = await apiFetch<SimulationResult>("/api/simulations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        timeoutMs: 120_000,
         body: JSON.stringify({
           ticker: ticker.trim().toUpperCase(),
           preco_inicial: precoInicial,
@@ -89,21 +70,9 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
           label: label.trim() || null,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const detail = data.detail;
-        setError(
-          Array.isArray(detail)
-            ? detail.map((e: { msg: string }) => e.msg).join(", ")
-            : (detail ?? "Erro ao executar simulação.")
-        );
-      } else {
-        onResult(data as SimulationResult);
-      }
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      onResult(data);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -19,23 +19,12 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface StressScenario {
   cenario: string;
   periodo_inicio: string;
   periodo_fim: string;
   drawdown_pct: number;
   preco_final: number;
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function DrawdownBadge({ value }: { value: number }) {
@@ -66,19 +55,10 @@ export default function StressPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
         const params = new URLSearchParams({ ticker });
-        const res = await fetch(`${API}/api/stress?${params}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar cenários.");
-          return;
-        }
-        setScenarios(data as StressScenario[]);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        setScenarios(await apiFetch<StressScenario[]>(`/api/stress?${params}`));
+      } catch (e) {
+        setError((e as Error).message);
       } finally {
         setLoading(false);
       }
