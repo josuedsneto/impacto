@@ -30,7 +30,7 @@ def compute_payoff(legs: list[dict], price_range: list[float] | None = None) -> 
           payoff: list of combined P&L values (same length as prices)
     """
     if not legs:
-        raise ValueError("legs must be a non-empty list")
+        raise ValueError("Adicione ao menos uma perna à estratégia.")
 
     strikes = [leg["strike"] for leg in legs]
 
@@ -64,7 +64,7 @@ def compute_payoff(legs: list[dict], price_range: list[float] | None = None) -> 
             else:  # short
                 pnl = premium - intrinsic
         else:
-            raise ValueError(f"Unknown option type: {leg_type!r}. Must be 'call' or 'put'.")
+            raise ValueError(f"Tipo de opção inválido: {leg_type!r}. Use 'call' ou 'put'.")
 
         total_payoff += pnl * quantity
 
@@ -92,13 +92,13 @@ def bs_call_price(S: float, K: float, T: float, r: float, sigma: float) -> float
         ValueError: If any parameter is non-positive (S, K, T, sigma).
     """
     if S <= 0:
-        raise ValueError(f"S must be positive, got {S}")
+        raise ValueError(f"O preço do ativo precisa ser maior que zero (recebido: {S}).")
     if K <= 0:
-        raise ValueError(f"K must be positive, got {K}")
+        raise ValueError(f"O strike precisa ser maior que zero (recebido: {K}).")
     if T <= 0:
-        raise ValueError(f"T must be positive, got {T}")
+        raise ValueError(f"O prazo até o vencimento precisa ser maior que zero (recebido: {T}).")
     if sigma <= 0:
-        raise ValueError(f"sigma must be positive, got {sigma}")
+        raise ValueError(f"A volatilidade precisa ser maior que zero (recebido: {sigma}).")
 
     d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
@@ -133,13 +133,13 @@ def mc_call_price(
         float: Discounted expected payoff (European call price)
     """
     if S <= 0:
-        raise ValueError(f"S must be positive, got {S}")
+        raise ValueError(f"O preço do ativo precisa ser maior que zero (recebido: {S}).")
     if K <= 0:
-        raise ValueError(f"K must be positive, got {K}")
+        raise ValueError(f"O strike precisa ser maior que zero (recebido: {K}).")
     if T <= 0:
-        raise ValueError(f"T must be positive, got {T}")
+        raise ValueError(f"O prazo até o vencimento precisa ser maior que zero (recebido: {T}).")
     if sigma <= 0:
-        raise ValueError(f"sigma must be positive, got {sigma}")
+        raise ValueError(f"A volatilidade precisa ser maior que zero (recebido: {sigma}).")
 
     # European payoff depends only on S_T, and GBM has an exact terminal
     # distribution — no need to simulate (steps × sims) intermediate prices.

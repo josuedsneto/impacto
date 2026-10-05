@@ -40,7 +40,7 @@ ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
 def validate_ticker(ticker: str) -> str:
     t = ticker.strip().upper()
     if not ALLOWED_TICKER_RE.match(t):
-        raise HTTPException(status_code=400, detail="Invalid ticker format")
+        raise HTTPException(status_code=400, detail="Código de ativo inválido. Use letras, números, '=' ou '.' (ex.: SB=F).")
     return t
 
 
@@ -286,7 +286,7 @@ def regression_runs_list(
 ):
     """Returns the authenticated user's regression runs filtered by tipo."""
     if tipo not in ("dolar", "acucar"):
-        raise HTTPException(status_code=400, detail="tipo must be 'dolar' or 'acucar'")
+        raise HTTPException(status_code=400, detail="Tipo de regressão inválido: use 'dolar' ou 'acucar'.")
     supa = supa_client()
     res = (
         supa.table("regression_runs")
@@ -324,7 +324,7 @@ def market_prices(
     """
     ticker = validate_ticker(ticker)
     if end < start:
-        raise HTTPException(status_code=400, detail="end must be >= start")
+        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
     rows = get_prices(ticker, start, end)
     return {"ticker": ticker, "start": start.isoformat(), "end": end.isoformat(), "rows": rows}
 
@@ -358,7 +358,7 @@ def market_analysis(
 
     ticker = validate_ticker(ticker)
     if end < start:
-        raise HTTPException(status_code=400, detail="end must be >= start")
+        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
 
     selected = [i.strip().lower() for i in indicators.split(",") if i.strip()]
     sma_list = [int(p.strip()) for p in sma_periods.split(",") if p.strip().isdigit()]
@@ -438,13 +438,13 @@ def suggest_ticker(
         probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
     except Exception as exc:
         logger.error("yfinance error for '%s': %s", ticker, exc)
-        raise HTTPException(status_code=400, detail="Failed to fetch market data")
+        raise HTTPException(status_code=400, detail="Não foi possível consultar o mercado agora. Tente novamente em alguns minutos.")
 
     if probe.empty:
         raise HTTPException(
             status_code=400,
-            detail=f"Ticker '{ticker}' not found on yfinance or has no recent data. "
-                   "Check the symbol and try again.",
+            detail=f"Ativo '{ticker}' não encontrado ou sem dados recentes. "
+                   "Confira o código e tente de novo.",
         )
 
     # Write to tickers_catalog only after validation passes
@@ -510,7 +510,7 @@ def admin_review_suggestion(
     ADM-04: On reject, stores review_note and sets status='rejected'.
     """
     if body.action not in ("approve", "reject"):
-        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+        raise HTTPException(status_code=400, detail="Ação inválida: use 'approve' ou 'reject'.")
 
     client = supa_client()
 
@@ -522,7 +522,7 @@ def admin_review_suggestion(
         .execute()
     )
     if not existing.data:
-        raise HTTPException(status_code=404, detail="Suggestion not found")
+        raise HTTPException(status_code=404, detail="Sugestão não encontrada.")
 
     ticker = existing.data[0]["ticker"]
 
@@ -670,7 +670,7 @@ def get_simulation(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Simulation not found.")
+        raise HTTPException(status_code=404, detail="Simulação não encontrada.")
     return result.data[0]
 
 
@@ -772,7 +772,7 @@ def get_params(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Params not found for ticker")
+        raise HTTPException(status_code=404, detail="Nenhum parâmetro salvo para este ativo.")
     return result.data[0]
 
 
@@ -794,7 +794,7 @@ def upsert_params(
         update_dict["pct_bound_preferido"] = body.pct_bound_preferido
 
     if not update_dict:
-        raise HTTPException(status_code=400, detail="No params provided")
+        raise HTTPException(status_code=400, detail="Preencha ao menos um parâmetro.")
 
     update_dict["updated_at"] = date.today().isoformat()
 
@@ -1030,13 +1030,13 @@ def get_var(
 
     ticker = validate_ticker(ticker)
     if not (0 < confidence < 1):
-        raise HTTPException(status_code=400, detail="confidence must be between 0 and 1")
+        raise HTTPException(status_code=400, detail="O nível de confiança precisa estar entre 0 e 1.")
     if horizon < 1:
-        raise HTTPException(status_code=400, detail="horizon must be >= 1")
+        raise HTTPException(status_code=400, detail="O horizonte precisa ser de pelo menos 1 dia.")
 
     data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 10:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     closes = data["Close"].dropna().values.flatten()
     returns = np.diff(closes) / closes[:-1]
@@ -1096,7 +1096,7 @@ def get_breakeven(
     usd_rows = get_prices("USDBRL=X", start, today)
 
     if not sugar_rows or not usd_rows:
-        raise HTTPException(status_code=503, detail="Could not fetch live prices — backfill needed")
+        raise HTTPException(status_code=503, detail="Não foi possível obter os preços atuais de açúcar e dólar. Tente novamente em alguns minutos.")
 
     preco_acucar_cents = float(sugar_rows[-1]["close"])
     preco_dolar = float(usd_rows[-1]["close"])
@@ -1281,11 +1281,11 @@ def get_arima(
 
     ticker = validate_ticker(ticker)
     if steps < 1 or steps > 365:
-        raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
+        raise HTTPException(status_code=400, detail="O horizonte da previsão precisa estar entre 1 e 365 dias.")
 
     data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     closes = data["Close"].squeeze().dropna()
 
@@ -1297,7 +1297,7 @@ def get_arima(
         conf_int = forecast_result.conf_int(alpha=0.05)
     except Exception as exc:
         logger.error("ARIMA fitting failed for '%s': %s", ticker, exc)
-        raise HTTPException(status_code=400, detail="ARIMA model fitting failed. Try a different ticker or period.")
+        raise HTTPException(status_code=400, detail="O modelo ARIMA não convergiu para este ativo. Tente outro ativo ou horizonte.")
 
     last_date = closes.index[-1]
     forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=steps, freq="B")
@@ -1349,7 +1349,7 @@ def get_stress(
     ticker = validate_ticker(ticker)
     data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])
@@ -1454,7 +1454,7 @@ def get_news(
         logger.error("Failed to fetch news: %s", exc)
         if _news_cache["items"]:
             return {"items": _news_cache["items"], "cached": True, "warning": "News fetch failed, showing cached data"}
-        raise HTTPException(status_code=503, detail="Failed to fetch news")
+        raise HTTPException(status_code=503, detail="Não foi possível carregar as notícias agora. Tente novamente em alguns minutos.")
 
     return {"items": items, "cached": False}
 
@@ -1479,7 +1479,7 @@ def get_volatility(
     ticker = validate_ticker(ticker)
     data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
     if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])

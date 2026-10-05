@@ -32,8 +32,8 @@ cd frontend && npm ci && npm run dev
 ## Testes e checagens
 
 ```bash
-cd backend && python test_calcs.py   # checagens dos cálculos de simulação e opções
-cd frontend && npm run build && npm run lint
+cd backend && python test_calcs.py && python test_mensagens.py   # cálculos e mensagens em português
+cd frontend && npm test && npm run build && npm run lint
 ```
 
 ## Deploy
