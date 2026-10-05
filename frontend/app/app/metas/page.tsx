@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/feedback";
 import { formatBRL, formatDate, formatNumber } from "@/lib/format";
 import { toast } from "sonner";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraMetas } from "@/lib/leitura";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,7 @@ export default function MetasPage() {
 
       {result && (
         <>
+          <Leitura>{leituraMetas({ mtm: result.mtm_series.at(-1)?.mtm, meta: result.meta })}</Leitura>
           {/* Heatmap */}
           <Card>
             <CardHeader>

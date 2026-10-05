@@ -452,6 +452,8 @@ T24 → T25
 
 ### T18: Metas
 
+**Status**: ✅ Done
+
 **What**: Frase `leituraMetas`.
 **Where**: `frontend/app/app/metas/page.tsx`
 **Depends on**: None
@@ -461,8 +463,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
