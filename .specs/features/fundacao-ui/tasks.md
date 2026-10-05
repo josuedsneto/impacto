@@ -474,6 +474,8 @@ T36 → T37
 
 ### T19: Migrar Jump Diffusion
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, layout formulário + resultado, `format.ts`, `var(--chart-N)`.
 **Where**: `frontend/app/app/jump-diffusion/page.tsx`
 **Depends on**: T18
@@ -483,7 +485,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

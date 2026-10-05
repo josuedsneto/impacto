@@ -16,7 +16,6 @@ const PENDENTES = new Set<string>([
   "app/app/breakeven/page.tsx",
   "app/app/cenarios/page.tsx",
   "app/app/focus/page.tsx",
-  "app/app/jump-diffusion/page.tsx",
   "app/app/metas/page.tsx",
   "app/app/noticias/page.tsx",
   "app/app/options/page.tsx",

@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,11 +38,9 @@ export default function JumpDiffusionPage() {
   const [steps, setSteps] = useState("252");
   const [result, setResult] = useState<JDResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleSimulate() {
     setLoading(true);
-    setError(null);
     try {
       const body = {
         ticker,
@@ -53,16 +55,19 @@ export default function JumpDiffusionPage() {
         body: JSON.stringify(body),
       });
       setResult(data);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Jump Diffusion</h1>
-      <p className="text-sm text-muted-foreground">Modelo de Merton: difusão GBM + saltos aleatórios (Poisson)</p>
+    <div>
+      <PageHeader
+        titulo="Jump Diffusion"
+        descricao="Simula um caminho de preço com oscilação diária e saltos bruscos ocasionais (modelo de Merton)."
+      />
 
-      <Card className="max-w-lg">
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
+      <Card>
         <CardContent className="pt-6 space-y-4">
           {/* Ticker */}
           <div className="space-y-1">
@@ -126,34 +131,40 @@ export default function JumpDiffusionPage() {
           <Button onClick={handleSimulate} disabled={loading} className="w-full">
             {loading ? "Simulando..." : "Simular"}
           </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </CardContent>
       </Card>
 
+      {!result && <EmptyState mensagem="Ajuste os parâmetros e clique em Simular para ver um caminho de preço." />}
+
       {result && (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Simulação · {result.ticker} · Preço inicial: {result.s0.toFixed(2)} · Média: {result.mean.toFixed(2)}
+              {result.ticker} · Preço inicial: {formatPreco(result.ticker, result.s0)} · Média do caminho: {formatPreco(result.ticker, result.mean)}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-6 text-sm text-muted-foreground mb-4">
-              <span>σ usado: {(result.sigma * 100).toFixed(3)}%</span>
-              <span>μ diário: {(result.mu * 100).toFixed(4)}%</span>
+            <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              <span>Volatilidade diária usada: {formatPercent(result.sigma, 3)}</span>
+              <span>Tendência diária: {formatPercent(result.mu, 4)}</span>
             </div>
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="step" tick={{ fontSize: 10 }} tickFormatter={(v) => `D${v}`} />
-                <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
-                <Tooltip formatter={(v: number) => [v.toFixed(4), "Preço"]} labelFormatter={(l) => `Step ${l}`} />
-                <Line type="monotone" dataKey="price" stroke="#8b5cf6" dot={false} strokeWidth={1.5} />
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="step" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} tickFormatter={(v) => `D${v}`} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={(v: number) => formatNumber(v, 2)} />
+                <Tooltip
+                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: number) => [formatPreco(result.ticker, v), "Preço"]}
+                  labelFormatter={(l) => `Dia ${l}`}
+                />
+                <Line type="monotone" dataKey="price" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
