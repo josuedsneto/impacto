@@ -496,6 +496,8 @@ T24 → T25
 
 ### T20: Modelo do dólar
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design no formulário e frase `leituraRegDolar`.
 **Where**: `frontend/components/regression/DolarForm.tsx`
 **Depends on**: T19
@@ -505,8 +507,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `DolarForm.tsx` e a página fora de `PENDENTES`
-- [ ] Gate passa
+- [x] `DolarForm.tsx` e a página fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

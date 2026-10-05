@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraRegDolar } from "@/lib/leitura";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatFX, formatNumber } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,6 +95,7 @@ export default function RegressaoDolarPage() {
 
             {activeResult ? (
               <div className="min-w-0 space-y-6">
+                <Leitura>{leituraRegDolar({ taxa: activeResult.taxa_prevista, rmse: activeResult.rmse })}</Leitura>
                 <DolarMetrics result={activeResult} />
                 <CorrelationHeatmap result={activeResult} />
                 <CoeficientesChart result={activeResult} />

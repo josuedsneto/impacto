@@ -13,17 +13,14 @@ const PENDENTES = new Set<string>([
   "app/app/atr/page.tsx",
   "app/app/market/page.tsx",
   "app/app/regressao-acucar/page.tsx",
-  "app/app/regressao-dolar/page.tsx",
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
   "components/regression/AcucarForm.tsx",
-  "components/regression/DolarForm.tsx",
 ]);
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
 const FERRAMENTAS = [
-  "app/app/regressao-dolar/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/atr/page.tsx",
 ];
