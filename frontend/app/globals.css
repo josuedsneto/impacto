@@ -28,6 +28,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-grid: var(--chart-grid);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-brand: var(--brand);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -72,20 +77,27 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Paleta de gráficos validada (dataviz/validate_palette.js). 1 = dólar, 2 = açúcar. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-grid: #e1e0d9;
+  --positive: #006300;
+  --negative: #d03b3b;
+  --brand: #2563eb;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Menu lateral escuro nos dois temas (identidade atual). */
+  --sidebar: #111827;
+  --sidebar-foreground: #9ca3af;
+  --sidebar-muted: #8b95a5;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #f9fafb;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #3b82f6;
 }
 
 .dark {
@@ -107,19 +119,24 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-grid: #2c2c2a;
+  --positive: #0ca30c;
+  --negative: #e66767;
+  --brand: #3987e5;
+  --sidebar: #0b0f19;
+  --sidebar-foreground: #9ca3af;
+  --sidebar-muted: #8b95a5;
+  --sidebar-primary: #3987e5;
+  --sidebar-primary-foreground: #f9fafb;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #3987e5;
 }
 
 @layer base {

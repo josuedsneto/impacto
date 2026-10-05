@@ -129,6 +129,8 @@ T36 → T37
 
 ### T3: Definir tokens de cor e verificar contraste
 
+**Status**: ✅ Done
+
 **What**: tokens `--chart-1..5`, `--positive`, `--negative`, `--brand`, `--sidebar*`, `--chart-grid` em `:root` e `.dark`, mapeados no `@theme inline`; teste calcula contraste de `--foreground`/`--muted-foreground` contra `--background`/`--card` nos dois temas.
 **Where**: `frontend/app/globals.css`
 **Depends on**: T2
@@ -138,8 +140,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz` (paleta já validada no design)
 
 **Done when**:
-- [ ] `frontend/lib/contraste.test.ts` lê `globals.css` e confirma texto ≥ 4,5:1 nos dois temas
-- [ ] Gate quick passa
+- [x] `frontend/lib/contraste.test.ts` lê `globals.css` e confirma texto ≥ 4,5:1 nos dois temas
+- [x] Gate quick passa
 
 **Tests**: unit
 **Gate**: quick
