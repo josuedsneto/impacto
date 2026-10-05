@@ -2,15 +2,12 @@
 // - LING-02: nada de <input type="number"> (recusa vírgula); use CampoNumero
 // - LING-01 AC2: rótulos sem nome de variável de código ou símbolo como texto principal
 // - LING-03/04: toda ferramenta mostra a frase de leitura (<Leitura>)
-// Arquivos ainda não migrados ficam em PENDENTES; cada task remove os seus.
+// Vale para todo arquivo de app/ e components/ (exceto components/ui/).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const RAIZ = join(__dirname, "..");
-
-const PENDENTES = new Set<string>([
-]);
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
 const FERRAMENTAS: string[] = [
@@ -62,13 +59,8 @@ function violacoes(arquivo: string): string[] {
 }
 
 describe("regras de linguagem", () => {
-  it.each(arquivos.filter((a) => !PENDENTES.has(a)))("%s segue as regras", (arquivo) => {
+  it.each(arquivos)("%s segue as regras", (arquivo) => {
     expect(violacoes(arquivo)).toEqual([]);
-  });
-
-  it("PENDENTES só lista arquivos que existem e ainda violam alguma regra", () => {
-    const parados = [...PENDENTES].filter((a) => !arquivos.includes(a) || violacoes(a).length === 0);
-    expect(parados).toEqual([]);
   });
 
   it("toda ferramenta listada existe", () => {
