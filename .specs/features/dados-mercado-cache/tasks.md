@@ -53,6 +53,8 @@ T1 → T2 → T3 → T4 → T5 → T6
 
 ### T1: Fechamento correto e falha do Yahoo no cache
 
+**Status**: ✅ Done
+
 **What**: rebusca dos últimos 5 dias com upsert que sobrescreve, limite de 30 min por ticker, e fallback com log quando o Yahoo falha.
 **Where**: `backend/market_cache.py`
 **Depends on**: None
@@ -62,7 +64,7 @@ T1 → T2 → T3 → T4 → T5 → T6
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Testes: valor gravado de ontem é sobrescrito; segunda chamada em menos de 30 min não busca; Yahoo com exceção → log de aviso e linhas do cache
+- [x] Testes: valor gravado de ontem é sobrescrito; segunda chamada em menos de 30 min não busca; Yahoo com exceção → log de aviso e linhas do cache
 
 **Tests**: unit
 **Gate**: quick

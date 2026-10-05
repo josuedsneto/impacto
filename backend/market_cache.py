@@ -9,10 +9,16 @@ Algorithm for get_prices(ticker, start, end):
   4. Fetch gap(s) from yfinance using yf.download(ticker, start=gap_start, end=gap_end)
   5. Upsert rows into market_prices (ON CONFLICT (ticker, date) DO NOTHING)
   6. Update market_coverage: set first_date=min, last_date=max
-  7. Return all rows from market_prices for requested range
+  7. Rebusca os últimos JANELA_REBUSCA dias e sobrescreve (o "fechamento" gravado durante o
+     pregão é provisório), no máximo a cada INTERVALO_REBUSCA segundos por ticker por processo
+  8. Return all rows from market_prices for requested range (paginado: o PostgREST limita 1000 linhas)
+
+Se o Yahoo falhar, registra um aviso e devolve o que já está no cache.
 """
 
+import logging
 import os
+import time
 from functools import lru_cache
 from datetime import date, timedelta
 from typing import Optional
@@ -27,6 +33,15 @@ _yf_session = requests.Session()
 _yf_session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 })
+
+
+logger = logging.getLogger(__name__)
+
+JANELA_REBUSCA = 5          # dias corridos rebuscados a cada leitura recente
+INTERVALO_REBUSCA = 30 * 60  # segundos entre rebuscas do mesmo ticker
+PAGINA = 1000               # limite de linhas por consulta do PostgREST
+# ponytail: memória por processo (4 workers = até 4 rebuscas por janela); Redis se o Yahoo reclamar
+_ultima_rebusca: dict[str, float] = {}
 
 
 @lru_cache(maxsize=1)
@@ -66,8 +81,17 @@ def _fetch_from_yfinance(ticker: str, start: date, end: date) -> pd.DataFrame:
     return df[["ticker", "date", "open", "high", "low", "close", "volume"]]
 
 
-def _upsert_prices(client: Client, df: pd.DataFrame) -> None:
-    """Upsert rows into market_prices. ON CONFLICT (ticker, date) DO NOTHING."""
+def _buscar(ticker: str, start: date, end: date) -> Optional[pd.DataFrame]:
+    """Busca no Yahoo; None quando a busca falha (exceção), DataFrame vazio quando não há pregão."""
+    try:
+        return _fetch_from_yfinance(ticker, start, end)
+    except Exception as exc:
+        logger.warning("Yahoo falhou para %s de %s a %s: %s", ticker, start, end, exc)
+        return None
+
+
+def _upsert_prices(client: Client, df: pd.DataFrame, sobrescrever: bool = False) -> None:
+    """Grava em market_prices. Com sobrescrever=False, linhas existentes ficam como estão."""
     if df.empty:
         return
     rows = []
@@ -87,7 +111,7 @@ def _upsert_prices(client: Client, df: pd.DataFrame) -> None:
         client.table("market_prices").upsert(
             rows[i:i + batch_size],
             on_conflict="ticker,date",
-            ignore_duplicates=True,
+            ignore_duplicates=not sobrescrever,
         ).execute()
 
 
@@ -116,8 +140,8 @@ def _update_coverage(client: Client, ticker: str, first: date, last: date) -> No
 def get_prices(ticker: str, start: date, end: date) -> list[dict]:
     """
     Return OHLCV rows for ticker in [start, end].
-    Fetches from yfinance only for uncached date gaps.
-    Always returns from market_prices (single source of truth).
+    Fetches from yfinance only for uncached date gaps, refreshes the last JANELA_REBUSCA days,
+    and always returns from market_prices (single source of truth).
     """
     client = supa_client()
 
@@ -144,42 +168,52 @@ def get_prices(ticker: str, start: date, end: date) -> list[dict]:
         if end > cached_last:
             fetch_ranges.append((cached_last + timedelta(days=1), end))
 
+    # Dias recentes são rebuscados e sobrescritos; o trecho de lacuna que cai neles fica para a rebusca.
+    inicio_recente = date.today() - timedelta(days=JANELA_REBUSCA)
+    rebuscar = end >= inicio_recente and time.time() - _ultima_rebusca.get(ticker, 0) >= INTERVALO_REBUSCA
+    if rebuscar:
+        fetch_ranges = [(a, min(b, inicio_recente - timedelta(days=1))) for a, b in fetch_ranges if a < inicio_recente]
+
     # Fetch and persist gaps
     for gap_start, gap_end in fetch_ranges:
-        df = _fetch_from_yfinance(ticker, gap_start, gap_end)
+        df = _buscar(ticker, gap_start, gap_end)
+        if df is None:
+            continue  # Yahoo fora: segue com o que há no cache, sem mexer na cobertura
         if not df.empty:
             _upsert_prices(client, df)
             # Use actual dates from yfinance (may differ from requested if history is shorter)
-            actual_first = df["date"].min()
-            actual_last = df["date"].max()
-            _update_coverage(client, ticker, actual_first, actual_last)
+            _update_coverage(client, ticker, df["date"].min(), df["date"].max())
+        elif coverage.data:
+            # MKT-04: yfinance returned nothing for this gap (history starts later or no trading).
+            # Record the checked range so the same empty gap is not queried again.
+            _update_coverage(client, ticker, gap_start, gap_end)
         else:
-            # MKT-04: yfinance returned nothing for this gap (history starts later)
-            # If we asked for data before the asset existed, skip — do not blow up.
-            # For the trailing gap, update coverage to mark "checked up to end"
-            # so we don't re-query yfinance for this same empty range repeatedly.
-            # We record the gap_end as coverage boundary only if we already had some coverage.
-            if coverage.data:
-                existing_first = date.fromisoformat(coverage.data[0]["first_date"])
-                existing_last = date.fromisoformat(coverage.data[0]["last_date"])
-                new_first = min(existing_first, gap_start)
-                new_last = max(existing_last, gap_end)
-                client.table("market_coverage").upsert(
-                    {"ticker": ticker, "first_date": new_first.isoformat(), "last_date": new_last.isoformat()},
-                    on_conflict="ticker",
-                ).execute()
+            logger.warning("Yahoo sem dados para %s de %s a %s", ticker, gap_start, gap_end)
 
-    # Read from DB
-    rows = (
-        client.table("market_prices")
-        .select("date,open,high,low,close,volume")
-        .eq("ticker", ticker)
-        .gte("date", start.isoformat())
-        .lte("date", end.isoformat())
-        .order("date")
-        .execute()
-    )
-    return rows.data
+    if rebuscar:
+        df = _buscar(ticker, max(start, inicio_recente), end)
+        if df is not None:
+            _ultima_rebusca[ticker] = time.time()
+            if not df.empty:
+                _upsert_prices(client, df, sobrescrever=True)
+                _update_coverage(client, ticker, df["date"].min(), df["date"].max())
+
+    # Read from DB, page by page (PostgREST returns at most PAGINA rows per request)
+    linhas: list[dict] = []
+    while True:
+        pagina = (
+            client.table("market_prices")
+            .select("date,open,high,low,close,volume")
+            .eq("ticker", ticker)
+            .gte("date", start.isoformat())
+            .lte("date", end.isoformat())
+            .order("date")
+            .range(len(linhas), len(linhas) + PAGINA - 1)
+            .execute()
+        ).data
+        linhas.extend(pagina)
+        if len(pagina) < PAGINA:
+            return linhas
 
 
 def backfill_ticker(ticker: str, default_start: date = date(2013, 1, 1)) -> dict:
