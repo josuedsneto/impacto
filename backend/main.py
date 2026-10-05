@@ -1012,6 +1012,9 @@ def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dic
 
 # ── Fechamentos do cache ───────────────────────────────────────────────────────
 
+INICIO_ESTRESSE = date(2007, 1, 1)
+
+
 def fechamentos(ticker: str, inicio: date, fim: date | None = None):
     """
     Série de fechamentos (pandas, índice de datas) e a data do último dado, lidas pelo cache.
@@ -1309,11 +1312,9 @@ def get_arima(
     if steps < 1 or steps > 365:
         raise HTTPException(status_code=400, detail="O horizonte da previsão precisa estar entre 1 e 365 dias.")
 
-    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
+    closes, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=2 * 365))
+    if len(closes) < 30:
         raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
-
-    closes = data["Close"].squeeze().dropna()
 
     try:
         model = ARIMA(closes, order=(1, 1, 1))
@@ -1349,6 +1350,7 @@ def get_arima(
         "ticker": ticker,
         "steps": steps,
         "series": series,
+        "ultimo_dado": ultimo_dado,
     }
 
 
@@ -1373,12 +1375,10 @@ def get_stress(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
+    # Desde 2007: cobre a crise de 2008 (o cache por padrão começa em 2013).
+    closes, ultimo_dado = fechamentos(ticker, INICIO_ESTRESSE)
+    if len(closes) < 30:
         raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
-
-    closes = data["Close"].squeeze().dropna()
-    last_price = float(closes.iloc[-1])
 
     def compute_drawdown_window(series: "pd.Series") -> dict:
         """Return the worst drawdown window (start, end, drawdown_pct, price_after)."""
@@ -1399,25 +1399,11 @@ def get_stress(
             "last_price_after": round(float(series.iloc[worst_idx]), 4),
         }
 
-    # Scenario 1: worst 5% drawdown window from full history
+    # Scenario 1: worst drawdown in the period read (desde 2007)
     worst_dd = compute_drawdown_window(closes)
-
-    # Scenario 2: 2008 financial crisis period
-    crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"] if "2008-08-01" in closes.index or closes.index[0].year <= 2008 else pd.Series(dtype=float)
-    try:
-        crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"]
-    except Exception:
-        crisis_2008_series = pd.Series(dtype=float)
-    crisis_2008 = compute_drawdown_window(crisis_2008_series)
-    crisis_2008["name"] = "Crise 2008"
-
-    # Scenario 3: COVID crash
-    try:
-        covid_series = closes.loc["2020-02-01":"2020-04-30"]
-    except Exception:
-        covid_series = pd.Series(dtype=float)
-    covid = compute_drawdown_window(covid_series)
-    covid["name"] = "COVID 2020"
+    # Scenarios 2 and 3: known crises (index is sorted, so label slicing is safe)
+    crisis_2008 = compute_drawdown_window(closes.loc["2008-08-01":"2009-03-31"])
+    covid = compute_drawdown_window(closes.loc["2020-02-01":"2020-04-30"])
 
     def to_scenario(d: dict, name: str) -> dict:
         return {
@@ -1428,11 +1414,14 @@ def get_stress(
             "preco_final": d.get("last_price_after") or 0.0,
         }
 
-    return [
-        to_scenario(worst_dd, "Pior drawdown histórico"),
-        to_scenario(crisis_2008, "Crise 2008"),
-        to_scenario(covid, "COVID 2020"),
-    ]
+    return {
+        "cenarios": [
+            to_scenario(worst_dd, "Pior queda desde 2007"),
+            to_scenario(crisis_2008, "Crise 2008"),
+            to_scenario(covid, "COVID 2020"),
+        ],
+        "ultimo_dado": ultimo_dado,
+    }
 
 
 # ── News ───────────────────────────────────────────────────────────────────────

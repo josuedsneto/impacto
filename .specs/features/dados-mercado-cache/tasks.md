@@ -95,6 +95,8 @@ T1 → T2 → T3 → T4 → T5 → T6
 
 ### T3: ARIMA e Teste de estresse pelo cache
 
+**Status**: ✅ Done
+
 **What**: `/api/arima/{ticker}` (2 anos) e `/api/stress` (desde 2007-01-01) por `get_prices`, com `ultimo_dado`; stress passa a `{ cenarios, ultimo_dado }`.
 **Where**: `backend/main.py`
 **Depends on**: T2
@@ -104,7 +106,7 @@ T1 → T2 → T3 → T4 → T5 → T6
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Teste: com série desde 2007, "Crise 2008" tem início e fim preenchidos
+- [x] Teste: com série desde 2007, "Crise 2008" tem início e fim preenchidos
 
 **Tests**: integration
 **Gate**: quick

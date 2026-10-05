@@ -53,3 +53,42 @@ def test_segunda_chamada_nao_vai_ao_yahoo(api, yahoo):
     api.get("/api/var", params={"ticker": "SB=F"})
     api.get("/api/volatility", params={"ticker": "SB=F"})
     assert len(yahoo.chamadas) == chamadas
+
+
+def _com_crise(d: date) -> float:
+    """Preço estável com queda de 40% entre set/2008 e dez/2008 e de 20% em mar/2020."""
+    if date(2008, 9, 1) <= d <= date(2008, 12, 31):
+        return 30 - 12 * (d - date(2008, 9, 1)).days / 121
+    if date(2020, 3, 1) <= d <= date(2020, 3, 31):
+        return 30 - 6 * (d - date(2020, 3, 1)).days / 30
+    return 30 + (d.toordinal() % 5) * 0.1
+
+
+def test_stress_le_desde_2007_e_traz_a_crise_de_2008(api, yahoo):
+    """CACHE-02: com o histórico desde 2007, 'Crise 2008' tem período preenchido."""
+    yahoo.preco = _com_crise
+    r = api.get("/api/stress", params={"ticker": "SB=F"})
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["ultimo_dado"] == ULTIMO_DIA_UTIL
+    crise = next(c for c in corpo["cenarios"] if c["cenario"] == "Crise 2008")
+    assert crise["periodo_inicio"].startswith("2008-")
+    assert crise["periodo_fim"].startswith("2008-12")
+    assert crise["drawdown_pct"] < -0.35
+    assert min(c[1] for c in yahoo.chamadas) <= date(2007, 1, 2)
+
+
+def test_stress_sem_dados_responde_503(api, yahoo):
+    yahoo.falhar = True
+    r = api.get("/api/stress", params={"ticker": "SB=F"})
+    assert r.status_code == 503
+    assert r.json()["detail"] == MSG_503
+
+
+def test_arima_responde_com_ultimo_dado(api, yahoo):
+    yahoo.preco = _variando
+    r = api.get("/api/arima/SB=F", params={"steps": 10})
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["ultimo_dado"] == ULTIMO_DIA_UTIL
+    assert sum(1 for p in corpo["series"] if "forecast" in p) == 10
