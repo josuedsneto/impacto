@@ -218,6 +218,8 @@ T36 → T37
 
 ### T7: Criar PageHeader
 
+**Status**: ✅ Done
+
 **What**: componente com `titulo`, `descricao`, `acoes?`, `atualizadoEm?`; único lugar com `<h1>`.
 **Where**: `frontend/components/layout/PageHeader.tsx`
 **Depends on**: None
@@ -227,8 +229,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Ações empilham abaixo do título em < 640px
-- [ ] Gate quick passa
+- [x] Ações empilham abaixo do título em < 640px
+- [x] Gate quick passa
 
 **Tests**: unit
 **Gate**: quick
