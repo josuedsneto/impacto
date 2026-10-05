@@ -16,10 +16,19 @@ import numpy as np
 import pandas as pd
 import requests
 import statsmodels.api as sm
-import yfinance as yf
 from sklearn.metrics import mean_squared_error
 
+from market_cache import get_prices
+
 logger = logging.getLogger(__name__)
+
+
+def _serie_cache(ticker: str, inicio: date, fim: date | None = None) -> pd.Series:
+    """Fechamentos diários do cache de preços (índice de datas); vazia se não houver dados."""
+    linhas = [r for r in get_prices(ticker, inicio, fim or date.today()) if r["close"] is not None]
+    if not linhas:
+        return pd.Series(dtype=float)
+    return pd.Series([float(r["close"]) for r in linhas], index=pd.to_datetime([r["date"] for r in linhas]))
 
 # BCB SGS series codes
 _BCB_SERIES = {
@@ -181,23 +190,13 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
         if not s.empty:
             fred_df[key] = s
 
-    # ── USD/BRL monthly closes from yfinance ─────────────────────────────────
+    # ── USD/BRL: último fechamento de cada mês, a partir dos diários do cache ──
     usdbrl_df = pd.DataFrame()
-    try:
-        raw_usdbrl = yf.download(
-            "USDBRL=X",
-            start=start_str,
-            end=today.strftime("%Y-%m-%d"),
-            interval="1mo",
-            progress=False,
-            auto_adjust=True,
-        )
-        if not raw_usdbrl.empty:
-            close = raw_usdbrl["Close"].dropna()
-            close.index = pd.DatetimeIndex(close.index).strftime("%Y-%m")
-            usdbrl_df["taxa_dolar"] = close
-    except Exception as exc:
-        logger.error("yfinance USDBRL=X fetch failed: %s", exc)
+    diario = _serie_cache("USDBRL=X", start, today)
+    if not diario.empty:
+        mensal = diario.resample("ME").last().dropna()
+        mensal.index = mensal.index.strftime("%Y-%m")
+        usdbrl_df["taxa_dolar"] = mensal
 
     # ── Merge on period (YYYY-MM) index ──────────────────────────────────────
     merged = usdbrl_df.copy()
@@ -212,6 +211,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
             f"Dados insuficientes: menos de 24 meses após merge (obtidos: {len(merged)})"
         )
 
+    merged.attrs["ultimo_dado"] = diario.index[-1].strftime("%Y-%m-%d") if not diario.empty else None
     return merged
 
 
@@ -260,6 +260,7 @@ def run_dolar_regression(inputs: dict) -> dict:
 
     return {
         "taxa_prevista": round(taxa_prevista, 4),
+        "ultimo_dado": df.attrs.get("ultimo_dado"),
         "r2": round(float(fitted.rsquared), 4),
         "rmse": round(rmse, 4),
         "coeficientes": named_coefs,
@@ -297,20 +298,10 @@ def get_acucar_defaults() -> dict:
     result: dict = {}
     tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
     for key, ticker in tickers.items():
-        try:
-            data = yf.download(ticker, period="5d", interval="1d", progress=False, auto_adjust=True)
-            if data.empty:
-                result[key] = None
-            else:
-                close = data["Close"].dropna()
-                if close.empty:
-                    result[key] = None
-                else:
-                    last = close.iloc[-1]
-                    result[key] = float(last.iloc[0]) if hasattr(last, "iloc") else float(last)
-        except Exception as exc:
-            logger.warning("yfinance fetch failed for %s (%s): %s", key, ticker, exc)
-            result[key] = None
+        serie = _serie_cache(ticker, date.today() - timedelta(days=10))
+        result[key] = float(serie.iloc[-1]) if not serie.empty else None
+        if key == "sb_f":
+            result["ultimo_dado"] = serie.index[-1].strftime("%Y-%m-%d") if not serie.empty else None
 
     result.update(_USDA_DEFAULTS)
     return result
@@ -329,28 +320,19 @@ def fetch_acucar_history() -> pd.DataFrame:
     tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
     price_data: dict[str, pd.Series] = {}
 
+    ultimo_dado = None
     for key, ticker in tickers.items():
-        try:
-            raw = yf.download(
-                ticker,
-                start="2014-01-01",
-                interval="1mo",  # "1y" removed in yfinance 1.2+; resample to annual below
-                progress=False,
-                auto_adjust=True,
-            )
-            if raw.empty:
-                logger.warning("Empty yfinance response for %s", ticker)
-                price_data[key] = pd.Series(dtype=float)
-                continue
-            close = raw["Close"].squeeze().dropna()
-            # Resample monthly → annual year-end, then extract year as index
-            close = close.resample("YE").last().dropna()
-            close.index = pd.DatetimeIndex(close.index).year
-            close = close.groupby(close.index).last()
-            price_data[key] = close
-        except Exception as exc:
-            logger.error("yfinance annual fetch failed for %s: %s", ticker, exc)
+        diario = _serie_cache(ticker, date(2014, 1, 1))
+        if diario.empty:
+            logger.warning("Sem preços no cache para %s", ticker)
             price_data[key] = pd.Series(dtype=float)
+            continue
+        if key == "sb_f":
+            ultimo_dado = diario.index[-1].strftime("%Y-%m-%d")
+        # Último fechamento de cada ano, indexado pelo ano
+        anual = diario.resample("YE").last().dropna()
+        anual.index = anual.index.year
+        price_data[key] = anual
 
     # Merge price series into a DataFrame indexed by year
     price_df = pd.DataFrame(price_data)
@@ -369,6 +351,7 @@ def fetch_acucar_history() -> pd.DataFrame:
             f"Dados insuficientes: menos de 6 anos após merge (obtidos: {len(merged)})"
         )
 
+    merged.attrs["ultimo_dado"] = ultimo_dado
     return merged
 
 
@@ -445,4 +428,5 @@ def run_acucar_regression(inputs: dict, model_type: str = "ridge") -> dict:
         "r2": round(r2, 4),
         "rmse": round(rmse, 4),
         "historico": historico,
+        "ultimo_dado": df.attrs.get("ultimo_dado"),
     }

@@ -116,6 +116,8 @@ T1 → T2 → T3 → T4 → T5 → T6
 
 ### T4: Regressões pelo cache
 
+**Status**: ✅ Done
+
 **What**: `regression.py` usa `get_prices` (dólar mensal, açúcar anual, valores atuais); respostas de run e defaults com `ultimo_dado`.
 **Where**: `backend/regression.py`
 **Depends on**: T3
@@ -125,7 +127,7 @@ T1 → T2 → T3 → T4 → T5 → T6
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Teste: séries mensal e anual montadas a partir de linhas diárias simuladas; `grep yf.download` vazio em `main.py` e `regression.py` (teste automatizado)
+- [x] Teste: séries mensal e anual montadas a partir de linhas diárias simuladas; `grep yf.download` vazio em `main.py` e `regression.py` (teste automatizado)
 
 **Tests**: unit
 **Gate**: quick
