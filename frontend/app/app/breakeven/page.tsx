@@ -6,6 +6,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatBRL, formatCents, formatDate, formatFX, formatNumber } from "@/lib/format";
 import { toast } from "sonner";
+import { CampoNumero } from "@/components/ui/campo-numero";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraBreakeven } from "@/lib/leitura";
+import { lerNumero } from "@/lib/numero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +49,7 @@ function ResultCards({ acucar, dolar, fator, breakeven }: {
 }) {
   return (
     <>
+      <Leitura>{leituraBreakeven({ acucar, dolar, breakeven })}</Leitura>
       <Card className="border-2 border-brand">
         <CardHeader><CardTitle className="text-lg">Breakeven</CardTitle></CardHeader>
         <CardContent>
@@ -85,7 +90,7 @@ export default function BreakevenPage() {
   // Manual tab
   const [acucar, setAcucar] = useState("");
   const [dolar, setDolar] = useState("");
-  const [fator, setFator] = useState("1.12045");
+  const [fator, setFator] = useState("1,12045");
   const [manualLabel, setManualLabel] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -101,23 +106,26 @@ export default function BreakevenPage() {
       try {
         const data = await apiFetch<BreakevenResult>("/api/breakeven");
         setLive(data);
-        setLiveFator(String(data.fator_conversao));
+        setLiveFator(String(data.fator_conversao).replace(".", ","));
       } catch (e) { setLiveError((e as Error).message); }
       finally { setLiveLoading(false); }
     }
     fetchLive();
   }, [tentativa]);
 
-  const liveFatorNum = parseFloat(liveFator);
-  const liveBreakeven = live && !isNaN(liveFatorNum) && liveFatorNum > 0
+  const positivo = (t: string) => {
+    const v = lerNumero(t);
+    return v !== null && v > 0 ? v : null;
+  };
+  const liveFatorNum = positivo(liveFator);
+  const liveBreakeven = live && liveFatorNum !== null
     ? live.preco_acucar_cents_lb * liveFatorNum * live.preco_dolar_brl : null;
 
-  const manualAcucar = parseFloat(acucar);
-  const manualDolar = parseFloat(dolar);
-  const manualFator = parseFloat(fator);
+  const manualAcucar = positivo(acucar);
+  const manualDolar = positivo(dolar);
+  const manualFator = positivo(fator);
   const manualBreakeven =
-    !isNaN(manualAcucar) && !isNaN(manualDolar) && !isNaN(manualFator) &&
-    manualAcucar > 0 && manualDolar > 0 && manualFator > 0
+    manualAcucar !== null && manualDolar !== null && manualFator !== null
       ? manualAcucar * manualFator * manualDolar : null;
 
   async function handleSave() {
@@ -186,25 +194,21 @@ export default function BreakevenPage() {
           )}
           {!liveLoading && !liveError && live && (
             <>
-              <div className="max-w-xs space-y-1">
-                <Label htmlFor="live-fator">
-                  Fator de conversão{" "}
-                  <FieldTooltip text="Converte ¢/lb para R$/saca. Ajuste para simular diferentes cenários." />
-                </Label>
-                <Input
-                  id="live-fator"
-                  type="number"
-                  step={0.0001}
-                  min={0.0001}
-                  value={liveFator}
-                  onChange={(e) => setLiveFator(e.target.value)}
-                />
-              </div>
+              <CampoNumero
+                id="live-fator"
+                rotulo="Fator ¢/lb → R$/saca"
+                ajuda="Converte o preço em centavos de dólar por libra para reais por saca. Mude para testar outro fator."
+                valor={liveFator}
+                onChange={setLiveFator}
+                min={0.0001}
+                max={100}
+                className="max-w-xs"
+              />
               {liveBreakeven !== null && (
                 <ResultCards
                   acucar={live.preco_acucar_cents_lb}
                   dolar={live.preco_dolar_brl}
-                  fator={liveFatorNum}
+                  fator={liveFatorNum!}
                   breakeven={liveBreakeven}
                 />
               )}
@@ -217,37 +221,44 @@ export default function BreakevenPage() {
           <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-start">
           <div className="space-y-4 rounded-xl border border-border bg-card p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="m-acucar">
-                Preço açúcar (¢/lb){" "}
-                <FieldTooltip text="Preço do açúcar NY #11 em centavos de dólar por libra" />
-              </Label>
-              <Input id="m-acucar" type="number" step={0.01} min={0} value={acucar}
-                onChange={(e) => setAcucar(e.target.value)} placeholder="ex: 19.50" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="m-dolar">
-                Câmbio USD/BRL{" "}
-                <FieldTooltip text="Taxa de câmbio dólar/real" />
-              </Label>
-              <Input id="m-dolar" type="number" step={0.01} min={0} value={dolar}
-                onChange={(e) => setDolar(e.target.value)} placeholder="ex: 5.20" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="m-fator">
-                Fator de conversão{" "}
-                <FieldTooltip text="Converte ¢/lb para R$/saca. Padrão: 1.12045" />
-              </Label>
-              <Input id="m-fator" type="number" step={0.0001} min={0.0001} value={fator}
-                onChange={(e) => setFator(e.target.value)} />
-            </div>
+            <CampoNumero
+              id="m-acucar"
+              rotulo="Açúcar NY"
+              unidade="¢/lb"
+              ajuda="Preço do açúcar em Nova York, em centavos de dólar por libra."
+              valor={acucar}
+              onChange={setAcucar}
+              min={0.0001}
+              max={1000}
+              placeholder="ex.: 19,50"
+            />
+            <CampoNumero
+              id="m-dolar"
+              rotulo="Câmbio"
+              unidade="R$/US$"
+              ajuda="Quantos reais vale um dólar."
+              valor={dolar}
+              onChange={setDolar}
+              min={0.0001}
+              max={100}
+              placeholder="ex.: 5,20"
+            />
+            <CampoNumero
+              id="m-fator"
+              rotulo="Fator ¢/lb → R$/saca"
+              ajuda="Converte o preço em centavos de dólar por libra para reais por saca. O padrão é 1,12045."
+              valor={fator}
+              onChange={setFator}
+              min={0.0001}
+              max={100}
+            />
             <div className="space-y-1">
               <Label htmlFor="m-label">
-                Nome (opcional){" "}
-                <FieldTooltip text="Identificador para esta simulação no histórico" />
+                Nome <span className="font-normal text-muted-foreground">· opcional</span>
+                <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
               </Label>
               <Input id="m-label" value={manualLabel}
-                onChange={(e) => setManualLabel(e.target.value)} placeholder="ex: Cenário pessimista" />
+                onChange={(e) => setManualLabel(e.target.value)} placeholder="ex.: Cenário pessimista" />
             </div>
           </div>
 
@@ -258,7 +269,7 @@ export default function BreakevenPage() {
 
           {manualBreakeven !== null ? (
             <div className="min-w-0 space-y-4">
-              <ResultCards acucar={manualAcucar} dolar={manualDolar} fator={manualFator} breakeven={manualBreakeven} />
+              <ResultCards acucar={manualAcucar!} dolar={manualDolar!} fator={manualFator!} breakeven={manualBreakeven} />
             </div>
           ) : (
             <EmptyState mensagem="Informe o preço do açúcar, o câmbio e o fator para ver o breakeven." />

@@ -474,6 +474,8 @@ T24 → T25
 
 ### T19: Breakeven do açúcar
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design e frase `leituraBreakeven` nas abas Ao vivo e Manual.
 **Where**: `frontend/app/app/breakeven/page.tsx`
 **Depends on**: T18
@@ -483,8 +485,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
