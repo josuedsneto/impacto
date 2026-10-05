@@ -69,7 +69,7 @@ export default function MetasPage() {
                         },
                         {
                           // Mapa de cenários: diferença para a meta por açúcar (linhas) e câmbio (colunas)
-                          colunas: ["Açúcar (¢/lb) \\ Câmbio (R$/US$)", ...result.dolares.map(String)],
+                          colunas: ["Açúcar (¢/lb) \\ Câmbio (R$/US$)", ...result.dolares.map((d) => String(d).replace(".", ","))],
                           linhas: result.acucares.map((a, i) => [a, ...result.heatmap[i]]),
                         },
                       ],
