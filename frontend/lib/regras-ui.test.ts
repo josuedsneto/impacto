@@ -33,8 +33,6 @@ const PENDENTES = new Set<string>([
   "app/page.tsx",
   "components/atr/AtrHistorico.tsx",
   "components/atr/AtrMetrics.tsx",
-  "components/dashboard/AccountSummary.tsx",
-  "components/dashboard/NewsFeed.tsx",
   "components/market/FixacoesChart.tsx",
   "components/market/PriceChart.tsx",
   "components/options/BSPricer.tsx",

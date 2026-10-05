@@ -389,6 +389,8 @@ T36 → T37
 
 ### T15: Migrar NewsFeed e AccountSummary
 
+**Status**: ✅ Done
+
 **What**: tokens, `formatDate`, `EmptyState` quando não há notícias ou simulações.
 **Where**: `frontend/components/dashboard/NewsFeed.tsx`
 **Depends on**: T14
@@ -398,7 +400,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `NewsFeed.tsx` e `AccountSummary.tsx` fora de `PENDENTES`; gate quick passa
+- [x] `NewsFeed.tsx` e `AccountSummary.tsx` fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
