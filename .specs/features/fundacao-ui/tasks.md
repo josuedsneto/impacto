@@ -516,6 +516,8 @@ T36 → T37
 
 ### T21: Migrar Volatilidade
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, cartões responsivos, `formatPercent`, tokens no gráfico.
 **Where**: `frontend/app/app/volatilidade/page.tsx`
 **Depends on**: T20
@@ -525,7 +527,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +22,8 @@ import {
 
 interface VolatilityResult {
   ticker: string;
-  vol_30d: number;
-  vol_90d: number;
+  vol_30d: number | null;
+  vol_90d: number | null;
   vol_1y: number;
   rolling_30d: { date: string; vol: number }[];
 }
@@ -64,19 +67,23 @@ function VolPanel({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="space-y-4 mt-4">
-        <div className="grid grid-cols-3 gap-4">
+      <div className="mt-4 space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
-        <div className="h-64 rounded-lg bg-muted animate-pulse" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
   if (error) {
-    return <p className="text-sm text-red-600 mt-4">{error}</p>;
+    return (
+      <div className="mt-4">
+        <ErrorState mensagem={error} onRetry={fetchVol} />
+      </div>
+    );
   }
 
   if (!result) return null;
@@ -86,15 +93,15 @@ function VolPanel({ ticker }: { ticker: string }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Vol. Realizada 30d (a.a.)"
-          value={`${(result.vol_30d * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_30d)}
         />
         <MetricCard
           label="Vol. Realizada 90d (a.a.)"
-          value={`${(result.vol_90d * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_90d)}
         />
         <MetricCard
           label="Vol. Realizada 1 ano (a.a.)"
-          value={`${(result.vol_1y * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_1y)}
         />
       </div>
 
@@ -110,27 +117,26 @@ function VolPanel({ ticker }: { ticker: string }) {
               data={result.rolling_30d}
               margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: string) => v.slice(0, 7)}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                minTickGap={32}
+                tickFormatter={(v: string) => formatDate(v).slice(3)}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatPercent(v, 0)}
               />
               <Tooltip
-                formatter={(v: number) => [`${(v * 100).toFixed(2)}%`, "Vol 30d"]}
-                labelFormatter={(l: string) => l}
+                contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                formatter={(v: number) => [formatPercent(v), "Volatilidade 30 dias"]}
+                labelFormatter={(l: string) => formatDate(l)}
               />
-              <Line
-                type="monotone"
-                dataKey="vol"
-                stroke="#3b82f6"
-                dot={false}
-                strokeWidth={2}
-              />
+              <Line type="monotone" dataKey="vol" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -155,8 +161,11 @@ export default function VolatilityPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Volatilidade Realizada</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Volatilidade Realizada"
+        descricao="Quanto o preço oscilou de fato em 30 dias, 90 dias e 1 ano, em base anual."
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
         <Label htmlFor="vol-ticker">
