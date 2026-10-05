@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -27,7 +33,6 @@ export function AtrUsinasAdmin() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Create form
   const [newUsinaName, setNewUsinaName] = useState("");
@@ -38,11 +43,6 @@ export function AtrUsinasAdmin() {
   const [usinaUserIds, setUsinaUserIds] = useState<Set<string>>(new Set());
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
-
-  function showSuccess(msg: string) {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(null), 3000);
-  }
 
   async function fetchUsinas() {
     setLoading(true);
@@ -90,7 +90,6 @@ export function AtrUsinasAdmin() {
   async function handleToggleUser(userId: string) {
     if (!managingUsina || toggling) return;
     setToggling(userId);
-    setError(null);
     try {
       const isAssociated = usinaUserIds.has(userId);
       const url = `/api/admin/usinas/${encodeURIComponent(managingUsina.id)}/usuarios/${encodeURIComponent(userId)}`;
@@ -102,7 +101,7 @@ export function AtrUsinasAdmin() {
         return next;
       });
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setToggling(null);
     }
@@ -112,17 +111,16 @@ export function AtrUsinasAdmin() {
     e.preventDefault();
     if (!newUsinaName.trim()) return;
     setCreating(true);
-    setError(null);
     try {
       await apiFetch("/api/admin/usinas", {
         method: "POST",
         body: JSON.stringify({ nome: newUsinaName.trim() }),
       });
       setNewUsinaName("");
-      showSuccess("Usina criada com sucesso.");
+      toast.success("Usina criada.");
       await fetchUsinas();
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setCreating(false);
     }
@@ -130,33 +128,31 @@ export function AtrUsinasAdmin() {
 
   async function handleDelete(id: string) {
     if (!confirm("Tem certeza que deseja deletar esta usina?")) return;
-    setError(null);
     if (managingUsina?.id === id) setManagingUsina(null);
     try {
       await apiFetch(`/api/admin/usinas/${encodeURIComponent(id)}`, { method: "DELETE" });
-      showSuccess("Usina deletada.");
+      toast.success("Usina excluída.");
       await fetchUsinas();
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     }
   }
 
   return (
     <section className="space-y-6">
-      <h2 className="text-xl font-semibold">Usinas ATR</h2>
+      <h2 className="text-xl font-semibold">Usinas (ATR)</h2>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">{success}</p>}
+      {error && <ErrorState mensagem={error} onRetry={fetchUsinas} />}
 
       {/* Usinas table */}
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-10 rounded bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-10" />
           ))}
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -168,37 +164,31 @@ export function AtrUsinasAdmin() {
             <TableBody>
               {usinas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-sm text-muted-foreground text-center py-4">
-                    Nenhuma usina cadastrada.
+                  <TableCell colSpan={3}>
+                    <EmptyState mensagem="Nenhuma usina cadastrada. Crie a primeira abaixo." />
                   </TableCell>
                 </TableRow>
               ) : (
                 usinas.map((u) => (
                   <TableRow
                     key={u.id}
-                    className={managingUsina?.id === u.id ? "bg-blue-50" : ""}
+                    className={managingUsina?.id === u.id ? "bg-brand/10" : ""}
                   >
                     <TableCell className="font-medium text-sm">{u.nome}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(u.created_at).toLocaleDateString("pt-BR")}
+                      {formatDate(u.created_at)}
                     </TableCell>
-                    <TableCell className="flex gap-2 justify-end">
-                      <button
-                        onClick={() =>
-                          managingUsina?.id === u.id
-                            ? setManagingUsina(null)
-                            : openManage(u)
-                        }
-                        className="px-3 py-1 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700"
+                    <TableCell className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => (managingUsina?.id === u.id ? setManagingUsina(null) : openManage(u))}
                       >
                         {managingUsina?.id === u.id ? "Fechar" : "Usuários"}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(u.id)}
-                        className="px-3 py-1 rounded text-sm font-medium bg-red-600 text-white hover:bg-red-700"
-                      >
-                        Deletar
-                      </button>
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDelete(u.id)}>
+                        Excluir
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -210,9 +200,9 @@ export function AtrUsinasAdmin() {
 
       {/* User management panel */}
       {managingUsina && (
-        <div className="rounded-lg border bg-card px-4 py-4 space-y-3">
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
           <h3 className="text-sm font-semibold">
-            Usuários com acesso a <span className="text-blue-600">{managingUsina.nome}</span>
+            Usuários com acesso a <span className="text-brand">{managingUsina.nome}</span>
           </h3>
           {loadingUsers ? (
             <p className="text-sm text-muted-foreground">Carregando usuários...</p>
@@ -228,13 +218,14 @@ export function AtrUsinasAdmin() {
                     key={u.id}
                     onClick={() => handleToggleUser(u.id)}
                     disabled={busy}
-                    className={[
-                      "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                       active
-                        ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600",
-                      busy ? "opacity-50 cursor-wait" : "cursor-pointer",
-                    ].join(" ")}
+                        ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "border-input bg-background text-foreground hover:border-brand hover:text-brand",
+                      busy ? "cursor-wait opacity-50" : "cursor-pointer"
+                    )}
                   >
                     {u.email.split("@")[0]}
                   </button>
@@ -249,31 +240,25 @@ export function AtrUsinasAdmin() {
       )}
 
       {/* Create usina form */}
-      <div className="rounded-lg border bg-card px-4 py-4 space-y-3">
-        <h3 className="text-sm font-semibold">Nova Usina</h3>
-        <form onSubmit={handleCreate} className="flex gap-2 items-end">
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold">Nova usina</h3>
+        <form onSubmit={handleCreate} className="flex items-end gap-2">
           <div className="flex-1 space-y-1">
             <label htmlFor="new_usina_nome" className="text-xs text-muted-foreground">
               Nome
             </label>
-            <input
+            <Input
               id="new_usina_nome"
-              type="text"
               value={newUsinaName}
               onChange={(e) => setNewUsinaName(e.target.value)}
               placeholder="Nome da usina"
-              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               disabled={creating}
               required
             />
           </div>
-          <button
-            type="submit"
-            disabled={creating || !newUsinaName.trim()}
-            className="px-4 py-2 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={creating || !newUsinaName.trim()}>
             {creating ? "Criando..." : "Criar"}
-          </button>
+          </Button>
         </form>
       </div>
     </section>

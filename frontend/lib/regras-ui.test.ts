@@ -10,13 +10,18 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
-  "app/app/admin/page.tsx",
   "app/page.tsx",
 ]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [
   { nome: "cor literal", re: /(?<![&\w])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|\b(?:rgba?|hsla?|oklch)\(/ },
   { nome: "toFixed", re: /\.toFixed\(/ },
+  // Cores fixas do Tailwind (bg-blue-600, text-gray-700, bg-white) não mudam com o tema.
+  // Fundo escurecido com opacidade (bg-black/50) é permitido.
+  {
+    nome: "cor fixa do Tailwind",
+    re: /\b(?:bg|text|border|ring|fill|stroke|from|to|divide|outline)-(?:(?:white|black)\b(?!\/)|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b)/,
+  },
   // Login e landing têm título próprio; a regra vale para as rotas /app e seus componentes.
   { nome: "<h1> fora do PageHeader", re: /<h1[\s>]/, exceto: "components/layout/PageHeader.tsx", so: /^(app\/app|components)\// },
 ];

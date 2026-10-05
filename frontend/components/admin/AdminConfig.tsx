@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -21,11 +25,9 @@ function ConfigRow({ entry }: { entry: ConfigEntry }) {
   const [value, setValue] = useState(entry.value);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
-    setError(null);
     setSaved(false);
     try {
       await apiFetch(`/api/admin/config/${encodeURIComponent(entry.key)}`, {
@@ -34,8 +36,9 @@ function ConfigRow({ entry }: { entry: ConfigEntry }) {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      toast.success(`${entry.key} salvo.`);
     } catch (e) {
-      setError((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -45,23 +48,13 @@ function ConfigRow({ entry }: { entry: ConfigEntry }) {
     <TableRow>
       <TableCell className="font-mono text-sm">{entry.key}</TableCell>
       <TableCell>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+        <Input value={value} onChange={(e) => setValue(e.target.value)} aria-label={entry.key} />
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{entry.description}</TableCell>
       <TableCell>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-3 py-1 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
+        <Button size="sm" onClick={handleSave} disabled={saving}>
           {saving ? "Salvando…" : saved ? "Salvo!" : "Salvar"}
-        </button>
+        </Button>
       </TableCell>
     </TableRow>
   );
@@ -71,6 +64,7 @@ export function AdminConfig() {
   const [entries, setEntries] = useState<ConfigEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -86,24 +80,24 @@ export function AdminConfig() {
       }
     }
     fetchConfig();
-  }, []);
+  }, [tentativa]);
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Configurações do Sistema</h2>
+      <h2 className="text-xl font-semibold">Configurações do sistema</h2>
 
       {loading && (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-10 rounded bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-10" />
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState mensagem={error} onRetry={() => setTentativa((t) => t + 1)} />}
 
       {!loading && !error && entries.length > 0 && (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

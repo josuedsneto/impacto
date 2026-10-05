@@ -812,6 +812,8 @@ T36 → T37
 
 ### T35: Migrar Admin
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`; `AdminConfig`, `AtrUsinasAdmin`, `SuggestionQueue` com tokens e toasts.
 **Where**: `frontend/app/app/admin/page.tsx`
 **Depends on**: T34
@@ -821,8 +823,8 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Página e 3 componentes fora de `PENDENTES`
-- [ ] Gate build passa (fim da fase)
+- [x] Página e 3 componentes fora de `PENDENTES`
+- [x] Gate build passa (fim da fase)
 
 **Tests**: unit
 **Gate**: build
