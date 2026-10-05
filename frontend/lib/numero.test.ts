@@ -50,6 +50,9 @@ describe("fracaoParaPercentual (T11)", () => {
   it("mostra a fração salva como percentual sem ruído de ponto flutuante", () => {
     expect(fracaoParaPercentual(0.25)).toBe("25");
     expect(fracaoParaPercentual(0.105)).toBe("10,5");
+    // 0.07 * 100 dá 7.000000000000001 em ponto flutuante
+    expect(fracaoParaPercentual(0.07)).toBe("7");
+    expect(fracaoParaPercentual(0.29)).toBe("29");
     expect(fracaoParaPercentual(null)).toBe("");
   });
 
