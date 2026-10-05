@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPreco } from "@/lib/format";
+import { nomeAtivo } from "@/lib/ativos";
 import { SimulationResult } from "./SimulationForm";
 
 export default function SimulationMetrics({ result }: { result: SimulationResult }) {
@@ -15,7 +16,7 @@ export default function SimulationMetrics({ result }: { result: SimulationResult
     <div className="space-y-4 rounded-xl border border-border bg-card p-6 text-card-foreground">
       <div className="border-b border-border pb-2">
         <h2 className="text-lg font-semibold">
-          {result.ticker} · {result.dias_simulados} dias úteis
+          {nomeAtivo(result.ticker)} · {result.dias_simulados} dias úteis
         </h2>
       </div>
 

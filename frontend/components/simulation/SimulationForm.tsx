@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { TickerSelect } from "@/components/market/TickerSelect";
+import { unidadeAtivo } from "@/lib/ativos";
+import { lerNumero } from "@/lib/numero";
 
 export interface SimulationResult {
   id: string;
@@ -31,12 +35,20 @@ interface SimulationFormProps {
 
 export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [ticker, setTicker] = useState("SB=F");
-  const [precoInicial, setPrecoInicial] = useState<number>(0);
-  const [diasSimulados, setDiasSimulados] = useState<number>(252);
-  const [numSimulacoes, setNumSimulacoes] = useState<number>(10000);
-  const [pctBound, setPctBound] = useState<number>(0.5);
+  const [precoInicial, setPrecoInicial] = useState("");
+  const [diasSimulados, setDiasSimulados] = useState("252");
+  const [numSimulacoes, setNumSimulacoes] = useState("10000");
+  const [variacaoMax, setVariacaoMax] = useState("50");
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Faixas aceitas pela API (backend/main.py SimulationRequest)
+  const FAIXAS = {
+    preco: { min: 0.0001, max: 100_000 },
+    dias: { min: 1, max: 1260 },
+    cenarios: { min: 100, max: 50_000 },
+    variacao: { min: 1, max: 100 },
+  };
 
   useEffect(() => {
     async function loadParams() {
@@ -44,9 +56,10 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         const data = await apiFetch<{ pct_bound_preferido?: number | null }>(
           `/api/params/${encodeURIComponent(ticker)}`
         );
-        if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
+        // Parâmetro salvo como fração (0.5); a tela trabalha em % (50).
+        if (data.pct_bound_preferido != null) setVariacaoMax(String(data.pct_bound_preferido * 100).replace(".", ","));
       } catch {
-        // silently ignore — defaults remain
+        // Sem parâmetro salvo: fica o padrão da tela.
       }
     }
     loadParams();
@@ -54,6 +67,15 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const ok =
+      campoValido(precoInicial, FAIXAS.preco) &&
+      campoValido(diasSimulados, FAIXAS.dias) &&
+      campoValido(numSimulacoes, FAIXAS.cenarios) &&
+      campoValido(variacaoMax, FAIXAS.variacao);
+    if (!ok) {
+      toast.error("Corrija os campos destacados antes de simular.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -62,10 +84,10 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         timeoutMs: 120_000,
         body: JSON.stringify({
           ticker: ticker.trim().toUpperCase(),
-          preco_inicial: precoInicial,
-          dias_simulados: diasSimulados,
-          num_simulacoes: numSimulacoes,
-          pct_bound: pctBound,
+          preco_inicial: lerNumero(precoInicial),
+          dias_simulados: Math.round(lerNumero(diasSimulados)!),
+          num_simulacoes: Math.round(lerNumero(numSimulacoes)!),
+          pct_bound: lerNumero(variacaoMax)! / 100,
           label: label.trim() || null,
         }),
       });
@@ -78,78 +100,66 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
     }
   }
 
+  const unidade = unidadeAtivo(ticker);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-1">
-        <Label htmlFor="ticker">Ticker <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F (açúcar NY #11), USDBRL=X (dólar/real)" /></Label>
-        <Input
-          id="ticker"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="SB=F"
-          disabled={loading}
-        />
-      </div>
+      <TickerSelect value={ticker} onChange={setTicker} disabled={loading} />
+
+      <CampoNumero
+        id="preco_inicial"
+        rotulo="Preço de partida"
+        unidade={unidade || undefined}
+        ajuda="Preço de onde os cenários começam. Use o preço atual para ver o futuro a partir de hoje."
+        valor={precoInicial}
+        onChange={setPrecoInicial}
+        {...FAIXAS.preco}
+        placeholder="ex.: 19,50"
+        disabled={loading}
+      />
+
+      <CampoNumero
+        id="dias_simulados"
+        rotulo="Prazo da simulação"
+        unidade="dias úteis"
+        ajuda="Até onde os cenários vão. 252 dias úteis são cerca de 1 ano."
+        valor={diasSimulados}
+        onChange={setDiasSimulados}
+        {...FAIXAS.dias}
+        disabled={loading}
+      />
+
+      <CampoNumero
+        id="num_simulacoes"
+        rotulo="Quantidade de cenários"
+        ajuda="Mais cenários deixam o resultado mais estável, mas a simulação demora mais."
+        valor={numSimulacoes}
+        onChange={setNumSimulacoes}
+        {...FAIXAS.cenarios}
+        disabled={loading}
+      />
+
+      <CampoNumero
+        id="variacao_max"
+        rotulo="Variação máxima do preço"
+        unidade="%"
+        ajuda="O preço simulado fica limitado a esta variação, para cima ou para baixo, em relação ao preço de partida."
+        valor={variacaoMax}
+        onChange={setVariacaoMax}
+        {...FAIXAS.variacao}
+        disabled={loading}
+      />
 
       <div className="space-y-1">
-        <Label htmlFor="preco_inicial">Preço inicial <FieldTooltip text="Preço de entrada para a simulação, em centavos/libra (açúcar) ou reais (câmbio)" /></Label>
-        <Input
-          id="preco_inicial"
-          type="number"
-          step={0.01}
-          value={precoInicial}
-          onChange={(e) => setPrecoInicial(parseFloat(e.target.value))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="dias_simulados">Dias simulados <FieldTooltip text="Dias úteis a simular. 252 = 1 ano útil" /></Label>
-        <Input
-          id="dias_simulados"
-          type="number"
-          min={1}
-          max={1260}
-          value={diasSimulados}
-          onChange={(e) => setDiasSimulados(parseInt(e.target.value, 10))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="num_simulacoes">Número de simulações <FieldTooltip text="Quantidade de caminhos Monte Carlo. Mais = maior precisão, porém mais lento" /></Label>
-        <Input
-          id="num_simulacoes"
-          type="number"
-          min={100}
-          max={50000}
-          value={numSimulacoes}
-          onChange={(e) => setNumSimulacoes(parseInt(e.target.value, 10))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="pct_bound">Limite percentual (pct_bound) <FieldTooltip text="Limite de variação diária máxima como fração do preço. 0.5 = ±50% por dia" /></Label>
-        <Input
-          id="pct_bound"
-          type="number"
-          step={0.01}
-          min={0.01}
-          max={1.0}
-          value={pctBound}
-          onChange={(e) => setPctBound(parseFloat(e.target.value))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="label">Nome da simulação (opcional) <FieldTooltip text="Nome opcional para identificar esta simulação no histórico" /></Label>
+        <Label htmlFor="label">
+          Nome da simulação <span className="font-normal text-muted-foreground">· opcional</span>
+          <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
+        </Label>
         <Input
           id="label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Nome da simulação (opcional)"
+          placeholder="ex.: Safra 26/27 pessimista"
           disabled={loading}
         />
       </div>

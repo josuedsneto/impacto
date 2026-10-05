@@ -10,13 +10,12 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ATIVOS } from "@/lib/ativos";
 
+// Ativos com nome conhecido, mais a opção de digitar qualquer código do Yahoo Finance.
 const PRESETS = [
-  { value: "SB=F",      label: "SB=F — Açúcar NY #11 Futuro" },
-  { value: "SBK26.NYB", label: "SBK26.NYB — Açúcar Maio 2026" },
-  { value: "USDBRL=X",  label: "USDBRL=X — Dólar/Real" },
-  { value: "CL=F",      label: "CL=F — Petróleo WTI" },
-  { value: "__outro__", label: "Outro..." },
+  ...Object.entries(ATIVOS).map(([value, a]) => ({ value, label: `${a.nome} · ${value}` })),
+  { value: "__outro__", label: "Outro código…" },
 ];
 
 interface TickerSelectProps {
@@ -45,9 +44,9 @@ export function TickerSelect({ value, onChange, disabled }: TickerSelectProps) {
 
   return (
     <div className="space-y-2">
-      <Label>Ticker</Label>
+      <Label>Ativo</Label>
       <Select value={selectValue} onValueChange={handleSelectChange} disabled={disabled}>
-        <SelectTrigger className="w-64">
+        <SelectTrigger className="w-full sm:w-64">
           <SelectValue placeholder="Selecione um ativo" />
         </SelectTrigger>
         <SelectContent>
@@ -62,8 +61,9 @@ export function TickerSelect({ value, onChange, disabled }: TickerSelectProps) {
         <Input
           value={customTicker}
           onChange={handleCustomChange}
-          placeholder="Ex: PETR4.SA, AAPL, GC=F"
-          className="w-64"
+          placeholder="Código no Yahoo Finance, ex.: PETR4.SA"
+          aria-label="Código do ativo no Yahoo Finance"
+          className="w-full sm:w-64"
           disabled={disabled}
         />
       )}

@@ -10,6 +10,9 @@ import FanChart from "@/components/simulation/FanChart";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatPreco } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraMonteCarlo } from "@/lib/leitura";
+import { nomeAtivo } from "@/lib/ativos";
 import { toast } from "sonner";
 import SimulationMetrics from "@/components/simulation/SimulationMetrics";
 
@@ -103,6 +106,15 @@ export default function SimulationPage() {
 
             {activeResult ? (
               <div className="min-w-0 space-y-6">
+                <Leitura>
+                  {leituraMonteCarlo({
+                    ticker: activeResult.ticker,
+                    dias: activeResult.dias_simulados,
+                    p5: activeResult.p5,
+                    p50: activeResult.p50,
+                    p95: activeResult.p95,
+                  })}
+                </Leitura>
                 <SimulationMetrics result={activeResult} />
                 <FanChart series={activeResult.percentiles_series} dias_simulados={activeResult.dias_simulados} />
               </div>
@@ -133,7 +145,7 @@ export default function SimulationPage() {
                     className="w-full rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-accent"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{item.ticker}</span>
+                      <span className="font-medium">{nomeAtivo(item.ticker)}</span>
                       <span className="text-sm text-muted-foreground">
                         {new Date(item.created_at).toLocaleDateString("pt-BR")}
                       </span>

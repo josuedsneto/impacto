@@ -21,26 +21,22 @@ const PENDENTES = new Set<string>([
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/risco/page.tsx",
-  "app/app/simulation/page.tsx",
   "app/app/stress/page.tsx",
   "app/app/var/page.tsx",
   "app/app/volatilidade/page.tsx",
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
-  "components/market/TickerSelect.tsx",
   "components/options/BSPricer.tsx",
   "components/options/MCPricer.tsx",
   "components/options/PayoffBuilder.tsx",
   "components/params/ParamsForm.tsx",
   "components/regression/AcucarForm.tsx",
   "components/regression/DolarForm.tsx",
-  "components/simulation/SimulationForm.tsx",
 ]);
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
 const FERRAMENTAS = [
-  "app/app/simulation/page.tsx",
   "app/app/var/page.tsx",
   "app/app/volatilidade/page.tsx",
   "app/app/stress/page.tsx",

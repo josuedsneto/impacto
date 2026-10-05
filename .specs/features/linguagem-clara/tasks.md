@@ -208,6 +208,8 @@ T24 → T25
 
 ### T7: Monte Carlo
 
+**Status**: ✅ Done
+
 **What**: Seletor de ativo por nome, rótulos e faixas do design, variação máxima em %, ajuda corrigida, frase de leitura.
 **Where**: `frontend/components/simulation/SimulationForm.tsx`
 **Depends on**: None
@@ -217,8 +219,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivos fora de `PENDENTES`; API recebe `pct_bound` = 0,5 quando o campo tem 50
-- [ ] Gate passa
+- [x] Arquivos fora de `PENDENTES`; API recebe `pct_bound` = 0,5 quando o campo tem 50
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
@@ -530,7 +532,7 @@ T24 → T25
 
 ### T23: Indicadores de Fixações e Preços diários
 
-**What**: Rótulos dos indicadores e datas "De/Até"; `TickerSelect` com nomes de `ativos.ts`.
+**What**: Rótulos dos indicadores e datas "De/Até". (`TickerSelect` com nomes de `ativos.ts` foi adiantado na T7, que o usa.)
 **Where**: `frontend/components/market/IndicatorSelector.tsx`
 **Depends on**: T22
 **Reuses**: `CampoNumero`, `ativos.ts`
