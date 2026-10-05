@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
-  "app/page.tsx",
 ]);
 
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [

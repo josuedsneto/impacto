@@ -834,6 +834,8 @@ T36 → T37
 
 ### T36: Migrar a landing page pública
 
+**Status**: ✅ Done
+
 **What**: tokens no lugar das 38 cores literais; seções empilham no celular.
 **Where**: `frontend/app/page.tsx`
 **Depends on**: None
@@ -843,7 +845,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `frontend-design`
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
