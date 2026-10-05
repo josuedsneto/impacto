@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatNumber, formatPreco } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraArima } from "@/lib/leitura";
+import { nomeAtivo } from "@/lib/ativos";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -99,6 +102,15 @@ function ArimaPanel({ ticker }: { ticker: string }) {
 
       {error && <ErrorState mensagem={error} onRetry={() => fetchArima(steps)} />}
 
+      {!loading && !error && data && (() => {
+        // Último ponto projetado = fim do horizonte escolhido.
+        const fim = data.filter((p) => p.forecast != null).at(-1);
+        return (
+          <Leitura>
+            {leituraArima({ ticker, dias: Number(steps), valor: fim?.forecast, min: fim?.ci_lower, max: fim?.ci_upper })}
+          </Leitura>
+        );
+      })()}
       {!loading && !error && data && (
         <div className="rounded-xl border border-border bg-card p-4">
           <ResponsiveContainer width="100%" height={360}>
@@ -160,8 +172,8 @@ export default function ArimaPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="acucar">Açúcar NY</TabsTrigger>
-          <TabsTrigger value="dolar">USD/BRL</TabsTrigger>
+          <TabsTrigger value="acucar">{nomeAtivo("SB=F")}</TabsTrigger>
+          <TabsTrigger value="dolar">{nomeAtivo("USDBRL=X")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="acucar">

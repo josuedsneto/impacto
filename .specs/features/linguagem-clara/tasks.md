@@ -386,6 +386,8 @@ T24 → T25
 
 ### T15: Previsão ARIMA
 
+**Status**: ✅ Done
+
 **What**: Frase `leituraArima`; abas por nome.
 **Where**: `frontend/app/app/arima/page.tsx`
 **Depends on**: T14
@@ -395,8 +397,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

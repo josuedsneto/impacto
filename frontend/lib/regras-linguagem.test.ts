@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
-  "app/app/arima/page.tsx",
   "app/app/atr/page.tsx",
   "app/app/breakeven/page.tsx",
   "app/app/cenarios/page.tsx",
@@ -28,7 +27,6 @@ const PENDENTES = new Set<string>([
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
 const FERRAMENTAS = [
-  "app/app/arima/page.tsx",
   "app/app/risco/page.tsx",
   "app/app/cenarios/page.tsx",
   "app/app/metas/page.tsx",
