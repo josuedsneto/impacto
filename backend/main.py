@@ -1733,7 +1733,9 @@ def simular_cenarios(
         return _ebitda(**{**base, key: x})
 
     try:
-        breakeven = brentq(f, 1e-6, max(base[key], 1.0) * 100)
+        # O front envia 0 na variável analisada; a escala do intervalo vem do valor típico (default do modelo).
+        escala = max(base[key], CenariosRequest.model_fields[key].default)
+        breakeven = brentq(f, 1e-6, escala * 100)
     except ValueError:
         raise HTTPException(status_code=422, detail="Sem breakeven no intervalo para esses parâmetros.")
 
