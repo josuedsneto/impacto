@@ -186,6 +186,8 @@ T24 → T25
 
 ### T6: Teste de regras de linguagem
 
+**Status**: ✅ Done
+
 **What**: `lib/regras-linguagem.test.ts`: proíbe `type="number"` e rótulos técnicos (pct_bound, Steps, λ saltos, S (Preço, …) fora de `components/ui/`; exige `<Leitura` nas 15 telas de ferramenta; lista `PENDENTES` com quem viola hoje.
 **Where**: `frontend/lib/regras-linguagem.test.ts`
 **Depends on**: T5
@@ -195,8 +197,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Passa com a lista inicial; falha se a lista tiver arquivo já limpo
-- [ ] Gate passa
+- [x] Passa com a lista inicial; falha se a lista tiver arquivo já limpo
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
