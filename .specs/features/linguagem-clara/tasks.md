@@ -430,6 +430,8 @@ T24 → T25
 
 ### T17: Risco do EBITDA
 
+**Status**: ✅ Done
+
 **What**: Rótulos e colunas do design e frase `leituraRisco`.
 **Where**: `frontend/app/app/risco/page.tsx`
 **Depends on**: T16
@@ -439,8 +441,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: build
