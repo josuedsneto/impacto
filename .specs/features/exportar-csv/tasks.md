@@ -71,6 +71,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 
 ### T2: Botão Exportar CSV
 
+**Status**: ✅ Done
+
 **What**: `components/ui/botao-exportar.tsx`: botão "Exportar CSV" desabilitado com dica "Gere um resultado para exportar." quando não há dados; recebe uma função que monta o CSV.
 **Where**: `frontend/components/ui/botao-exportar.tsx`
 **Depends on**: T1
@@ -80,8 +82,8 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Teste de regra em `lib/regras-exportar.test.ts` com lista de pendentes: cada ferramenta da lista usa `<BotaoExportar`
-- [ ] Gate passa
+- [x] Teste de regra em `lib/regras-exportar.test.ts` com lista de pendentes: cada ferramenta da lista usa `<BotaoExportar`
+- [x] Gate passa
 
 **Tests**: none
 **Gate**: build
