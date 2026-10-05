@@ -368,6 +368,8 @@ T36 → T37
 
 ### T14: Migrar FocusWidget
 
+**Status**: ✅ Done
+
 **What**: tokens e `formatPercent`/`formatFX`.
 **Where**: `frontend/components/dashboard/FocusWidget.tsx`
 **Depends on**: T13
@@ -377,7 +379,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

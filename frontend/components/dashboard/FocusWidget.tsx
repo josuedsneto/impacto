@@ -1,3 +1,6 @@
+import { formatFX, formatNumber, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
 interface FocusEntry {
   value: number | null;
   delta: number | null;
@@ -11,96 +14,47 @@ interface FocusData {
   ano_referencia: string;
 }
 
-interface FocusWidgetProps {
-  data: FocusData | null;
-}
-
 const ROWS = [
-  { key: "ipca" as const, label: "IPCA", unit: "%" },
-  { key: "selic" as const, label: "SELIC (fim de ano)", unit: "%" },
-  { key: "cambio" as const, label: "USD / BRL", unit: "" },
-  { key: "pib" as const, label: "PIB", unit: "%" },
+  { key: "ipca" as const, label: "IPCA", tipo: "pct" },
+  { key: "selic" as const, label: "Selic (fim de ano)", tipo: "pct" },
+  { key: "cambio" as const, label: "Dólar (USD/BRL)", tipo: "fx" },
+  { key: "pib" as const, label: "PIB", tipo: "pct" },
 ];
 
-function DeltaTag({ delta, invertSign = false }: { delta: number | null; invertSign?: boolean }) {
-  if (delta === null) return <span style={{ fontSize: 11, color: "#9ca3af" }}>—</span>;
-  // For PIB: higher is good (green). For IPCA/Câmbio: higher is bad (red). invertSign flips the color.
-  const positive = invertSign ? delta > 0 : delta < 0;
-  const color = delta === 0 ? "#6b7280" : positive ? "#16a34a" : "#dc2626";
-  const sign = delta > 0 ? "▲" : delta < 0 ? "▼" : "—";
+function DeltaTag({ delta, altaEBoa }: { delta: number | null; altaEBoa: boolean }) {
+  if (delta === null || delta === 0) return <span className="text-[11px] text-muted-foreground">sem mudança</span>;
+  // PIB: alta é boa (verde). IPCA, Selic e câmbio: alta é ruim (vermelho).
+  const bom = altaEBoa ? delta > 0 : delta < 0;
   return (
-    <span className="font-semibold" style={{ fontSize: 11, color }}>
-      {sign} ante {Math.abs(delta).toFixed(2)}
+    <span className={cn("text-[11px] font-semibold", bom ? "text-positive" : "text-negative")}>
+      {delta > 0 ? "▲" : "▼"} {formatNumber(Math.abs(delta), 2)} em 7 dias
     </span>
   );
 }
 
-export function FocusWidget({ data }: FocusWidgetProps) {
+export function FocusWidget({ data }: { data: FocusData | null }) {
   const year = data?.ano_referencia ?? new Date().getFullYear().toString();
 
   return (
-    <div
-      className="rounded-[10px] p-5"
-      style={{ background: "#fff", border: "1px solid #e5e7eb" }}
-    >
-      <p
-        className="font-bold mb-0.5"
-        style={{ fontSize: 13, color: "#111827" }}
-      >
-        Relatório Focus · BCB
-      </p>
-      <p
-        className="mb-3 pb-3"
-        style={{
-          fontSize: 11,
-          color: "#9ca3af",
-          borderBottom: "1px solid #f3f4f6",
-        }}
-      >
-        Projeções para {year}
+    <div className="rounded-xl border border-border bg-card p-5 text-card-foreground">
+      <p className="mb-0.5 text-[13px] font-bold">Boletim Focus · BCB</p>
+      <p className="mb-3 border-b border-border pb-3 text-[11px] text-muted-foreground">
+        Mediana das projeções do mercado para {year}
       </p>
 
-      {!data && (
-        <p style={{ fontSize: 12, color: "#9ca3af" }}>
-          Dados indisponíveis no momento.
-        </p>
-      )}
+      {!data && <p className="text-xs text-muted-foreground">Dados indisponíveis no momento.</p>}
 
       {data &&
-        ROWS.map(({ key, label, unit }, i) => {
+        ROWS.map(({ key, label, tipo }) => {
           const entry = data[key];
-          const isLast = i === ROWS.length - 1;
           return (
-            <div
-              key={key}
-              className="flex items-center justify-between"
-              style={{
-                paddingTop: 10,
-                paddingBottom: 10,
-                borderBottom: isLast ? "none" : "1px solid #f9fafb",
-              }}
-            >
-              <div>
-                <p style={{ fontSize: 13, color: "#374151" }}>{label}</p>
-                <p style={{ fontSize: 11, color: "#9ca3af" }}>Projeção {year}</p>
-              </div>
+            <div key={key} className="flex items-center justify-between border-b border-border py-2.5 last:border-0">
+              <p className="text-[13px] text-foreground">{label}</p>
               <div className="text-right">
-                <p
-                  className="font-bold"
-                  style={{
-                    fontSize: 14,
-                    color: "#111827",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {entry.value !== null
-                    ? `${entry.value.toFixed(2)}${unit}`
-                    : "—"}
+                <p className="text-sm font-bold tabular-nums">
+                  {tipo === "fx" ? formatFX(entry.value) : formatPercent(entry.value == null ? null : entry.value / 100)}
                 </p>
-                <DeltaTag
-                  delta={entry.delta}
-                  invertSign={key === "pib"}
-                />
+                <DeltaTag delta={entry.delta} altaEBoa={key === "pib"} />
               </div>
             </div>
           );
