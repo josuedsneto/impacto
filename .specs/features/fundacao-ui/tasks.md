@@ -326,6 +326,8 @@ T36 → T37
 
 ### T12: Migrar a página do dashboard
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, grades `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`, tokens.
 **Where**: `frontend/app/app/dashboard/page.tsx`
 **Depends on**: None
@@ -335,7 +337,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
@@ -344,6 +346,8 @@ T36 → T37
 ---
 
 ### T13: Migrar PriceCard
+
+**Status**: ✅ Done
 
 **What**: tokens (`--chart-2` açúcar, `--chart-1` dólar, `text-positive/negative`), `format.ts`.
 **Where**: `frontend/components/dashboard/PriceCard.tsx`
@@ -354,11 +358,11 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
-**Commit**: `refactor(dashboard): formata e colore o cartão de preço por tokens`
+**Commit**: junto com T12 (SPEC_DEVIATION: T12 e T13 mudam a mesma interface de props; separadas, nenhuma compila)
 
 ---
 

@@ -4,6 +4,7 @@ import { PriceCard } from "@/components/dashboard/PriceCard";
 import { NewsFeed } from "@/components/dashboard/NewsFeed";
 import { FocusWidget } from "@/components/dashboard/FocusWidget";
 import { AccountSummary } from "@/components/dashboard/AccountSummary";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -60,7 +61,7 @@ async function fetchAccountSummary(token: string) {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
     const simCountMonth = all.filter(
-      (s: any) => new Date(s.created_at) >= startOfMonth
+      (s: { created_at: string }) => new Date(s.created_at) >= startOfMonth
     ).length;
     return { lastSim, simCountMonth };
   } catch {
@@ -87,52 +88,32 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 px-7 py-6">
+    <div>
+      <PageHeader
+        titulo="Dashboard"
+        descricao="Preços de açúcar e dólar, expectativas do mercado e suas últimas simulações."
+      />
 
-      {/* Section: Prices */}
-      <div>
-        <p
-          className="uppercase font-bold mb-3"
-          style={{ fontSize: 11, color: "#6b7280", letterSpacing: "1.5px" }}
-        >
-          Preços ao vivo
-        </p>
-        <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <PriceCard
-            label="Açúcar NY #11"
-            exchange="ICE Futures · SB=F"
-            unit="¢/lb"
-            rows={sugarRows}
-            barColor="#d97706"
-          />
-          <PriceCard
-            label="Dólar / Real"
-            exchange="Forex · USDBRL=X"
-            unit="R$"
-            rows={fxRows}
-            barColor="#2563eb"
-          />
+      <section aria-labelledby="sec-precos" className="mb-6">
+        <h2 id="sec-precos" className="mb-3 text-[11px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+          Preços
+        </h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugarRows} cor="var(--chart-2)" />
+          <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fxRows} cor="var(--chart-1)" />
         </div>
-      </div>
+      </section>
 
-      {/* Section: Live widgets */}
-      <div>
-        <p
-          className="uppercase font-bold mb-3"
-          style={{ fontSize: 11, color: "#6b7280", letterSpacing: "1.5px" }}
-        >
-          Informações em tempo real
-        </p>
-        <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+      <section aria-labelledby="sec-info">
+        <h2 id="sec-info" className="mb-3 text-[11px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
+          Informações do mercado
+        </h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <NewsFeed />
           <FocusWidget data={focusData} />
-          <AccountSummary
-            lastSim={summary.lastSim}
-            simCountMonth={summary.simCountMonth}
-          />
+          <AccountSummary lastSim={summary.lastSim} simCountMonth={summary.simCountMonth} />
         </div>
-      </div>
-
+      </section>
     </div>
   );
 }
