@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatFX, formatNumber, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface IndicatorValue {
   value: number | null;
@@ -17,25 +21,11 @@ interface FocusResponse {
   ano_referencia: string;
 }
 
-function fmt(v: number | null, decimals = 2): string {
-  return v !== null ? v.toFixed(decimals) : "—";
-}
-
-function delta(d: number | null): string {
-  if (d === null) return "";
-  const sign = d > 0 ? "+" : "";
-  return ` (${sign}${d.toFixed(2)})`;
-}
-
-function deltaColor(d: number | null): string {
-  if (d === null) return "";
-  return d > 0 ? "text-red-500" : d < 0 ? "text-green-600" : "text-muted-foreground";
-}
-
 export default function FocusPage() {
   const [data, setData] = useState<FocusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     async function fetchFocus() {
@@ -48,54 +38,66 @@ export default function FocusPage() {
       }
     }
     fetchFocus();
-  }, []);
+  }, [tentativa]);
 
+  // altaEBoa: PIB maior é bom (verde); inflação, juros e câmbio maiores são ruins (vermelho).
   const indicators = data
     ? [
-        { label: "IPCA", unit: "%", ...data.ipca },
-        { label: "Câmbio (USD/BRL)", unit: "", ...data.cambio },
-        { label: "Selic", unit: "%", ...data.selic },
-        { label: "PIB Total", unit: "%", ...data.pib },
+        { label: "IPCA", tipo: "pct", altaEBoa: false, ...data.ipca },
+        { label: "Dólar (USD/BRL)", tipo: "fx", altaEBoa: false, ...data.cambio },
+        { label: "Selic", tipo: "pct", altaEBoa: false, ...data.selic },
+        { label: "PIB", tipo: "pct", altaEBoa: true, ...data.pib },
       ]
     : [];
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">
-        Expectativa de Mercado — Focus/BCB {data ? `(${data.ano_referencia})` : ""}
-      </h1>
+    <div>
+      <PageHeader
+        titulo="Boletim Focus"
+        descricao={`Mediana das projeções do mercado coletadas pelo Banco Central${data ? ` para ${data.ano_referencia}` : ""}.`}
+      />
 
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-28" />
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <ErrorState
+          mensagem={error}
+          onRetry={() => {
+            setError(null);
+            setLoading(true);
+            setTentativa((t) => t + 1);
+          }}
+        />
+      )}
 
       {!loading && !error && data && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {indicators.map((ind) => (
-            <Card key={ind.label}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {ind.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">
-                  {fmt(ind.value)}{ind.unit}
-                </p>
-                {ind.delta !== null && (
-                  <p className={`text-sm mt-1 ${deltaColor(ind.delta)}`}>
-                    Variação 7 dias: {delta(ind.delta)}{ind.unit}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {indicators.map((ind) => {
+            const bom = ind.delta !== null && (ind.altaEBoa ? ind.delta > 0 : ind.delta < 0);
+            return (
+              <Card key={ind.label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{ind.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {ind.tipo === "fx" ? formatFX(ind.value) : formatPercent(ind.value == null ? null : ind.value / 100)}
                   </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  {ind.delta !== null && ind.delta !== 0 && (
+                    <p className={cn("mt-1 text-sm", bom ? "text-positive" : "text-negative")}>
+                      {ind.delta > 0 ? "▲" : "▼"} {formatNumber(Math.abs(ind.delta), 2)} em 7 dias
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

@@ -707,6 +707,8 @@ T36 → T37
 
 ### T30: Migrar Boletim Focus
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `ErrorState`, `formatPercent`/`formatFX`.
 **Where**: `frontend/app/app/focus/page.tsx`
 **Depends on**: T29
@@ -716,7 +718,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick

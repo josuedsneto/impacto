@@ -12,7 +12,6 @@ const RAIZ = join(__dirname, "..");
 const PENDENTES = new Set<string>([
   "app/app/admin/page.tsx",
   "app/app/atr/page.tsx",
-  "app/app/focus/page.tsx",
   "app/app/params/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/regressao-dolar/page.tsx",
