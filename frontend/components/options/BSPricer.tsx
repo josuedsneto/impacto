@@ -1,138 +1,51 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { leituraCall } from "@/lib/leitura";
+import { Leitura } from "@/components/ui/leitura";
+import { CAMPOS_OPCAO_PADRAO, CamposOpcao, paraApi, type CamposOpcaoValor } from "./CamposOpcao";
 
+/** Preço da call por Black-Scholes, recalculado a cada mudança nos campos. */
 export default function BSPricer() {
-  const [S, setS] = useState(20);
-  const [K, setK] = useState(20);
-  const [T, setT] = useState(1);
-  const [r, setR] = useState(0.05);
-  const [sigma, setSigma] = useState(0.2);
+  const [campos, setCampos] = useState<CamposOpcaoValor>(CAMPOS_OPCAO_PADRAO);
   const [price, setPrice] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleCalculate = useCallback(
-    async (params: { S: number; K: number; T: number; r: number; sigma: number }) => {
-      setLoading(true);
-      setError(null);
+  useEffect(() => {
+    const params = paraApi(campos);
+    if (!params) return;
+    // Espera o usuário parar de digitar antes de chamar a API.
+    const timer = setTimeout(async () => {
       try {
         const data = await apiFetch<{ price: number }>("/api/options/bs-price", {
           method: "POST",
           body: JSON.stringify(params),
         });
         setPrice(data.price);
+        setError(null);
       } catch (e) {
         setError((e as Error).message);
-      } finally {
-        setLoading(false);
       }
-    },
-    []
-  );
-
-  function scheduleCalculate(overrides: Partial<{ S: number; K: number; T: number; r: number; sigma: number }>) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      handleCalculate({ S, K, T, r, sigma, ...overrides });
     }, 300);
-  }
+    return () => clearTimeout(timer);
+  }, [campos]);
 
   return (
-    <div className="space-y-4 max-w-md">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label htmlFor="bs-S">S (Preço atual) <FieldTooltip text="Preço spot atual do ativo subjacente" /></Label>
-          <Input
-            id="bs-S"
-            type="number"
-            step={0.5}
-            value={S}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setS(val);
-              scheduleCalculate({ S: val });
-            }}
-          />
-        </div>
+    <div className="max-w-xl space-y-4">
+      <CamposOpcao prefixo="bs" valor={campos} onChange={setCampos} />
 
-        <div className="space-y-1">
-          <Label htmlFor="bs-K">K (Strike) <FieldTooltip text="Preço de exercício (strike) da opção" /></Label>
-          <Input
-            id="bs-K"
-            type="number"
-            step={0.5}
-            value={K}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setK(val);
-              scheduleCalculate({ K: val });
-            }}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="bs-T">T (Anos até vencimento) <FieldTooltip text="Tempo até vencimento em anos. Ex: 0.25 = 3 meses" /></Label>
-          <Input
-            id="bs-T"
-            type="number"
-            step={0.1}
-            min={0.01}
-            value={T}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setT(val);
-              scheduleCalculate({ T: val });
-            }}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="bs-r">r (Taxa livre de risco) <FieldTooltip text="Taxa de juros livre de risco anualizada. Ex: 0.105 = 10,5% a.a." /></Label>
-          <Input
-            id="bs-r"
-            type="number"
-            step={0.005}
-            min={0}
-            value={r}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setR(val);
-              scheduleCalculate({ r: val });
-            }}
-          />
-        </div>
-
-        <div className="space-y-1 col-span-2">
-          <Label htmlFor="bs-sigma">σ (Volatilidade) <FieldTooltip text="Volatilidade anualizada. Ex: 0.25 = 25% a.a." /></Label>
-          <Input
-            id="bs-sigma"
-            type="number"
-            step={0.01}
-            min={0.001}
-            value={sigma}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setSigma(val);
-              scheduleCalculate({ sigma: val });
-            }}
-          />
-        </div>
-      </div>
-
-      {error && <p role="alert" className="text-sm text-negative">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-negative">
+          {error}
+        </p>
+      )}
 
       <p className="text-2xl font-bold">
-        Preço da call:{" "}
-        <span className="tabular-nums text-brand">{loading ? "—" : formatNumber(price, 4)}</span>
+        Preço da call: <span className="tabular-nums text-brand">{formatNumber(price, 4)}</span>
       </p>
+      {price !== null && <Leitura>{leituraCall(price)}</Leitura>}
     </div>
   );
 }

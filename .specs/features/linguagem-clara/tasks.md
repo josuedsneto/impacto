@@ -230,6 +230,8 @@ T24 → T25
 
 ### T8: Opções: Black-Scholes e Monte Carlo
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design; juros e volatilidade em %; frase `leituraCall`.
 **Where**: `frontend/components/options/BSPricer.tsx`
 **Depends on**: T7
@@ -239,9 +241,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Digitar 10,5 em juros envia `r: 0.105`
-- [ ] `BSPricer.tsx` e `MCPricer.tsx` fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Digitar 10,5 em juros envia `r: 0.105`
+- [x] `BSPricer.tsx` e `MCPricer.tsx` fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

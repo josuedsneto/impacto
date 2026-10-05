@@ -27,8 +27,6 @@ const PENDENTES = new Set<string>([
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
-  "components/options/BSPricer.tsx",
-  "components/options/MCPricer.tsx",
   "components/options/PayoffBuilder.tsx",
   "components/params/ParamsForm.tsx",
   "components/regression/AcucarForm.tsx",
@@ -50,8 +48,6 @@ const FERRAMENTAS = [
   "app/app/regressao-acucar/page.tsx",
   "app/app/atr/page.tsx",
   "app/app/options/page.tsx",
-  "components/options/BSPricer.tsx",
-  "components/options/MCPricer.tsx",
 ];
 
 const REGRAS: { nome: string; falha: (texto: string, arquivo: string) => boolean }[] = [
