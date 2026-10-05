@@ -72,6 +72,8 @@ T24 → T25
 
 ### T1: Mapa de ativos
 
+**Status**: ✅ Done
+
 **What**: `lib/ativos.ts` com `ATIVOS` e `nomeAtivo`; testes em `lib/ativos.test.ts`.
 **Where**: `frontend/lib/ativos.ts`
 **Depends on**: None
@@ -81,8 +83,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `nomeAtivo("SB=F")` = "Açúcar NY nº 11"; código desconhecido devolve o próprio código
-- [ ] Gate passa
+- [x] `nomeAtivo("SB=F")` = "Açúcar NY nº 11"; código desconhecido devolve o próprio código
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick
