@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -68,7 +71,9 @@ function VarPanel({ ticker }: { ticker: string }) {
     setConfidence(val);
   }
 
-  const confLabel = `${(parseFloat(confidence) * 100).toFixed(0)}%`;
+  const confLabel = formatPercent(parseFloat(confidence), 0);
+  // A API devolve o VaR como retorno negativo; na tela mostramos a perda como valor positivo.
+  const perda = (v: number) => Math.abs(v);
 
   return (
     <div className="space-y-4 mt-4">
@@ -87,39 +92,21 @@ function VarPanel({ ticker }: { ticker: string }) {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState mensagem={error} onRetry={() => fetchVar(confidence)} />}
       {!loading && !error && result && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <MetricCard
-            label="Último Preço"
-            value={result.last_price.toFixed(4)}
-          />
-          <MetricCard
-            label={`VaR Histórico (${confLabel})`}
-            value={result.var_historico_abs.toFixed(4)}
-          />
-          <MetricCard
-            label={`VaR Histórico %`}
-            value={`${(result.var_historico_pct * 100).toFixed(2)}%`}
-          />
-          <MetricCard
-            label={`VaR Paramétrico (${confLabel})`}
-            value={result.var_parametrico_abs.toFixed(4)}
-          />
-          <MetricCard
-            label="VaR Paramétrico %"
-            value={`${(result.var_parametrico_pct * 100).toFixed(2)}%`}
-          />
-          <MetricCard
-            label="Observações"
-            value={result.n_observations.toLocaleString("pt-BR")}
-          />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <MetricCard label="Último preço" value={formatPreco(ticker, result.last_price)} />
+          <MetricCard label={`Perda máxima histórica (${confLabel})`} value={formatPreco(ticker, perda(result.var_historico_abs))} />
+          <MetricCard label="Perda máxima histórica (%)" value={formatPercent(perda(result.var_historico_pct))} />
+          <MetricCard label={`Perda máxima paramétrica (${confLabel})`} value={formatPreco(ticker, perda(result.var_parametrico_abs))} />
+          <MetricCard label="Perda máxima paramétrica (%)" value={formatPercent(perda(result.var_parametrico_pct))} />
+          <MetricCard label="Dias de histórico usados" value={formatNumber(result.n_observations, 0)} />
         </div>
       )}
     </div>
@@ -129,8 +116,11 @@ function VarPanel({ ticker }: { ticker: string }) {
 export default function VarPage() {
   const [tab, setTab] = useState("acucar");
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Value at Risk</h1>
+    <div>
+      <PageHeader
+        titulo="Value at Risk (VaR)"
+        descricao="A maior queda de preço esperada em 1 dia, para o nível de confiança escolhido."
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>

@@ -559,6 +559,8 @@ T36 → T37
 
 ### T23: Migrar VaR
 
+**Status**: ✅ Done
+
 **What**: `PageHeader`, `ErrorState`, `formatPercent`/`formatCents`.
 **Where**: `frontend/app/app/var/page.tsx`
 **Depends on**: None
@@ -568,7 +570,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Arquivo fora de `PENDENTES`; gate quick passa
+- [x] Arquivo fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
