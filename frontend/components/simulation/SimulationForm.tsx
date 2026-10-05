@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { TickerSelect } from "@/components/market/TickerSelect";
 import { unidadeAtivo } from "@/lib/ativos";
-import { lerNumero } from "@/lib/numero";
+import { fracaoParaPercentual, lerNumero } from "@/lib/numero";
 
 export interface SimulationResult {
   id: string;
@@ -47,7 +47,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
     preco: { min: 0.0001, max: 100_000 },
     dias: { min: 1, max: 1260 },
     cenarios: { min: 100, max: 50_000 },
-    variacao: { min: 1, max: 100 },
+    variacao: { min: 1, max: 200 },
   };
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
           `/api/params/${encodeURIComponent(ticker)}`
         );
         // Parâmetro salvo como fração (0.5); a tela trabalha em % (50).
-        if (data.pct_bound_preferido != null) setVariacaoMax(String(data.pct_bound_preferido * 100).replace(".", ","));
+        if (data.pct_bound_preferido != null) setVariacaoMax(fracaoParaPercentual(data.pct_bound_preferido));
       } catch {
         // Sem parâmetro salvo: fica o padrão da tela.
       }

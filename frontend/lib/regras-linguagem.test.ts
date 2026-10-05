@@ -25,7 +25,6 @@ const PENDENTES = new Set<string>([
   "components/admin/SuggestionQueue.tsx",
   "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
-  "components/params/ParamsForm.tsx",
   "components/regression/AcucarForm.tsx",
   "components/regression/DolarForm.tsx",
 ]);

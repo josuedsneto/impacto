@@ -297,6 +297,8 @@ T24 → T25
 
 ### T11: Parâmetros em %
 
+**Status**: ✅ Done
+
 **What**: Campos em % com conversão ao carregar (×100) e ao salvar (÷100); seletor de ativo por nome.
 **Where**: `frontend/components/params/ParamsForm.tsx`
 **Depends on**: T10
@@ -306,9 +308,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Valor salvo 0,25 aparece como 25; digitar 30 salva 0,3
-- [ ] Arquivo fora de `PENDENTES`
-- [ ] Gate passa
+- [x] Valor salvo 0,25 aparece como 25; digitar 30 salva 0,3
+- [x] Arquivo fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: build
