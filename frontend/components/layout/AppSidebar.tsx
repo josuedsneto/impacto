@@ -9,7 +9,17 @@ const NAV_SECTIONS = [
     label: "Fixações",
     items: [
       { href: "/app/fixacoes", label: "Mercado" },
+      { href: "/app/market", label: "Análise Técnica" },
+      { href: "/app/metas", label: "Metas" },
+      { href: "/app/options", label: "Opções" },
+    ],
+  },
+  {
+    label: "Simulação",
+    items: [
       { href: "/app/simulation", label: "Monte Carlo" },
+      { href: "/app/jump-diffusion", label: "Jump Diffusion" },
+      { href: "/app/arima", label: "ARIMA" },
       { href: "/app/volatilidade", label: "Volatilidade" },
     ],
   },
@@ -19,16 +29,23 @@ const NAV_SECTIONS = [
       { href: "/app/var", label: "VaR" },
       { href: "/app/breakeven", label: "Breakeven" },
       { href: "/app/stress", label: "Stress Test" },
+      { href: "/app/risco", label: "Risco (EBITDA)" },
+      { href: "/app/cenarios", label: "Cenários" },
     ],
   },
   {
     label: "Análise",
     items: [
       { href: "/app/noticias", label: "Notícias" },
+      { href: "/app/focus", label: "Boletim Focus" },
       { href: "/app/regressao-dolar", label: "Regressão Dólar" },
       { href: "/app/regressao-acucar", label: "Regressão Açúcar" },
       { href: "/app/atr", label: "ATR" },
     ],
+  },
+  {
+    label: "Conta",
+    items: [{ href: "/app/params", label: "Parâmetros" }],
   },
 ];
 

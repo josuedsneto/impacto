@@ -12,7 +12,6 @@ from typing import Annotated, Literal, Optional
 from datetime import date, timedelta
 import requests
 import yfinance as yf
-from supabase import create_client
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -27,7 +26,7 @@ _yf_session.headers.update({
 })
 from pydantic import BaseModel, Field
 from auth import get_current_user, require_admin
-from market_cache import get_prices, backfill_ticker
+from market_cache import get_prices, backfill_ticker, supa_client
 from analysis import compute_analysis, IndicatorConfig
 from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
@@ -74,8 +73,9 @@ app.add_middleware(
 class SimulationRequest(BaseModel):
     ticker: str
     preco_inicial: float
-    dias_simulados: int = Field(default=252, ge=1, le=1000)
-    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
+    # Matches the frontend form limits; 1260 × 50k floats ≈ 500 MB peak.
+    dias_simulados: int = Field(default=252, ge=1, le=1260)
+    num_simulacoes: int = Field(default=10_000, ge=1, le=50_000)
     pct_bound: float = Field(default=0.50, gt=0, le=2)
     label: str | None = None
 
@@ -122,7 +122,7 @@ class AtrShareBody(BaseModel):
 
 
 @app.get("/api/health")
-async def health():
+def health():
     return {"status": "ok"}
 
 
@@ -218,7 +218,7 @@ async def dolar_run(
         raise HTTPException(status_code=500, detail="Erro ao executar regressão.")
 
     # Persist to Supabase
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("regression_runs").insert({
         "user_id": user["id"],
         "tipo": "dolar",
@@ -260,10 +260,7 @@ async def acucar_run(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    supa = create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    supa = supa_client()
     supa.table("regression_runs").insert({
         "user_id": str(user["id"]),
         "tipo": "acucar",
@@ -282,7 +279,7 @@ async def acucar_run(
 
 @app.get("/api/regression/runs")
 @limiter.limit("20/minute")
-async def regression_runs_list(
+def regression_runs_list(
     request: Request,
     tipo: str,
     user: Annotated[dict, Depends(get_current_user)],
@@ -290,7 +287,7 @@ async def regression_runs_list(
     """Returns the authenticated user's regression runs filtered by tipo."""
     if tipo not in ("dolar", "acucar"):
         raise HTTPException(status_code=400, detail="tipo must be 'dolar' or 'acucar'")
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     res = (
         supa.table("regression_runs")
         .select("id, tipo, inputs, resultado, created_at")
@@ -304,13 +301,13 @@ async def regression_runs_list(
 
 
 @app.get("/api/me")
-async def me(user: Annotated[dict, Depends(get_current_user)]):
+def me(user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
     return {"id": user["id"], "email": user["email"], "role": user["role"]}
 
 
 @app.get("/api/admin/ping")
-async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
+def admin_ping(user: Annotated[dict, Depends(require_admin)]):
     """Admin-only route — verifies role enforcement."""
     return {"message": "admin ok", "user": user["email"]}
 
@@ -319,7 +316,7 @@ async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
 
 @app.get("/api/market/prices")
 @limiter.limit("30/minute")
-async def market_prices(
+def market_prices(
     request: Request,
     ticker: str,
     start: date,
@@ -340,7 +337,7 @@ async def market_prices(
 
 @app.get("/api/market/analysis")
 @limiter.limit("20/minute")
-async def market_analysis(
+def market_analysis(
     request: Request,
     ticker: str,
     start: date,
@@ -412,7 +409,7 @@ async def market_analysis(
 
 @app.get("/api/market/status")
 @limiter.limit("30/minute")
-async def market_status(
+def market_status(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -429,7 +426,7 @@ async def market_status(
 
 @app.post("/api/market/suggest")
 @limiter.limit("10/minute")
-async def suggest_ticker(
+def suggest_ticker(
     request: Request,
     body: TickerSuggestRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -457,7 +454,7 @@ async def suggest_ticker(
         )
 
     # Write to tickers_catalog only after validation passes
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     existing = (
         client.table("tickers_catalog")
         .select("ticker,status")
@@ -484,14 +481,14 @@ async def suggest_ticker(
 
 
 @app.get("/api/admin/suggestions")
-async def admin_list_suggestions(
+def admin_list_suggestions(
     user: Annotated[dict, Depends(require_admin)],
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """ADM-01: Return ticker suggestions. Optionally filter by status=pending|approved|rejected."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     query = client.table("tickers_catalog").select(
         "id,ticker,nome,tipo,status,backfill_status,review_note,adicionado_por,created_at"
     ).order("created_at", desc=False)
@@ -508,7 +505,7 @@ class SuggestionReviewRequest(BaseModel):
 
 
 @app.patch("/api/admin/suggestions/{suggestion_id}")
-async def admin_review_suggestion(
+def admin_review_suggestion(
     suggestion_id: UUID,
     body: SuggestionReviewRequest,
     user: Annotated[dict, Depends(require_admin)],
@@ -521,7 +518,7 @@ async def admin_review_suggestion(
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
 
     # Fetch the suggestion to get the ticker symbol
     existing = (
@@ -555,7 +552,7 @@ async def admin_review_suggestion(
 
 
 @app.post("/api/admin/market/backfill/{ticker}")
-async def admin_backfill(
+def admin_backfill(
     ticker: str,
     user: Annotated[dict, Depends(require_admin)],
 ):
@@ -568,7 +565,7 @@ async def admin_backfill(
     result = backfill_ticker(ticker)
 
     # Update tickers_catalog backfill_status
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("tickers_catalog").update(
         {"backfill_status": "done"}
     ).eq("ticker", ticker.upper()).execute()
@@ -580,7 +577,7 @@ async def admin_backfill(
 
 @app.post("/api/simulations", status_code=201)
 @limiter.limit("10/minute")
-async def create_simulation(
+def create_simulation(
     request: Request,
     body: SimulationRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -590,7 +587,7 @@ async def create_simulation(
     Returns scalar metrics + percentiles_series for fan chart rendering.
     """
     # PARAM-01: fetch user's custom volatility for this ticker, if set
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     params_row = (
         client.table("user_parameters")
         .select("volatilidade_custom")
@@ -611,7 +608,7 @@ async def create_simulation(
     )
 
     # Persist to simulations table with user_id (SIM-04: user isolation)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     insert_payload = {
         "user_id": user["id"],
         "ticker": result["ticker"],
@@ -637,7 +634,7 @@ async def create_simulation(
 
 @app.get("/api/simulations")
 @limiter.limit("60/minute")
-async def list_simulations(
+def list_simulations(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
@@ -647,7 +644,7 @@ async def list_simulations(
     SIM-02/SIM-04: List all simulations for the authenticated user only.
     Returns id, ticker, label, p50, created_at (no percentiles_series to keep payload small).
     """
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("simulations")
         .select("id,ticker,label,preco_inicial,dias_simulados,p5,p50,p95,created_at")
@@ -661,7 +658,7 @@ async def list_simulations(
 
 @app.get("/api/simulations/{sim_id}")
 @limiter.limit("60/minute")
-async def get_simulation(
+def get_simulation(
     request: Request,
     sim_id: UUID,
     user: Annotated[dict, Depends(get_current_user)],
@@ -670,7 +667,7 @@ async def get_simulation(
     SIM-03/SIM-04: Fetch a single simulation including percentiles_series.
     Returns 404 if sim_id does not exist OR belongs to a different user.
     """
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("simulations")
         .select("*")
@@ -715,7 +712,7 @@ class MCPriceRequest(BaseModel):
 
 
 @app.post("/api/options/payoff")
-async def options_payoff(
+def options_payoff(
     body: PayoffRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -726,7 +723,7 @@ async def options_payoff(
 
 
 @app.post("/api/options/bs-price")
-async def options_bs_price(
+def options_bs_price(
     body: BSPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -740,7 +737,7 @@ async def options_bs_price(
 
 @app.post("/api/options/mc-price")
 @limiter.limit("10/minute")
-async def options_mc_price(
+def options_mc_price(
     request: Request,
     body: MCPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -770,13 +767,13 @@ class WatchlistAddRequest(BaseModel):
 
 @app.get("/api/params/{ticker}")
 @limiter.limit("60/minute")
-async def get_params(
+def get_params(
     request: Request,
     ticker: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-01: Return saved simulation params for a ticker, or 404 if not set."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("user_parameters")
         .select("*")
@@ -791,7 +788,7 @@ async def get_params(
 
 @app.put("/api/params/{ticker}")
 @limiter.limit("30/minute")
-async def upsert_params(
+def upsert_params(
     request: Request,
     ticker: str,
     body: UserParamsRequest,
@@ -811,7 +808,7 @@ async def upsert_params(
 
     update_dict["updated_at"] = date.today().isoformat()
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("user_parameters").upsert(
         {"user_id": user["id"], "ticker": ticker.upper(), **update_dict},
         on_conflict="user_id,ticker",
@@ -824,14 +821,14 @@ async def upsert_params(
 
 @app.get("/api/watchlist")
 @limiter.limit("60/minute")
-async def get_watchlist(
+def get_watchlist(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
     offset: int = 0,
 ):
     """PARAM-03: Return all tickers in the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("watchlist")
         .select("ticker,created_at")
@@ -845,7 +842,7 @@ async def get_watchlist(
 
 @app.post("/api/watchlist", status_code=201)
 @limiter.limit("30/minute")
-async def add_to_watchlist(
+def add_to_watchlist(
     request: Request,
     body: WatchlistAddRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -853,7 +850,7 @@ async def add_to_watchlist(
     """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
     ticker = validate_ticker(body.ticker)
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("watchlist").upsert(
         {"user_id": user["id"], "ticker": ticker},
         on_conflict="user_id,ticker",
@@ -865,13 +862,13 @@ async def add_to_watchlist(
 
 @app.delete("/api/watchlist/{ticker}")
 @limiter.limit("30/minute")
-async def remove_from_watchlist(
+def remove_from_watchlist(
     request: Request,
     ticker: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-03: Remove a ticker from the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
     return {"ticker": ticker.upper(), "removed": True}
 
@@ -884,11 +881,11 @@ class AdminConfigUpdateRequest(BaseModel):
 
 
 @app.get("/api/admin/config")
-async def admin_get_config(
+def admin_get_config(
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Return all admin_config rows ordered by key."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("admin_config")
         .select("key,value,description,updated_at")
@@ -899,13 +896,13 @@ async def admin_get_config(
 
 
 @app.put("/api/admin/config/{key}")
-async def admin_update_config(
+def admin_update_config(
     key: str,
     body: AdminConfigUpdateRequest,
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Upsert a key/value pair in admin_config."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     payload = {
         "key": key,
         "value": body.value,
@@ -921,9 +918,9 @@ async def admin_update_config(
 
 @app.get("/api/atr/usinas")
 @limiter.limit("30/minute")
-async def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-02: Lista usinas associadas ao usuário autenticado."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = (
         supa.table("user_usinas")
         .select("usina_id, usinas(id, nome)")
@@ -938,7 +935,7 @@ async def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_cu
 async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-03: Simula ATR com IC 90% e persiste no Supabase."""
     import asyncio
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     # Verificar que usuário pertence à usina
     assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).eq("usina_id", body.usina_id).execute()
     if not assoc.data:
@@ -973,9 +970,9 @@ async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[
 
 @app.get("/api/atr/historico")
 @limiter.limit("30/minute")
-async def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends(get_current_user)]):
+def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-04: Histórico de simulações do usuário para uma usina (próprias + compartilhadas da usina)."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     # Verificar que o usuário está associado à usina
     user_assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).execute().data
     user_usina_ids = {r["usina_id"] for r in user_assoc}
@@ -996,9 +993,9 @@ async def atr_historico(request: Request, usina_id: str, user: Annotated[dict, D
 
 @app.patch("/api/atr/simulacoes/{sim_id}/compartilhar")
 @limiter.limit("20/minute")
-async def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, user: Annotated[dict, Depends(get_current_user)]):
+def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, user: Annotated[dict, Depends(get_current_user)]):
     """Publica ou despublica uma simulação ATR para outros membros da mesma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     result = supa.table("atr_simulacoes").update({"compartilhado": body.compartilhado}).eq("id", sim_id).eq("user_id", user["id"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Simulação não encontrada.")
@@ -1009,18 +1006,18 @@ async def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, us
 
 @app.get("/api/admin/usinas")
 @limiter.limit("20/minute")
-async def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista todas as usinas cadastradas."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = supa.table("usinas").select("id, nome, created_at").order("nome").execute().data
     return {"usinas": rows}
 
 
 @app.post("/api/admin/usinas")
 @limiter.limit("10/minute")
-async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
     """Admin: cria uma nova usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     try:
         row = supa.table("usinas").insert({"nome": body.nome}).execute().data[0]
     except Exception:
@@ -1030,18 +1027,18 @@ async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Ann
 
 @app.delete("/api/admin/usinas/{usina_id}")
 @limiter.limit("10/minute")
-async def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: deleta uma usina pelo ID."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("usinas").delete().eq("id", usina_id).execute()
     return {"ok": True}
 
 
 @app.post("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
-async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: associa um usuário a uma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     try:
         supa.table("user_usinas").insert({"usina_id": usina_id, "user_id": user_id_target}).execute()
     except Exception:
@@ -1051,27 +1048,27 @@ async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target:
 
 @app.delete("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
-async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: remove associação de usuário com usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("user_usinas").delete().eq("usina_id", usina_id).eq("user_id", user_id_target).execute()
     return {"ok": True}
 
 
 @app.get("/api/admin/usuarios")
 @limiter.limit("10/minute")
-async def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista todos os usuários cadastrados no Supabase Auth."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     users = supa.auth.admin.list_users()
     return {"usuarios": [{"id": u.id, "email": u.email} for u in users]}
 
 
 @app.get("/api/admin/usinas/{usina_id}/usuarios")
 @limiter.limit("20/minute")
-async def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista IDs dos usuários associados a uma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = supa.table("user_usinas").select("user_id").eq("usina_id", usina_id).execute().data
     return {"user_ids": [r["user_id"] for r in rows]}
 
@@ -1080,7 +1077,7 @@ async def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotat
 
 @app.get("/api/var")
 @limiter.limit("10/minute")
-async def get_var(
+def get_var(
     request: Request,
     ticker: str = "SB=F",
     confidence: float = 0.95,
@@ -1136,7 +1133,7 @@ async def get_var(
 
 @app.get("/api/breakeven")
 @limiter.limit("30/minute")
-async def get_breakeven(
+def get_breakeven(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -1148,7 +1145,7 @@ async def get_breakeven(
     fator_conversao is stored in admin_config and defaults to 1.12045 if not found.
     """
     # Fetch conversion factor from admin_config
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     config_row = (
         client.table("admin_config")
         .select("value")
@@ -1188,14 +1185,14 @@ class BreakevenSaveRequest(BaseModel):
 
 @app.post("/api/breakeven/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_breakeven(
+def save_breakeven(
     request: Request,
     body: BreakevenSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Save a manual breakeven simulation for the authenticated user."""
     breakeven = round(body.preco_acucar_cents_lb * body.fator_conversao * body.preco_dolar_brl, 4)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("breakeven_simulations").insert({
         "user_id": user["id"],
         "preco_acucar_cents_lb": body.preco_acucar_cents_lb,
@@ -1210,14 +1207,14 @@ async def save_breakeven(
 
 @app.get("/api/breakeven/history")
 @limiter.limit("60/minute")
-async def list_breakeven_history(
+def list_breakeven_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
     offset: int = 0,
 ):
     """List saved breakeven simulations for the authenticated user."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("breakeven_simulations")
         .select("id,preco_acucar_cents_lb,preco_dolar_brl,fator_conversao,breakeven_brl_saca,label,created_at")
@@ -1242,12 +1239,12 @@ class RiscoSaveRequest(BaseModel):
 
 @app.post("/api/risco/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_risco(
+def save_risco(
     request: Request,
     body: RiscoSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("risco_simulations").insert({
         "user_id": user["id"],
         "inputs": body.inputs,
@@ -1262,12 +1259,12 @@ async def save_risco(
 
 @app.get("/api/risco/history")
 @limiter.limit("60/minute")
-async def list_risco_history(
+def list_risco_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("risco_simulations")
         .select("id,fat_media,custo_media,ebitda_media,label,created_at")
@@ -1296,12 +1293,12 @@ class CenariosSaveRequest(BaseModel):
 
 @app.post("/api/cenarios/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_cenario(
+def save_cenario(
     request: Request,
     body: CenariosSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("cenarios_simulations").insert({
         "user_id": user["id"],
         **body.model_dump(exclude={"label"}),
@@ -1312,12 +1309,12 @@ async def save_cenario(
 
 @app.get("/api/cenarios/history")
 @limiter.limit("60/minute")
-async def list_cenarios_history(
+def list_cenarios_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("cenarios_simulations")
         .select("id,opcao,breakeven,probabilidade_abaixo,media,label,created_at")
@@ -1333,7 +1330,7 @@ async def list_cenarios_history(
 
 @app.get("/api/arima/{ticker}")
 @limiter.limit("10/minute")
-async def get_arima(
+def get_arima(
     request: Request,
     ticker: str,
     steps: int = 30,
@@ -1399,7 +1396,7 @@ async def get_arima(
 
 @app.get("/api/stress")
 @limiter.limit("10/minute")
-async def get_stress(
+def get_stress(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1488,7 +1485,7 @@ _NEWS_TTL = 1800  # 30 minutes
 
 @app.get("/api/news")
 @limiter.limit("20/minute")
-async def get_news(
+def get_news(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -1532,7 +1529,7 @@ async def get_news(
 
 @app.get("/api/volatility")
 @limiter.limit("10/minute")
-async def get_volatility(
+def get_volatility(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1589,7 +1586,7 @@ async def get_volatility(
 
 @app.get("/api/metas")
 @limiter.limit("20/minute")
-async def get_metas(
+def get_metas(
     request: Request,
     meta: float = 2600,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1644,7 +1641,7 @@ class JumpDiffusionRequest(BaseModel):
 
 @app.post("/api/jump-diffusion")
 @limiter.limit("15/minute")
-async def jump_diffusion(
+def jump_diffusion(
     request: Request,
     body: JumpDiffusionRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1665,11 +1662,13 @@ async def jump_diffusion(
     sigma = float(body.sigma) if body.sigma is not None else float(np.std(log_returns, ddof=1))
     s0 = float(closes[-1])
 
-    dt = 1.0 / body.steps
+    # mu/sigma are daily (estimated from daily closes), so each step is one
+    # trading day; lambda_jumps is per year (UI tooltip), hence /252.
+    dt = 1.0
     rng = np.random.default_rng()
     prices = [s0]
     for _ in range(body.steps):
-        n_jumps = int(rng.poisson(body.lambda_jumps * dt))
+        n_jumps = int(rng.poisson(body.lambda_jumps / 252))
         jump_mag = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, n_jumps))) if n_jumps > 0 else 0.0
         diffusion = (mu - 0.5 * sigma ** 2) * dt + sigma * float(rng.normal()) * (dt ** 0.5)
         prices.append(prices[-1] * float(np.exp(diffusion + jump_mag)))
@@ -1705,7 +1704,7 @@ class RiscoRequest(BaseModel):
 
 @app.post("/api/risco")
 @limiter.limit("10/minute")
-async def simular_risco(
+def simular_risco(
     request: Request,
     body: RiscoRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1763,7 +1762,7 @@ class CenariosRequest(BaseModel):
 
 @app.post("/api/cenarios")
 @limiter.limit("20/minute")
-async def simular_cenarios(
+def simular_cenarios(
     request: Request,
     body: CenariosRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1788,23 +1787,21 @@ async def simular_cenarios(
         ) + 88704735 + 43732035 + 20286465
         return fat - custo
 
-    step_map = {"Moagem": 1000.0, "Câmbio": 0.01, "NY": 0.01, "Preço Etanol": 0.01}
-    step = step_map[body.opcao]
-    ny, moagem, cambio, preco_etanol = body.ny, body.moagem, body.cambio, body.preco_etanol
+    from scipy.optimize import brentq
 
-    for _ in range(100000):
-        if _ebitda(moagem, cambio, preco_etanol, ny) > 0:
-            break
-        if body.opcao == "Moagem":
-            moagem += step
-        elif body.opcao == "Câmbio":
-            cambio += step
-        elif body.opcao == "NY":
-            ny += step
-        else:
-            preco_etanol += step
+    # EBITDA is increasing in every variable, so the breakeven is the unique root.
+    # The old upward step-search returned the input itself whenever EBITDA was
+    # already positive (true for the defaults), so it never found the real breakeven.
+    base = {"moagem": body.moagem, "cambio": body.cambio, "preco_etanol": body.preco_etanol, "ny": body.ny}
+    key = {"Moagem": "moagem", "Câmbio": "cambio", "NY": "ny", "Preço Etanol": "preco_etanol"}[body.opcao]
 
-    breakeven = {"Moagem": moagem, "Câmbio": cambio, "NY": ny, "Preço Etanol": preco_etanol}[body.opcao]
+    def f(x: float) -> float:
+        return _ebitda(**{**base, key: x})
+
+    try:
+        breakeven = brentq(f, 1e-6, max(base[key], 1.0) * 100)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Sem breakeven no intervalo para esses parâmetros.")
 
     dist_params: dict[str, dict] = {
         "Moagem":       {"media": 1300000.0, "p80": 1400000.0},

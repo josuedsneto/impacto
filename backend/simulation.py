@@ -47,31 +47,29 @@ def run_simulation(
     mu = float(np.mean(log_returns))
     sigma = float(np.std(log_returns, ddof=1))
 
-    # Override sigma with user-specified volatility if provided (PARAM-01)
+    # Override sigma with user-specified volatility if provided (PARAM-01).
+    # The param is annualized (UI: "ex: 0.25"); the simulation steps are daily.
     if volatilidade_custom is not None:
-        sigma = float(volatilidade_custom)
+        sigma = float(volatilidade_custom) / np.sqrt(252)
 
     # --- Simulation bounds ---
     lower_bound = preco_inicial * (1 - pct_bound)
     upper_bound = preco_inicial * (1 + pct_bound)
 
     # --- Vectorized GBM paths (dias_simulados × num_simulacoes) ---
+    # In-place ops keep peak memory at a single (dias × sims) array.
     rng = np.random.default_rng()
-    shocks = rng.normal(loc=mu, scale=sigma, size=(dias_simulados, num_simulacoes))
-    # Convert log-return shocks to multiplicative factors, then cumprod
-    factors = np.exp(shocks)
-    paths = preco_inicial * np.cumprod(factors, axis=0)
-    paths = np.clip(paths, lower_bound, upper_bound)
+    paths = rng.normal(loc=mu, scale=sigma, size=(dias_simulados, num_simulacoes))
+    np.cumsum(paths, axis=0, out=paths)
+    np.exp(paths, out=paths)
+    paths *= preco_inicial
+    np.clip(paths, lower_bound, upper_bound, out=paths)
 
     # --- Percentile series (daily, across simulations) ---
     pct_labels = [5, 20, 25, 50, 75, 80, 95]
-    series = {
-        f"p{p}": np.percentile(paths, p, axis=1).tolist()
-        for p in pct_labels
-    }
-
-    # --- Scalar metrics at final day ---
-    final = paths[-1, :]
+    final = paths[-1, :].copy()
+    pcts = np.percentile(paths, pct_labels, axis=1, overwrite_input=True)
+    series = {f"p{p}": row.tolist() for p, row in zip(pct_labels, pcts)}
 
     return {
         "ticker": ticker,

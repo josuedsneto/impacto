@@ -132,7 +132,7 @@ export default function ParamsForm() {
       ) : (
         <>
           <div className="space-y-1">
-            <Label htmlFor="params-volatilidade">Volatilidade customizada (0–5) <FieldTooltip text="Substitui a volatilidade histórica calculada. Deixe em branco para usar a automática" /></Label>
+            <Label htmlFor="params-volatilidade">Volatilidade anual customizada (0–5) <FieldTooltip text="Volatilidade anualizada (ex: 0.25 = 25% a.a.). Substitui a histórica na simulação Monte Carlo. Deixe em branco para usar a automática" /></Label>
             <Input
               id="params-volatilidade"
               type="number"

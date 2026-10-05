@@ -119,7 +119,7 @@ def mc_call_price(
     OPT-03: Risk-neutral MC European call pricer.
 
     Uses drift = r - 0.5*sigma^2 (risk-neutral measure), NOT historical mu.
-    Steps = int(round(T * 252)) trading days.
+    Samples S_T directly from the exact GBM terminal distribution.
 
     Args:
         S:             Current underlying price
@@ -141,16 +141,11 @@ def mc_call_price(
     if sigma <= 0:
         raise ValueError(f"sigma must be positive, got {sigma}")
 
-    steps = max(1, int(round(T * 252)))
-    dt = 1.0 / 252.0
-
-    # Risk-neutral drift per step: (r - 0.5*sigma^2) * dt
-    drift = (r - 0.5 * sigma ** 2) * dt
-    vol_dt = sigma * np.sqrt(dt)
-
+    # European payoff depends only on S_T, and GBM has an exact terminal
+    # distribution — no need to simulate (steps × sims) intermediate prices.
     rng = np.random.default_rng()
-    shocks = rng.normal(loc=drift, scale=vol_dt, size=(steps, num_simulacoes))
-    ST = S * np.cumprod(np.exp(shocks), axis=0)[-1]
+    z = rng.standard_normal(num_simulacoes)
+    ST = S * np.exp((r - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * z)
 
     payoff = np.maximum(ST - K, 0.0)
     price = np.exp(-r * T) * float(np.mean(payoff))

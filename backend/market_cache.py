@@ -13,6 +13,7 @@ Algorithm for get_prices(ticker, start, end):
 """
 
 import os
+from functools import lru_cache
 from datetime import date, timedelta
 from typing import Optional
 import requests
@@ -28,10 +29,10 @@ _yf_session.headers.update({
 })
 
 
-def _get_service_client() -> Client:
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    return create_client(url, key)
+@lru_cache(maxsize=1)
+def supa_client() -> Client:
+    """One service-role client per process (reuses its HTTP connection pool)."""
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
 def _fetch_from_yfinance(ticker: str, start: date, end: date) -> pd.DataFrame:
@@ -118,7 +119,7 @@ def get_prices(ticker: str, start: date, end: date) -> list[dict]:
     Fetches from yfinance only for uncached date gaps.
     Always returns from market_prices (single source of truth).
     """
-    client = _get_service_client()
+    client = supa_client()
 
     coverage = (
         client.table("market_coverage")
@@ -187,7 +188,7 @@ def backfill_ticker(ticker: str, default_start: date = date(2013, 1, 1)) -> dict
     MKT-04: if yfinance history starts after default_start, uses actual earliest available date.
     Returns summary: {ticker, rows_inserted, first_date, last_date}.
     """
-    client = _get_service_client()
+    client = supa_client()
     today = date.today()
 
     # Try fetching from default_start; if empty, yfinance will return what it has
