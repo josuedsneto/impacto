@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { TickerSelect } from "@/components/market/TickerSelect";
 import { IndicatorSelector, DEFAULT_CONFIG, type IndicatorConfig } from "@/components/market/IndicatorSelector";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatDate } from "@/lib/format";
 import { FixacoesChart, type OhlcvRow, type AnalysisSignal } from "@/components/market/FixacoesChart";
 
 function defaultDateRange(): { start: string; end: string } {
@@ -79,9 +82,13 @@ export default function FixacoesPage() {
   const sellCount = signals.filter((s) => s.type === "sell").length;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Fixações</h1>
+    <div>
+      <PageHeader
+        titulo="Fixações"
+        descricao="Preços, indicadores técnicos e sinais de entrada e saída para planejar fixações."
+      />
 
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
       <Card>
         <CardHeader>
           <CardTitle>Configuração</CardTitle>
@@ -139,11 +146,15 @@ export default function FixacoesPage() {
         </CardContent>
       </Card>
 
+      {!queriedTicker && (
+        <EmptyState mensagem="Escolha o ativo, o período e os indicadores, e clique em Analisar." />
+      )}
+
       {queriedTicker && (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 flex-wrap">
-              <span>{queriedTicker} — {start} a {end}</span>
+              <span>{queriedTicker} · {formatDate(start)} a {formatDate(end)}</span>
               {signals.length > 0 && (
                 <span className="text-sm font-normal text-muted-foreground">
                   {buyCount} entr{buyCount === 1 ? "ada" : "adas"} ·{" "}
@@ -164,6 +175,7 @@ export default function FixacoesPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

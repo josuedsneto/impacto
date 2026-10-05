@@ -410,6 +410,8 @@ T36 → T37
 
 ### T16: Migrar Fixações
 
+**Status**: ✅ Done
+
 **What**: página com `PageHeader` e layout formulário + resultado; `FixacoesChart` lê cores dos tokens (Plotly).
 **Where**: `frontend/app/app/fixacoes/page.tsx`
 **Depends on**: T15
@@ -419,7 +421,7 @@ T36 → T37
 **Tools**: MCP: NONE · Skill: `dataviz`
 
 **Done when**:
-- [ ] Página e `FixacoesChart.tsx` fora de `PENDENTES`; gate quick passa
+- [x] Página e `FixacoesChart.tsx` fora de `PENDENTES`; gate quick passa
 
 **Tests**: unit
 **Gate**: quick
