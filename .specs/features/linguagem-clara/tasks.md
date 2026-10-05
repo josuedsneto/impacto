@@ -163,6 +163,8 @@ T24 → T25
 
 ### T5: Campo numérico e caixa de leitura
 
+**Status**: ✅ Done
+
 **What**: `components/ui/campo-numero.tsx` (`CampoNumero`, `campoValido`) e `components/ui/leitura.tsx` (`Leitura`).
 **Where**: `frontend/components/ui/campo-numero.tsx`
 **Depends on**: T4
@@ -172,9 +174,9 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] Rótulo no formato "nome (unidade)" e erro de faixa abaixo do campo
-- [ ] `type="text" inputMode="decimal"`
-- [ ] Gate passa
+- [x] Rótulo no formato "nome (unidade)" e erro de faixa abaixo do campo
+- [x] `type="text" inputMode="decimal"`
+- [x] Gate passa
 
 **Tests**: none
 **Gate**: build
