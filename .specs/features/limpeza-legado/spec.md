@@ -78,10 +78,10 @@ git rm -r Painel.py pages config.py utils.py render.yaml requirements.txt .devco
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| LEG-01 | P1: Repositório só com o app atual | - | Pending |
-| LEG-02 | P1: Repositório só com o app atual (componentes mortos) | - | Pending |
-| LEG-03 | P1: Repositório só com o app atual (endpoints mortos) | - | Pending |
-| LEG-04 | P1: Documentação que bate com o código | - | Pending |
+| LEG-01 | P1: Repositório só com o app atual | - | Implementing |
+| LEG-02 | P1: Repositório só com o app atual (componentes mortos) | - | Verified |
+| LEG-03 | P1: Repositório só com o app atual (endpoints mortos) | - | Verified |
+| LEG-04 | P1: Documentação que bate com o código | - | Verified |
 
 **Coverage:** 4 total, 0 mapeados para tasks (Small: tasks implícitas).
 

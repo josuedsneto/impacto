@@ -87,12 +87,12 @@ Cada tela do frontend repete a mesma função de pegar o token (28 cópias) e mo
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| API-01 | P1: Uma chamada padrão (token + JSON) | - | Pending |
-| API-02 | P1: Uma chamada padrão (erros e rede) | - | Pending |
-| API-03 | P1: Uma chamada padrão (remover cópias) | - | Pending |
-| API-04 | P1: Sessão expirada (renovar + redirecionar) | - | Pending |
-| API-05 | P1: Sessão expirada (mensagem + voltar) | - | Pending |
-| API-06 | P2: Mensagens do backend em português | - | Pending |
+| API-01 | P1: Uma chamada padrão (token + JSON) | - | Verified |
+| API-02 | P1: Uma chamada padrão (erros e rede) | - | Verified |
+| API-03 | P1: Uma chamada padrão (remover cópias) | - | Verified |
+| API-04 | P1: Sessão expirada (renovar + redirecionar) | - | Verified |
+| API-05 | P1: Sessão expirada (mensagem + voltar) | - | Implementing |
+| API-06 | P2: Mensagens do backend em português | - | Verified |
 
 **Coverage:** 6 total, 0 mapeados.
 

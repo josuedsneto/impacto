@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 2,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "surviving_mutant::teste de allowlist de redirecionamento deve incluir destino protocol relative host e caminho interno fora do prefixo nao so url absoluta e null",
+      "text": "Teste de allowlist de redirecionamento deve incluir destino protocol-relative (//host) e caminho interno fora do prefixo, não só URL absoluta e null.",
+      "signal": "surviving_mutant",
+      "scope": "frontend/auth",
+      "status": "candidate",
+      "features": [
+        "cliente-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "frontend/lib/api.ts:destinoSeguro (frontend/auth)"
+      ],
+      "created": "2026-10-05T14:28:03Z",
+      "last_seen": "2026-10-05T14:28:03Z"
+    }
+  ]
+}

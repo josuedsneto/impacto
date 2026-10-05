@@ -29,6 +29,7 @@ As features dependem umas das outras nesta ordem. Cada uma tem `spec.md` em `fea
 ## Handoff
 
 - **Branch:** `refactor/auditoria` (sem push).
-- **Último commit:** `39c87a1` — correções da auditoria.
-- **Pendente do usuário:** confirmar as specs; rodar a remoção do Streamlit (ver `features/limpeza-legado/spec.md`).
-- **Próximo passo:** com as specs aprovadas, executar `limpeza-legado` e `cliente-api`.
+- **Concluído:** `cliente-api` (validação em `features/cliente-api/validation.md`, PASS; UAT de 2 telas pendente). `limpeza-legado` LEG-02..04.
+- **Pendente do usuário:** rodar o `git rm` do Streamlit (LEG-01, comando em `features/limpeza-legado/spec.md`); UAT do login (2 passos em `features/cliente-api/validation.md`).
+- **Próximo passo:** `fundacao-ui` — escrever `design.md` e `tasks.md` (feature Large) antes de implementar.
+- **Ambiente:** `frontend/node_modules` instalado; testes do front com `npm test` (vitest).
