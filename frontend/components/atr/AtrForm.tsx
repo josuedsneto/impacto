@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { lerNumero } from "@/lib/numero";
+
+// Faixas aceitas pela API (backend/main.py AtrSimulateBody).
+const FAIXAS = {
+  chuva: { min: 0.1, max: 1000 },
+  impureza: { min: 0.1, max: 99.9 },
+  volume: { min: 1, max: 100_000_000, opcional: true },
+};
 
 export interface Usina {
   id: string;
@@ -17,6 +25,8 @@ export interface AtrResult {
   atr_esperado: number;
   atr_max: number;
   producao_total: number | null;
+  /** Valores informados, para a frase de leitura (preenchido pelo formulário, não pela API). */
+  entrada?: { chuva_mm: number; impureza_pct: number };
 }
 
 interface AtrFormProps {
@@ -47,22 +57,28 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (
+      !campoValido(chuva, FAIXAS.chuva) ||
+      !campoValido(impureza, FAIXAS.impureza) ||
+      !campoValido(volume, FAIXAS.volume)
+    ) {
+      toast.error("Corrija os campos destacados antes de simular.");
+      return;
+    }
     setLoading(true);
 
     try {
-      const body: Record<string, unknown> = {
-        usina_id: usinaId,
-        chuva_mm: parseFloat(chuva),
-        impureza_pct: parseFloat(impureza),
-      };
-      if (volume !== "") {
-        body.volume_moagem = parseFloat(volume);
+      const entrada = { chuva_mm: lerNumero(chuva)!, impureza_pct: lerNumero(impureza)! };
+      const body: Record<string, unknown> = { usina_id: usinaId, ...entrada };
+      if (volume.trim()) {
+        body.volume_moagem = lerNumero(volume);
       }
 
-      onResult(await apiFetch<AtrResult>("/api/atr/simulate", {
+      const resultado = await apiFetch<AtrResult>("/api/atr/simulate", {
         method: "POST",
         body: JSON.stringify(body),
-      }));
+      });
+      onResult({ ...resultado, entrada });
       toast.success("Simulação de ATR salva no histórico.");
     } catch (e) {
       toast.error((e as Error).message);
@@ -94,46 +110,39 @@ export default function AtrForm({ usinas, onResult, onUsinaChange }: AtrFormProp
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="space-y-1">
-          <Label htmlFor="chuva">Chuva (mm)</Label>
-          <Input
-            id="chuva"
-            type="number"
-            step="0.1"
-            value={chuva}
-            onChange={(e) => setChuva(e.target.value)}
-            placeholder="ex: 80"
-            disabled={loading}
-            required
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="impureza">Impureza (%)</Label>
-          <Input
-            id="impureza"
-            type="number"
-            step="0.1"
-            value={impureza}
-            onChange={(e) => setImpureza(e.target.value)}
-            placeholder="ex: 5.2"
-            disabled={loading}
-            required
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="volume">Volume de Moagem (ton/safra)</Label>
-          <Input
-            id="volume"
-            type="number"
-            step="1"
-            value={volume}
-            onChange={(e) => setVolume(e.target.value)}
-            placeholder="opcional"
-            disabled={loading}
-          />
-        </div>
+        <CampoNumero
+          id="chuva"
+          rotulo="Chuva no mês"
+          unidade="mm"
+          ajuda="Chuva acumulada no mês. Mais chuva costuma diluir a sacarose e baixar o ATR."
+          valor={chuva}
+          onChange={setChuva}
+          {...FAIXAS.chuva}
+          placeholder="ex.: 80"
+          disabled={loading}
+        />
+        <CampoNumero
+          id="impureza"
+          rotulo="Impureza total"
+          unidade="%"
+          ajuda="Terra e palha que chegam com a cana (vegetal + mineral). Mais impureza reduz o ATR."
+          valor={impureza}
+          onChange={setImpureza}
+          {...FAIXAS.impureza}
+          placeholder="ex.: 12,5"
+          disabled={loading}
+        />
+        <CampoNumero
+          id="volume"
+          rotulo="Moagem da safra"
+          unidade="t de cana"
+          ajuda="Se informada, a tela estima também a produção total de açúcar."
+          valor={volume}
+          onChange={setVolume}
+          {...FAIXAS.volume}
+          placeholder="ex.: 1.300.000"
+          disabled={loading}
+        />
       </div>
 
       <Button type="submit" disabled={loading || usinas.length === 0} className="w-full">

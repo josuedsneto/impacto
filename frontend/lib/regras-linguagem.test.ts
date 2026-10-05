@@ -10,16 +10,29 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "..");
 
 const PENDENTES = new Set<string>([
-  "app/app/atr/page.tsx",
   "app/app/market/page.tsx",
   "components/admin/SuggestionQueue.tsx",
-  "components/atr/AtrForm.tsx",
   "components/market/IndicatorSelector.tsx",
 ]);
 
 /** Telas que exibem um resultado calculado e, portanto, precisam da frase de leitura. */
-const FERRAMENTAS = [
-  "app/app/atr/page.tsx",
+const FERRAMENTAS: string[] = [
+    "app/app/simulation/page.tsx",
+    "app/app/var/page.tsx",
+    "app/app/volatilidade/page.tsx",
+    "app/app/stress/page.tsx",
+    "app/app/arima/page.tsx",
+    "app/app/jump-diffusion/page.tsx",
+    "app/app/risco/page.tsx",
+    "app/app/cenarios/page.tsx",
+    "app/app/metas/page.tsx",
+    "app/app/breakeven/page.tsx",
+    "app/app/regressao-dolar/page.tsx",
+    "app/app/regressao-acucar/page.tsx",
+    "app/app/atr/page.tsx",
+    "app/app/options/page.tsx",
+    "components/options/BSPricer.tsx",
+    "components/options/MCPricer.tsx",
 ];
 
 const REGRAS: { nome: string; falha: (texto: string, arquivo: string) => boolean }[] = [

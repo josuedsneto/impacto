@@ -540,6 +540,8 @@ T24 → T25
 
 ### T22: ATR da usina
 
+**Status**: ✅ Done
+
 **What**: Rótulos do design e frase `leituraAtr`.
 **Where**: `frontend/components/atr/AtrForm.tsx`
 **Depends on**: T21
@@ -549,8 +551,8 @@ T24 → T25
 **Tools**: MCP: NONE · Skill: NONE
 
 **Done when**:
-- [ ] `AtrForm.tsx` e a página fora de `PENDENTES`
-- [ ] Gate passa
+- [x] `AtrForm.tsx` e a página fora de `PENDENTES`
+- [x] Gate passa
 
 **Tests**: unit
 **Gate**: quick

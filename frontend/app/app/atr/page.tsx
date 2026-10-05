@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraAtr } from "@/lib/leitura";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,7 +136,17 @@ export default function AtrPage() {
             </div>
 
             {activeResult ? (
-              <div className="min-w-0">
+              <div className="min-w-0 space-y-4">
+                <Leitura>
+                  {leituraAtr({
+                    chuva: activeResult.entrada?.chuva_mm,
+                    impureza: activeResult.entrada?.impureza_pct,
+                    atr: activeResult.atr_esperado,
+                    min: activeResult.atr_min,
+                    max: activeResult.atr_max,
+                    producao: activeResult.producao_total,
+                  })}
+                </Leitura>
                 <AtrMetrics result={activeResult} />
               </div>
             ) : (
