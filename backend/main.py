@@ -306,12 +306,6 @@ def me(user: Annotated[dict, Depends(get_current_user)]):
     return {"id": user["id"], "email": user["email"], "role": user["role"]}
 
 
-@app.get("/api/admin/ping")
-def admin_ping(user: Annotated[dict, Depends(require_admin)]):
-    """Admin-only route — verifies role enforcement."""
-    return {"message": "admin ok", "user": user["email"]}
-
-
 # ── Market data ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/market/prices")
@@ -761,10 +755,6 @@ class UserParamsRequest(BaseModel):
     pct_bound_preferido: float | None = Field(default=None, ge=0.05, le=2)
 
 
-class WatchlistAddRequest(BaseModel):
-    ticker: str
-
-
 @app.get("/api/params/{ticker}")
 @limiter.limit("60/minute")
 def get_params(
@@ -815,62 +805,6 @@ def upsert_params(
     ).execute()
 
     return {"ticker": ticker.upper(), "saved": True}
-
-
-# ── Watchlist ──────────────────────────────────────────────────────────────────
-
-@app.get("/api/watchlist")
-@limiter.limit("60/minute")
-def get_watchlist(
-    request: Request,
-    user: Annotated[dict, Depends(get_current_user)],
-    limit: int = 50,
-    offset: int = 0,
-):
-    """PARAM-03: Return all tickers in the user's watchlist."""
-    client = supa_client()
-    result = (
-        client.table("watchlist")
-        .select("ticker,created_at")
-        .eq("user_id", user["id"])
-        .order("created_at", desc=False)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
-    return {"tickers": [row["ticker"] for row in result.data]}
-
-
-@app.post("/api/watchlist", status_code=201)
-@limiter.limit("30/minute")
-def add_to_watchlist(
-    request: Request,
-    body: WatchlistAddRequest,
-    user: Annotated[dict, Depends(get_current_user)],
-):
-    """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
-    ticker = validate_ticker(body.ticker)
-
-    client = supa_client()
-    client.table("watchlist").upsert(
-        {"user_id": user["id"], "ticker": ticker},
-        on_conflict="user_id,ticker",
-        ignore_duplicates=True,
-    ).execute()
-
-    return {"ticker": ticker, "added": True}
-
-
-@app.delete("/api/watchlist/{ticker}")
-@limiter.limit("30/minute")
-def remove_from_watchlist(
-    request: Request,
-    ticker: str,
-    user: Annotated[dict, Depends(get_current_user)],
-):
-    """PARAM-03: Remove a ticker from the user's watchlist."""
-    client = supa_client()
-    client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
-    return {"ticker": ticker.upper(), "removed": True}
 
 
 # ── Admin Config ───────────────────────────────────────────────────────────────
