@@ -92,3 +92,12 @@ def test_arima_responde_com_ultimo_dado(api, yahoo):
     corpo = r.json()
     assert corpo["ultimo_dado"] == ULTIMO_DIA_UTIL
     assert sum(1 for p in corpo["series"] if "forecast" in p) == 10
+
+
+def test_sugestao_de_ativo_sem_dados_responde_400(api, yahoo):
+    """A sonda de /api/market/suggest consulta o Yahoo pelo módulo de cache."""
+    yahoo.vazio = True
+    r = api.post("/api/market/suggest", json={"ticker": "XXXX"})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Ativo 'XXXX' não encontrado ou sem dados recentes. Confira o código e tente de novo."
+    assert yahoo.chamadas and yahoo.chamadas[0][0] == "XXXX"

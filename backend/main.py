@@ -26,6 +26,7 @@ _yf_session.headers.update({
 })
 from pydantic import BaseModel, Field
 from auth import get_current_user, require_admin
+import market_cache
 from market_cache import get_prices, backfill_ticker, supa_client
 from analysis import compute_analysis, IndicatorConfig
 from simulation import run_simulation
@@ -436,9 +437,9 @@ def suggest_ticker(
     """
     ticker = validate_ticker(body.ticker)
 
-    # Validate: attempt a minimal yfinance download (last 5 days)
+    # Validate: a sonda consulta o Yahoo (é o objetivo), mas pelo módulo de cache, ponto único de acesso
     try:
-        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
+        probe = market_cache._fetch_from_yfinance(ticker, date.today() - timedelta(days=7), date.today())
     except Exception as exc:
         logger.error("yfinance error for '%s': %s", ticker, exc)
         raise HTTPException(status_code=400, detail="Não foi possível consultar o mercado agora. Tente novamente em alguns minutos.")
