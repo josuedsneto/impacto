@@ -30,7 +30,7 @@ import market_cache
 from market_cache import get_prices, backfill_ticker, supa_client
 from analysis import compute_analysis, IndicatorConfig
 from simulation import run_simulation
-from options import compute_payoff, bs_call_price, mc_call_price
+from options import compute_payoff, black76_price, mc_black76_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from atr import calibrate_atr, predict_atr, get_sector_defaults
 
@@ -681,28 +681,28 @@ def get_simulation(
 # ── Options & Pricing ─────────────────────────────────────────────────────────
 
 class OptionLeg(BaseModel):
-    type: str        # "call" | "put"
-    strike: float
-    premium: float
-    position: str    # "long" | "short"
-    quantity: int = 1
+    type: Literal["call", "put"]
+    strike: float = Field(gt=0, le=1_000_000)
+    premium: float = Field(ge=0, le=1_000_000)
+    position: Literal["long", "short"]
+    quantity: int = Field(default=1, ge=1, le=100_000)
 
 
 class PayoffRequest(BaseModel):
-    legs: list[OptionLeg]
+    legs: list[OptionLeg] = Field(min_length=1, max_length=20)
 
 
 class BSPriceRequest(BaseModel):
-    S: float = Field(gt=0, le=100_000)       # current underlying price
-    K: float = Field(gt=0)                    # strike
+    F: float = Field(gt=0, le=100_000)       # preço do futuro (¢/lb)
+    K: float = Field(gt=0, le=1_000_000)     # strike
     T: float = Field(gt=0, le=30)            # time to expiry in years
     r: float = Field(ge=0, le=5)             # risk-free rate (annualized)
     sigma: float = Field(gt=0, le=10)        # volatility (annualized)
 
 
 class MCPriceRequest(BaseModel):
-    S: float = Field(gt=0, le=100_000)
-    K: float = Field(gt=0)
+    F: float = Field(gt=0, le=100_000)
+    K: float = Field(gt=0, le=1_000_000)
     T: float = Field(gt=0, le=30)
     r: float = Field(ge=0, le=5)
     sigma: float = Field(gt=0, le=10)
@@ -716,8 +716,10 @@ def options_payoff(
 ):
     """OPT-01: Compute combined payoff for a multi-leg options strategy."""
     legs = [leg.model_dump() for leg in body.legs]
-    result = compute_payoff(legs, price_range=None)
-    return result
+    try:
+        return compute_payoff(legs, price_range=None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/options/bs-price")
@@ -725,30 +727,30 @@ def options_bs_price(
     body: BSPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    """OPT-02: Black-Scholes European call price with user-supplied sigma."""
+    """OPT-02: Preço de call sobre futuro por Black-76, com sigma informado pelo usuário."""
     try:
-        price = bs_call_price(S=body.S, K=body.K, T=body.T, r=body.r, sigma=body.sigma)
+        price = black76_price(F=body.F, K=body.K, T=body.T, r=body.r, sigma=body.sigma)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+    return {"price": price, "F": body.F, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
 
 
 @app.post("/api/options/mc-price")
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 def options_mc_price(
     request: Request,
     body: MCPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    """OPT-03: Risk-neutral MC European call pricer."""
+    """OPT-03: Monte Carlo de call sobre futuro (Black-76, drift zero). Semente fixa: mesmo input, mesmo preço."""
     try:
-        price = mc_call_price(
-            S=body.S, K=body.K, T=body.T, r=body.r,
-            sigma=body.sigma, num_simulacoes=body.num_simulacoes,
+        price = mc_black76_price(
+            F=body.F, K=body.K, T=body.T, r=body.r,
+            sigma=body.sigma, num_simulacoes=body.num_simulacoes, seed=42,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+    return {"price": price, "F": body.F, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
 
 
 # ── User Parameters ────────────────────────────────────────────────────────────
