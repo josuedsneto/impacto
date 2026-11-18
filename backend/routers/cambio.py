@@ -26,6 +26,7 @@ router = APIRouter()
 TICKER = "USDBRL=X"
 HORIZONTE_MAX = 262  # safra inteira de abril a março ≈ 260 dias úteis
 MIN_FECHAMENTOS = 252
+MSG_SEM_DADOS = "Dados insuficientes para o câmbio. Tente novamente em alguns minutos."
 JANELA = 756
 CAMINHOS = 10_000
 MAX_NIVEIS = 10
@@ -51,6 +52,27 @@ def _niveis_do_texto(texto: str | None, spot: float) -> list[float]:
     return valores
 
 
+def serie_fx(hoje: date) -> tuple[np.ndarray, np.ndarray]:
+    """Fechamentos limpos do USD/BRL e suas datas. 503 se houver menos de MIN_FECHAMENTOS."""
+    linhas = [r for r in get_prices(TICKER, hoje - timedelta(days=1200), hoje) if r["close"] is not None]
+    if len(linhas) < MIN_FECHAMENTOS:
+        raise HTTPException(status_code=503, detail=MSG_SEM_DADOS)
+    closes, datas = cambio.limpar(
+        np.array([float(r["close"]) for r in linhas]), np.array([r["date"] for r in linhas])
+    )
+    if len(closes) < MIN_FECHAMENTOS:
+        raise HTTPException(status_code=503, detail=MSG_SEM_DADOS)
+    return closes, datas
+
+
+def juros_em(ultimo_ts: pd.Timestamp) -> tuple[float | None, float | None]:
+    """Selic meta e Fed funds (% a.a.) mais recentes até a data. None para o que estiver fora."""
+    inicio = ultimo_ts.date() - timedelta(days=30)
+    selic = taxas.ultimo_valor(taxas.selic_serie(inicio, ultimo_ts.date()))
+    fed = taxas.ultimo_valor(taxas.fed_funds_serie(inicio, ultimo_ts.date()))
+    return selic, fed
+
+
 @router.get("/api/cambio/previsao")
 @limiter.limit("10/minute")
 def cambio_previsao(
@@ -62,15 +84,7 @@ def cambio_previsao(
     if not 1 <= horizonte <= HORIZONTE_MAX:
         raise HTTPException(status_code=400, detail=f"O horizonte precisa estar entre 1 e {HORIZONTE_MAX} dias úteis.")
     hoje = date.today()
-    linhas = [r for r in get_prices(TICKER, hoje - timedelta(days=1200), hoje) if r["close"] is not None]
-    if len(linhas) < MIN_FECHAMENTOS:
-        raise HTTPException(status_code=503, detail="Dados insuficientes para o câmbio. Tente novamente em alguns minutos.")
-
-    closes, datas = cambio.limpar(
-        np.array([float(r["close"]) for r in linhas]), np.array([r["date"] for r in linhas])
-    )
-    if len(closes) < MIN_FECHAMENTOS:
-        raise HTTPException(status_code=503, detail="Dados insuficientes para o câmbio. Tente novamente em alguns minutos.")
+    closes, datas = serie_fx(hoje)
 
     spot = float(closes[-1])
     ultimo_dado = str(datas[-1])
@@ -99,8 +113,7 @@ def cambio_previsao(
     _, sigma_dia = cambio.vol_ewma(cambio.retornos(janela))
 
     # Forward (paridade coberta): juros mais recentes da Selic e do Fed funds.
-    selic = taxas.ultimo_valor(taxas.selic_serie(ultimo_ts.date() - timedelta(days=30), ultimo_ts.date()))
-    fed = taxas.ultimo_valor(taxas.fed_funds_serie(ultimo_ts.date() - timedelta(days=30), ultimo_ts.date()))
+    selic, fed = juros_em(ultimo_ts)
     if selic is None or fed is None:
         forward = {"valor": None}
     else:
