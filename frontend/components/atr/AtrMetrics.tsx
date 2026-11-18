@@ -8,6 +8,12 @@ const kg = (v: number) => `${formatNumber(v, 1)} kg/t`;
 export function AtrMetrics({ result }: { result: AtrResult }) {
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground" role="status">
+        {result.calibracao === "usina"
+          ? `Calibrado com ${result.meses_usados} meses medidos da usina.`
+          : result.aviso}
+      </p>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card px-4 py-3">
           <p className="text-sm text-muted-foreground">ATR mínimo</p>
