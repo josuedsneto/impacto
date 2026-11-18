@@ -30,6 +30,7 @@ const NAV_SECTIONS = [
       { href: "/app/breakeven", label: "Breakeven do açúcar" },
       { href: "/app/stress", label: "Teste de estresse" },
       { href: "/app/risco", label: "Risco do EBITDA" },
+      { href: "/app/risco-conjunto", label: "Receita em R$ (açúcar × dólar)" },
       { href: "/app/cenarios", label: "Breakeven da safra" },
     ],
   },

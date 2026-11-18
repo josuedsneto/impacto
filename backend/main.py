@@ -163,6 +163,9 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+from routers.risco_conjunto import router as risco_conjunto_router  # noqa: E402
+app.include_router(risco_conjunto_router)
+
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
 
