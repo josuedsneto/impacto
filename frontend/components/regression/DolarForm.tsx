@@ -9,10 +9,13 @@ import { lerNumero } from "@/lib/numero";
 
 export interface DolarResult {
   taxa_prevista: number;
-  r2: number;
-  rmse: number;
+  taxa_atual: number;
+  r2_fora_amostra: number | null;
+  rmse_fora_amostra: number | null;
+  supera_random_walk: boolean;
+  n_previsoes: number;
   coeficientes: Record<string, number>;
-  correlacao: Record<string, Record<string, number>>;
+  ultimo_dado: string | null;
 }
 
 export interface DolarDefaults {

@@ -9,11 +9,11 @@ import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
-import { formatDate, formatFX, formatNumber } from "@/lib/format";
+import { formatDate, formatFX } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DolarForm, { DolarDefaults, DolarResult } from "@/components/regression/DolarForm";
 import { DolarMetrics } from "@/components/regression/DolarMetrics";
-import { CorrelationHeatmap, CoeficientesChart } from "@/components/regression/DolarCharts";
+import { CoeficientesChart } from "@/components/regression/DolarCharts";
 
 interface HistoryItem {
   id: string;
@@ -71,29 +71,23 @@ export default function RegressaoDolarPage() {
     <div>
       <PageHeader
         titulo="Modelo do dólar"
-        descricao="Estima o dólar a partir de juros, moeda e produção no Brasil e nos EUA (modelo de regressão linear)."
+        descricao="Cenário macro: se juros, moeda e produção mudarem como você indicar, o modelo sugere quanto o dólar se move a partir de hoje."
         acoes={
           <BotaoExportar
             arquivo={nomeArquivo("Modelo do dolar", null)}
             montar={
               activeResult
-                ? () => {
-                    const vars = Object.keys(activeResult.correlacao);
-                    return gerarCsv({
+                ? () =>
+                    gerarCsv({
                       parametros: [
-                        ["Dólar previsto (R$/US$)", activeResult.taxa_prevista],
-                        ["R² (ajuste)", activeResult.r2],
-                        ["Erro médio, RMSE (R$/US$)", activeResult.rmse],
+                        ["Dólar hoje (R$/US$)", activeResult.taxa_atual],
+                        ["Dólar no cenário (R$/US$)", activeResult.taxa_prevista],
+                        ["R² fora da amostra", activeResult.r2_fora_amostra],
+                        ["Erro médio fora da amostra (R$/US$)", activeResult.rmse_fora_amostra],
+                        ["Supera o cenário sem mudança", activeResult.supera_random_walk ? "Sim" : "Não"],
                       ],
-                      tabelas: [
-                        { colunas: ["Variável", "Coeficiente"], linhas: Object.entries(activeResult.coeficientes) },
-                        {
-                          colunas: ["Correlação", ...vars],
-                          linhas: vars.map((r) => [r, ...vars.map((c) => activeResult.correlacao[r][c])]),
-                        },
-                      ],
-                    });
-                  }
+                      tabelas: [{ colunas: ["Variável", "Coeficiente"], linhas: Object.entries(activeResult.coeficientes) }],
+                    })
                 : null
             }
           />
@@ -127,9 +121,8 @@ export default function RegressaoDolarPage() {
 
             {activeResult ? (
               <div className="min-w-0 space-y-6">
-                <Leitura>{leituraRegDolar({ taxa: activeResult.taxa_prevista, rmse: activeResult.rmse })}</Leitura>
+                <Leitura>{leituraRegDolar({ taxa: activeResult.taxa_prevista, rmse: activeResult.rmse_fora_amostra })}</Leitura>
                 <DolarMetrics result={activeResult} />
-                <CorrelationHeatmap result={activeResult} />
                 <CoeficientesChart result={activeResult} />
               </div>
             ) : (
@@ -159,7 +152,8 @@ export default function RegressaoDolarPage() {
                     <span className="text-sm text-muted-foreground">{formatDate(item.created_at)}</span>
                   </div>
                     <div className="mt-1 text-sm text-muted-foreground">
-                      R²: {formatNumber(item.resultado.r2, 4)} · Erro médio: {formatFX(item.resultado.rmse)}
+                      Supera o cenário sem mudança: {item.resultado.supera_random_walk ? "sim" : "não"} · Erro médio fora da amostra:{" "}
+                      {item.resultado.rmse_fora_amostra == null ? "—" : formatFX(item.resultado.rmse_fora_amostra)}
                     </div>
                 </li>
               ))}

@@ -23,8 +23,8 @@ export function AcucarHistoricoChart({ result }: { result: AcucarResult }) {
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line dataKey="sb_f_real" name="Real" stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
           <Line
-            dataKey="sb_f_previsto"
-            name="Previsto"
+            dataKey="sb_f_previsto_fora_amostra"
+            name="Previsto sem ver o ano"
             stroke="var(--chart-1)"
             strokeWidth={2}
             strokeDasharray="5 3"

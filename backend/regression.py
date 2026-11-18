@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import requests
 import statsmodels.api as sm
-from sklearn.metrics import mean_squared_error
 
 from market_cache import serie_fechamentos
 
@@ -146,6 +145,11 @@ def get_dolar_defaults() -> dict:
     return result
 
 
+def _so_meses_fechados(mensal: pd.Series, hoje: date) -> pd.Series:
+    """Remove o mês corrente (parcial): resample('ME') cria esse grupo mesmo com o mês incompleto."""
+    return mensal[mensal.index < pd.Timestamp(hoje.replace(day=1))]
+
+
 # Janela padrão: 72 meses (~6 anos) para capturar ciclos de juros BR e EUA
 def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     """
@@ -168,7 +172,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
             try:
                 raw = sgs.get(code, start=start, end=today)
                 s = raw.dropna() if isinstance(raw, pd.Series) else raw.iloc[:, 0].dropna()
-                series = s.resample("ME").last()
+                series = _so_meses_fechados(s.resample("ME").last(), today)
                 series.index = series.index.strftime("%Y-%m")
                 bcb_df[key] = series
             except Exception as exc:
@@ -187,7 +191,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
     usdbrl_df = pd.DataFrame()
     diario = serie_fechamentos("USDBRL=X", start, today)
     if not diario.empty:
-        mensal = diario.resample("ME").last().dropna()
+        mensal = _so_meses_fechados(diario.resample("ME").last().dropna(), today)
         mensal.index = mensal.index.strftime("%Y-%m")
         usdbrl_df["taxa_dolar"] = mensal
 
@@ -197,7 +201,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
         if not df.empty:
             merged = merged.join(df, how="left")
 
-    merged = merged.dropna()
+    merged = merged.dropna().sort_index()
 
     if len(merged) < 24:
         raise ValueError(
@@ -227,24 +231,16 @@ def run_dolar_regression(inputs: dict) -> dict:
     if len(feature_cols) < 2:
         raise ValueError(f"Dados insuficientes: apenas {len(feature_cols)} features disponíveis após merge")
 
-    y = df["taxa_dolar"].values
-    X = df[feature_cols].values
+    y = df["taxa_dolar"].values.astype(float)
+    X = df[feature_cols].values.astype(float)
 
-    X_with_const = sm.add_constant(X, has_constant="add")
-    fitted = sm.OLS(endog=y, exog=X_with_const).fit()
+    fitted = _ajuste_ols(X, y)
 
-    rmse = float(np.sqrt(mean_squared_error(y, fitted.fittedvalues)))
+    entrada = _vetor_entrada(inputs, feature_cols)
+    taxa_prevista = float(fitted.predict(sm.add_constant(entrada, has_constant="add"))[0])
 
-    # Predict using user inputs — use 0 for any feature missing from inputs
-    input_row = pd.DataFrame([{col: inputs.get(col, 0) for col in feature_cols}])
-    input_with_const = sm.add_constant(input_row, has_constant="add")
-    taxa_prevista = float(fitted.predict(input_with_const)[0])
+    avaliacao = avaliar_walk_forward(X, y)
 
-    # Correlation matrix on features + target
-    corr_df = df[["taxa_dolar"] + feature_cols]
-    correlacao = corr_df.corr().round(4).to_dict()
-
-    # Coefficient dict
     params_names = ["const"] + feature_cols
     named_coefs = {
         params_names[i] if i < len(params_names) else f"x{i}": float(v)
@@ -253,11 +249,48 @@ def run_dolar_regression(inputs: dict) -> dict:
 
     return {
         "taxa_prevista": round(taxa_prevista, 4),
+        "taxa_atual": round(float(y[-1]), 4),
         "ultimo_dado": df.attrs.get("ultimo_dado"),
-        "r2": round(float(fitted.rsquared), 4),
-        "rmse": round(rmse, 4),
+        **avaliacao,
         "coeficientes": named_coefs,
-        "correlacao": correlacao,
+    }
+
+
+def _ajuste_ols(X: np.ndarray, y: np.ndarray):
+    return sm.OLS(endog=y, exog=sm.add_constant(X, has_constant="add")).fit()
+
+
+def avaliar_walk_forward(X: np.ndarray, y: np.ndarray, inicio: int = 36) -> dict:
+    """
+    Previsão de um passo à frente, janela expansiva, a partir de `inicio` observações.
+    Compara com o random walk (previsão = último nível observado), usando erro em log.
+    O X do mês previsto é o realizado: a métrica mede o ajuste dado o cenário macro,
+    não a previsão pura das variáveis macro.
+
+    r2_fora_amostra = 1 − SSE_modelo / SSE_random_walk (em log). Positivo só se o modelo erra menos.
+    """
+    erros_modelo, erros_rw, erros_nivel = [], [], []
+    for t in range(inicio, len(y)):
+        ajuste = _ajuste_ols(X[:t], y[:t])
+        prev = float(ajuste.predict(sm.add_constant(X[t:t + 1], has_constant="add"))[0])
+        prev = max(prev, 1e-9)
+        base, real = y[t - 1], y[t]
+        erros_modelo.append(np.log(prev) - np.log(real))
+        erros_rw.append(np.log(base) - np.log(real))
+        erros_nivel.append(prev - real)
+
+    n = len(erros_modelo)
+    if n == 0 or np.sum(np.square(erros_rw)) == 0:
+        return {"r2_fora_amostra": None, "rmse_fora_amostra": None, "supera_random_walk": False, "n_previsoes": n}
+
+    r2 = 1 - np.sum(np.square(erros_modelo)) / np.sum(np.square(erros_rw))
+    rmse = float(np.sqrt(np.mean(np.square(erros_nivel))))
+    return {
+        "r2_fora_amostra": round(float(r2), 4),
+        "rmse_fora_amostra": round(rmse, 4),
+        # Exige ao menos 24 previsões fora da amostra antes de dizer que supera
+        "supera_random_walk": bool(n >= 24 and r2 > 0),
+        "n_previsoes": n,
     }
 
 
@@ -268,7 +301,6 @@ _USDA_DEFAULTS = {
     "producao": 190.0,           # MMT — projeção safra 2025/26
     "demanda": 182.0,            # MMT
     "estoque_final": 48.5,       # MMT
-    "estoque_uso_pct": 26.6,     # estoque_final / demanda * 100 ≈ 26.6
 }
 
 _USDA_ANNUAL = {
@@ -330,96 +362,130 @@ def fetch_acucar_history() -> pd.DataFrame:
     # Merge price series into a DataFrame indexed by year
     price_df = pd.DataFrame(price_data)
 
-    # Build USDA DataFrame
+    # Merge on year index (USDA year Y = safra Y/Y+1; ver spec, alinhamento não feito)
     usda_df = pd.DataFrame(_USDA_ANNUAL).set_index("year")
-    usda_df["estoque_uso_pct"] = (
-        usda_df["estoque_final"] / usda_df["demanda"] * 100
-    )
-
-    # Merge on year index
     merged = price_df.join(usda_df, how="inner").dropna()
 
     if len(merged) < 6:
-        raise ValueError(
-            f"Dados insuficientes: menos de 6 anos após merge (obtidos: {len(merged)})"
-        )
+        raise ValueError("Histórico insuficiente para estimar o preço (mínimo de 6 anos).")
 
     merged.attrs["ultimo_dado"] = ultimo_dado
     return merged
 
 
+# Colunas do modelo do açúcar. estoque_uso_pct saiu: é estoque_final / demanda (colinear).
+_ACUCAR_FEATURES = ["estoque_inicial", "producao", "demanda", "estoque_final", "usdbrl", "cl_f"]
+
+# Quantil ~90% (normal bicaudal): faixa = previsão ± Z90 × RMSE fora da amostra.
+_Z90 = 1.645
+
+
+def _fabrica_modelo(model_type: str):
+    """Devolve uma função que cria um modelo novo, já com padronização das variáveis."""
+    from sklearn.linear_model import RidgeCV
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    def criar():
+        if model_type == "xgboost":
+            import xgboost as xgb
+            est = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1, random_state=42, n_jobs=1)
+        else:
+            est = RidgeCV(alphas=[0.1, 1.0, 10.0, 100.0])
+        return make_pipeline(StandardScaler(), est)
+
+    return criar
+
+
+def _previsoes_loo(X: np.ndarray, y: np.ndarray, criar) -> np.ndarray:
+    """Predição de cada ano por um modelo treinado sem aquele ano (leave-one-out)."""
+    n = len(y)
+    pred = np.empty(n)
+    for i in range(n):
+        treino = np.arange(n) != i
+        modelo = criar()
+        modelo.fit(X[treino], y[treino])
+        pred[i] = modelo.predict(X[i:i + 1])[0]
+    return pred
+
+
+def _confianca(r2_loo: float, rmse_modelo: float, rmse_base: float) -> str:
+    # Baixa também se o modelo não bate o chute "ano anterior" (preço é autocorrelacionado)
+    if r2_loo < 0.3 or rmse_modelo >= rmse_base:
+        return "Baixa"
+    if r2_loo <= 0.6:
+        return "Moderada"
+    return "Boa"
+
+
+def _vetor_entrada(inputs: dict, colunas: list[str]) -> np.ndarray:
+    for col in colunas:
+        if inputs.get(col) is None:
+            raise ValueError(f"Campo obrigatório ausente: {col}.")
+    return np.array([[float(inputs[col]) for col in colunas]])
+
+
 def run_acucar_regression(inputs: dict, model_type: str = "ridge") -> dict:
     """
-    Train Ridge or XGBoost model on annual yfinance+USDA data and predict
-    SB=F price for given inputs.
+    Treina Ridge ou XGBoost (com padronização) nos dados anuais de preço+USDA e
+    estima o preço do SB=F. A incerteza e as métricas vêm de leave-one-out:
+    não são medidas nos próprios dados de treino.
 
     Args:
-        inputs: dict with keys estoque_inicial, producao, demanda, estoque_final,
-                estoque_uso_pct, usdbrl, cl_f
-        model_type: "ridge" (default) or "xgboost"
+        inputs: dict com as chaves de _ACUCAR_FEATURES
+        model_type: "ridge" (padrão) ou "xgboost"
 
     Returns:
-        dict with sb_f_previsto, sb_f_min, sb_f_max, r2, rmse, historico
+        dict com sb_f_previsto, sb_f_min, sb_f_max, r2_loo, rmse_loo,
+        rmse_ano_anterior, r2_treino, n_anos, confianca, historico, ultimo_dado
     """
-    from sklearn.linear_model import RidgeCV
-    from sklearn.metrics import r2_score, mean_squared_error as skl_mse
+    from sklearn.metrics import r2_score
 
-    feature_cols = [
-        "estoque_inicial", "producao", "demanda", "estoque_final",
-        "estoque_uso_pct", "usdbrl", "cl_f",
-    ]
-
+    entrada = _vetor_entrada(inputs, _ACUCAR_FEATURES)
     df = fetch_acucar_history()
-
     y = df["sb_f"].values
-    X = df[feature_cols].values
+    X = df[_ACUCAR_FEATURES].values
     years = df.index.tolist()
+    n = len(y)
+    criar = _fabrica_modelo(model_type)
 
-    if model_type == "xgboost":
-        import xgboost as xgb
-        model = xgb.XGBRegressor(
-            n_estimators=100,
-            max_depth=3,
-            learning_rate=0.1,
-            random_state=42,
-            n_jobs=1,
-        )
-    else:
-        model = RidgeCV(alphas=[0.1, 1.0, 10.0, 100.0])
+    # Fora da amostra: r2 de LOO = 1 − PRESS / Σ(y − ȳ)²
+    pred_loo = _previsoes_loo(X, y, criar)
+    r2_loo = float(r2_score(y, pred_loo))
+    rmse_loo = float(np.sqrt(np.mean((y - pred_loo) ** 2)))
 
-    model.fit(X, y)
+    # Comparação com o chute "preço do ano = preço do ano anterior", nos mesmos anos (2º em diante)
+    rmse_loo_comparavel = float(np.sqrt(np.mean((y[1:] - pred_loo[1:]) ** 2)))
+    rmse_ano_anterior = float(np.sqrt(np.mean((y[1:] - y[:-1]) ** 2)))
 
-    y_pred_train = model.predict(X)
-    residuals = y - y_pred_train
-    std_residuals = float(np.std(residuals))
+    # Só para referência; não é a métrica mostrada
+    modelo = criar()
+    modelo.fit(X, y)
+    r2_treino = float(r2_score(y, modelo.predict(X)))
 
-    input_array = np.array([[inputs[col] for col in feature_cols]])
-    sb_f_previsto = float(model.predict(input_array)[0])
-    sb_f_min = sb_f_previsto - 1.96 * std_residuals
-    sb_f_max = sb_f_previsto + 1.96 * std_residuals
-
-    r2 = float(r2_score(y, y_pred_train))
-    try:
-        rmse = float(skl_mse(y, y_pred_train, squared=False))
-    except TypeError:
-        # sklearn >= 1.4 removed squared parameter
-        rmse = float(np.sqrt(skl_mse(y, y_pred_train)))
+    sb_f_previsto = float(modelo.predict(entrada)[0])
+    sb_f_min = sb_f_previsto - _Z90 * rmse_loo
+    sb_f_max = sb_f_previsto + _Z90 * rmse_loo
 
     historico = [
         {
             "year": int(year),
             "sb_f_real": round(float(real), 4),
-            "sb_f_previsto": round(float(pred), 4),
+            "sb_f_previsto_fora_amostra": round(float(pred), 4),
         }
-        for year, real, pred in zip(years, y, y_pred_train)
+        for year, real, pred in zip(years, y, pred_loo)
     ]
 
     return {
         "sb_f_previsto": round(sb_f_previsto, 4),
         "sb_f_min": round(sb_f_min, 4),
         "sb_f_max": round(sb_f_max, 4),
-        "r2": round(r2, 4),
-        "rmse": round(rmse, 4),
+        "r2_loo": round(r2_loo, 4),
+        "rmse_loo": round(rmse_loo, 4),
+        "rmse_ano_anterior": round(rmse_ano_anterior, 4),
+        "r2_treino": round(r2_treino, 4),
+        "n_anos": n,
+        "confianca": _confianca(r2_loo, rmse_loo_comparavel, rmse_ano_anterior),
         "historico": historico,
         "ultimo_dado": df.attrs.get("ultimo_dado"),
     }

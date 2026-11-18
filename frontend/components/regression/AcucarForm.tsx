@@ -16,21 +16,23 @@ export interface AcucarDefaults {
   producao: number | null;
   demanda: number | null;
   estoque_final: number | null;
-  estoque_uso_pct: number | null;
 }
 
 export interface HistoricoPoint {
   year: number;
   sb_f_real: number;
-  sb_f_previsto: number;
+  sb_f_previsto_fora_amostra: number;
 }
 
 export interface AcucarResult {
   sb_f_previsto: number;
   sb_f_min: number;
   sb_f_max: number;
-  r2: number;
-  rmse: number;
+  r2_loo: number;
+  rmse_loo: number;
+  rmse_ano_anterior: number | null;
+  n_anos: number;
+  confianca: "Baixa" | "Moderada" | "Boa";
   historico: HistoricoPoint[];
 }
 
@@ -45,7 +47,6 @@ const CAMPOS = [
   { chave: "producao", rotulo: "Produção mundial", unidade: "milhões de t", ajuda: "Açúcar produzido no mundo na safra (USDA).", placeholder: "ex.: 190" },
   { chave: "demanda", rotulo: "Consumo mundial", unidade: "milhões de t", ajuda: "Açúcar consumido no mundo na safra (USDA).", placeholder: "ex.: 182" },
   { chave: "estoque_final", rotulo: "Estoque final mundial", unidade: "milhões de t", ajuda: "Açúcar em estoque no fim da safra. Estoque maior tende a baixar o preço.", placeholder: "ex.: 48,5" },
-  { chave: "estoque_uso_pct", rotulo: "Estoque sobre consumo", unidade: "%", ajuda: "Estoque final dividido pelo consumo. Quanto maior, mais folgado está o mercado.", placeholder: "ex.: 26,6" },
   { chave: "usdbrl", rotulo: "Câmbio", unidade: "R$/US$", ajuda: "Dólar mais caro incentiva o Brasil a exportar mais açúcar.", placeholder: "ex.: 5,40" },
   { chave: "cl_f", rotulo: "Petróleo WTI", unidade: "US$/barril", ajuda: "Petróleo mais caro favorece o etanol e tira cana do açúcar.", placeholder: "ex.: 75" },
 ] as const;
