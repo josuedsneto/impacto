@@ -4,7 +4,7 @@ Legenda: `[ ]` pendente · `[x]` feito. Cada tarefa vira um commit atômico (Con
 
 ## MVP (P1)
 
-- [x] **T1** Migration `supabase/migrations/20261118000001_alertas.sql`: `alert_rules`, `alert_events`, índices, RLS. (ALE-06)
+- [x] **T1** Migration `supabase/migrations/20261118000003_alertas.sql`: `alert_rules`, `alert_events`, índices, RLS. (ALE-06)
 - [x] **T2** `backend/alertas.py`: schemas Pydantic por tipo, `avaliar()` puro, `DadosInsuficientes`, `vol_30d_pct()`. (ALE-02)
 - [x] **T3** `backend/tests/test_alertas_avaliar.py`: transição, direções, variação, paridade da vol. (ALE-02, ALE-03)
 - [x] **T4** `backend/alertas.py`: `disparar_regra` (estado, cooldown, insert com `on conflict do nothing`, envio). (ALE-03, ALE-04)

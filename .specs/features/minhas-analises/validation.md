@@ -7,7 +7,7 @@
 
 | Req | Descrição | Evidência | Status |
 |---|---|---|---|
-| ANA-01 | Tabela `analises` com RLS (4 políticas), CHECK de ferramenta e título, índice | `supabase/migrations/20261118000001_analises.sql` (revisão de código). Não aplicada em banco real aqui. | Implementado; falta aplicar e testar no Supabase (UAT) |
+| ANA-01 | Tabela `analises` com RLS (4 políticas), CHECK de ferramenta e título, índice | `supabase/migrations/20261118000004_analises.sql` (revisão de código). Não aplicada em banco real aqui. | Implementado; falta aplicar e testar no Supabase (UAT) |
 | ANA-02 | API: criar, listar (filtro, paginação ≤100), ler, renomear, excluir; limites 4 KB / 8 KB; dono | `pytest tests/test_analises.py` (13 testes) | Verificado (testes) |
 | ANA-03 | Botão "Salvar análise" em VaR, Breakeven, Risco, Opções | `lib/regras-analises.test.ts` + `npm run build` | Verificado (varredura + build); uso real na UAT |
 | ANA-04 | Tela Minhas análises: lista, filtro, renomear, excluir | build; UAT | Implementado; UAT |
@@ -52,7 +52,7 @@ cd frontend && npm run lint             -> 1 erro, PRÉ-EXISTENTE: components/ui
 
 ## UAT (passos para o usuário)
 
-Pré-requisito: aplicar `supabase/migrations/20261118000001_analises.sql` no Supabase antes de testar.
+Pré-requisito: aplicar `supabase/migrations/20261118000004_analises.sql` no Supabase antes de testar.
 
 1. **Salvar:** em *Perda máxima (VaR)*, escolha 95%, clique em "Salvar análise", deixe o título sugerido e clique em "Salvar". Deve aparecer "Análise salva. Veja em Minhas análises."
 2. Repita em *Breakeven do açúcar* (aba Manual), *Risco do EBITDA* (depois de "Simular") e *Opções* (depois de "Calcular" na Estratégia).

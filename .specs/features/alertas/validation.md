@@ -33,7 +33,7 @@ cd frontend && eslint .                                      → 1 erro PRÉ-EXI
 
 ## Pendências e riscos
 
-1. **Migration não aplicada** no Supabase. Aplicar `20261118000001_alertas.sql` antes do deploy.
+1. **Migration não aplicada** no Supabase. Aplicar `20261118000003_alertas.sql` antes do deploy.
 2. **Variáveis de ambiente**:
    - Backend (Railway): `JOBS_SECRET`, `RESEND_API_KEY`, `ALERTAS_FROM`.
    - Frontend (Vercel): `CRON_SECRET` (a Vercel envia no cron), `JOBS_SECRET` (mesmo valor do backend, sem `NEXT_PUBLIC_`), `NEXT_PUBLIC_API_URL` (já existe).

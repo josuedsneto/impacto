@@ -51,7 +51,7 @@ Duas revisões (spec e diff final). Aplicado: opções só put (R1), média só 
 
 ## Passo a passo de UAT (usuário)
 
-1. Aplicar a migration `supabase/migrations/20261118000001_posicoes_fixacoes.sql` no Supabase.
+1. Aplicar a migration `supabase/migrations/20261118000005_posicoes_fixacoes.sql` no Supabase.
 2. Entrar no app, abrir **Mercado → Posições da safra**. Escolher a usina (a sua associada) e a safra `2026/27`.
 3. Na seção **Política de hedge**, preencher mínimo 40, máximo 60 e produção estimada em toneladas. Clicar em **Salvar política**.
 4. Em **Nova posição**, registrar uma fixação de açúcar de 1.000 t a 20 ¢/lb com câmbio fixado 5,10. Conferir que o cartão de % fixado, o preço médio e o MTM aparecem, com a data do preço.

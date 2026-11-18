@@ -24,7 +24,7 @@ from auth import get_current_user, require_admin
 import market_cache
 from market_cache import get_prices, backfill_ticker, supa_client, serie_fechamentos
 from analysis import compute_analysis, IndicatorConfig
-from simulation import run_simulation
+from simulation import run_simulation, DadosInsuficientesError
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from atr import calibrate_atr, predict_atr
@@ -234,6 +234,7 @@ class AtrShareBody(BaseModel):
     compartilhado: bool
 
 
+from routers.analises import router as analises_router  # noqa: E402
 app.include_router(analises_router)
 
 

@@ -9,7 +9,7 @@
 | API `routers/analises.py` | pytest (dono, limites, paginação, validação) | `backend/tests/test_analises.py` | `cd backend && pytest tests -q` |
 | `lib/analises.ts` | vitest unitário | `frontend/lib/analises.test.ts` | `cd frontend && npm test` |
 | Telas e menu | varredura de código | `frontend/lib/regras-analises.test.ts` | `cd frontend && npm test` |
-| Migration RLS | revisão + UAT no Supabase | `supabase/migrations/20261118000001_analises.sql` | UAT |
+| Migration RLS | revisão + UAT no Supabase | `supabase/migrations/20261118000004_analises.sql` | UAT |
 
 ## Execution Plan
 

@@ -32,7 +32,7 @@ Observações de rodadas anteriores, feitas antes da instrução de parar:
 
 ## Ordem de deploy
 
-1. Aplicar `supabase/migrations/20261118000001_monte_carlo_correcoes.sql` **antes** do backend novo. O insert agora envia `pct_passou_limite`; sem a coluna o PostgREST recusa e toda simulação dá 500.
+1. Aplicar `supabase/migrations/20261118000002_monte_carlo_correcoes.sql` **antes** do backend novo. O insert agora envia `pct_passou_limite`; sem a coluna o PostgREST recusa e toda simulação dá 500.
 
 ## UAT (passos para o usuário)
 

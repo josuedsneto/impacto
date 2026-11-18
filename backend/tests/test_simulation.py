@@ -91,6 +91,7 @@ def test_dados_insuficientes_responde_422_em_portugues(api, supa, monkeypatch):
         raise DadosInsuficientesError("Não há dados históricos suficientes para SB=F (retornos válidos: 0, mínimo: 20).")
 
     monkeypatch.setattr(main, "run_simulation", sem_dados)
+    monkeypatch.setattr(main, "supa_client", lambda: supa)
     r = api.post("/api/simulations", json=CORPO)
     assert r.status_code == 422
     assert "Não há dados históricos suficientes" in r.json()["detail"]
