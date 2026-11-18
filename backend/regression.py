@@ -18,17 +18,10 @@ import requests
 import statsmodels.api as sm
 from sklearn.metrics import mean_squared_error
 
-from market_cache import get_prices
+from market_cache import serie_fechamentos
 
 logger = logging.getLogger(__name__)
 
-
-def _serie_cache(ticker: str, inicio: date, fim: date | None = None) -> pd.Series:
-    """Fechamentos diários do cache de preços (índice de datas); vazia se não houver dados."""
-    linhas = [r for r in get_prices(ticker, inicio, fim or date.today()) if r["close"] is not None]
-    if not linhas:
-        return pd.Series(dtype=float)
-    return pd.Series([float(r["close"]) for r in linhas], index=pd.to_datetime([r["date"] for r in linhas]))
 
 # BCB SGS series codes
 _BCB_SERIES = {
@@ -192,7 +185,7 @@ def fetch_dolar_history(months: int = 72) -> pd.DataFrame:
 
     # ── USD/BRL: último fechamento de cada mês, a partir dos diários do cache ──
     usdbrl_df = pd.DataFrame()
-    diario = _serie_cache("USDBRL=X", start, today)
+    diario = serie_fechamentos("USDBRL=X", start, today)
     if not diario.empty:
         mensal = diario.resample("ME").last().dropna()
         mensal.index = mensal.index.strftime("%Y-%m")
@@ -298,7 +291,7 @@ def get_acucar_defaults() -> dict:
     result: dict = {}
     tickers = {"sb_f": "SB=F", "usdbrl": "USDBRL=X", "cl_f": "CL=F"}
     for key, ticker in tickers.items():
-        serie = _serie_cache(ticker, date.today() - timedelta(days=10))
+        serie = serie_fechamentos(ticker, date.today() - timedelta(days=10))
         result[key] = float(serie.iloc[-1]) if not serie.empty else None
         if key == "sb_f":
             result["ultimo_dado"] = serie.index[-1].strftime("%Y-%m-%d") if not serie.empty else None
@@ -322,7 +315,7 @@ def fetch_acucar_history() -> pd.DataFrame:
 
     ultimo_dado = None
     for key, ticker in tickers.items():
-        diario = _serie_cache(ticker, date(2014, 1, 1))
+        diario = serie_fechamentos(ticker, date(2014, 1, 1))
         if diario.empty:
             logger.warning("Sem preços no cache para %s", ticker)
             price_data[key] = pd.Series(dtype=float)
