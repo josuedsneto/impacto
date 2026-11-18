@@ -9,6 +9,9 @@ import { Leitura } from "@/components/ui/leitura";
 import { leituraVaR } from "@/lib/leitura";
 import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
+import { toast } from "sonner";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +56,17 @@ function VarPanel({ ticker }: { ticker: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ANA-05: VaR não tem botão de calcular; ao reabrir, a confiança muda e o efeito abaixo recalcula.
+  useReabrirAnalise("var", (p) => {
+    if (p.ticker !== ticker) {
+      toast.error("Esta análise é de outro ativo.");
+      return;
+    }
+    // Os níveis aceitos são os valores do Select; casa pelo número, sem formatar texto.
+    const nivel = ["0.90", "0.95", "0.99"].find((v) => Math.abs(Number(v) - Number(p.confianca)) < 1e-9);
+    if (nivel) setConfidence(nivel);
+  });
+
   const fetchVar = useCallback(
     async (conf: string) => {
       setLoading(true);
@@ -80,6 +94,23 @@ function VarPanel({ ticker }: { ticker: string }) {
   const confLabel = formatPercent(parseFloat(confidence), 0);
   // A API devolve o VaR como retorno negativo; na tela mostramos a perda como valor positivo.
   const perda = (v: number) => Math.abs(v);
+  const resumoSalvo =
+    result && !loading && !error
+      ? {
+          ultimo_preco: result.last_price,
+          perda_historica_valor: perda(result.var_historico_abs),
+          perda_historica_pct: perda(result.var_historico_pct),
+          perda_parametrica_valor: perda(result.var_parametrico_abs),
+          perda_parametrica_pct: perda(result.var_parametrico_pct),
+          leitura: leituraVaR({
+            ticker,
+            confianca: result.confidence,
+            horizonte: 1,
+            perda: perda(result.var_historico_abs),
+            perdaPct: perda(result.var_historico_pct),
+          }),
+        }
+      : null;
 
   return (
     <div className="space-y-4 mt-4">
@@ -95,7 +126,12 @@ function VarPanel({ ticker }: { ticker: string }) {
             <SelectItem value="0.99">99%</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <BotaoSalvarAnalise
+            ferramenta="var"
+            parametros={{ ticker, confianca: Number(confidence) }}
+            resultado={resumoSalvo}
+          />
           <BotaoExportar
             arquivo={nomeArquivo("Perda maxima VaR", ticker)}
             montar={

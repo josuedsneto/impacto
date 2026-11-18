@@ -41,6 +41,7 @@ const NAV_SECTIONS = [
       { href: "/app/regressao-dolar", label: "Modelo do dólar" },
       { href: "/app/regressao-acucar", label: "Modelo do açúcar" },
       { href: "/app/atr", label: "ATR da usina" },
+      { href: "/app/analises", label: "Minhas análises" },
     ],
   },
   {

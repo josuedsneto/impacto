@@ -10,6 +10,8 @@ import { Leitura } from "@/components/ui/leitura";
 import { leituraRisco } from "@/lib/leitura";
 import { lerNumero } from "@/lib/numero";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,6 +118,37 @@ export default function RiscoPage() {
   const [result, setResult] = useState<RiscoResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // ANA-05: reabrir preenche as faixas salvas; o cálculo continua pelo botão.
+  useReabrirAnalise("risco", (p) => {
+    setInputs(
+      Object.fromEntries(
+        Object.keys(DEFAULTS).map((k) => [
+          k,
+          {
+            media: String(p[`${LABELS[k]}: ${COLUNAS.media}`] ?? DEFAULTS[k].media),
+            p15: String(p[`${LABELS[k]}: ${COLUNAS.p15}`] ?? DEFAULTS[k].p15),
+            p85: String(p[`${LABELS[k]}: ${COLUNAS.p85}`] ?? DEFAULTS[k].p85),
+          },
+        ]),
+      ),
+    );
+  });
+
+  // Premissas em texto legível (rótulo da variável + coluna), como o CSV.
+  const parametrosSalvos = Object.fromEntries(
+    Object.entries(inputs).flatMap(([k, v]) =>
+      (["media", "p15", "p85"] as const).map((c) => [`${LABELS[k]}: ${COLUNAS[c]}`, v[c]] as const),
+    ),
+  );
+  const ebitdaP10 = result?.ebitda.percentis.find((p) => p.p === 10)?.v ?? null;
+  const resumoSalvo = result
+    ? {
+        "EBITDA: média": result.ebitda.media,
+        "EBITDA: pior 10% dos cenários": ebitdaP10,
+        leitura: leituraRisco({ media: result.ebitda.media, p10: ebitdaP10 ?? undefined }),
+      }
+    : null;
+
   async function handleSimulate() {
     if (!Object.values(inputs).every(valido)) {
       toast.error("Use números positivos e cenário baixo menor ou igual ao alto em todas as linhas.");
@@ -208,9 +241,14 @@ export default function RiscoPage() {
       </Card>
 
       {result && (
-        <Leitura>
-          {leituraRisco({ media: result.ebitda.media, p10: result.ebitda.percentis.find((p) => p.p === 10)?.v })}
-        </Leitura>
+        <>
+          <Leitura>
+            {leituraRisco({ media: result.ebitda.media, p10: result.ebitda.percentis.find((p) => p.p === 10)?.v })}
+          </Leitura>
+          <div className="flex justify-end">
+            <BotaoSalvarAnalise ferramenta="risco" parametros={parametrosSalvos} resultado={resumoSalvo} />
+          </div>
+        </>
       )}
 
       {result ? (

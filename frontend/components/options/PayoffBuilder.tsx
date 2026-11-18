@@ -30,8 +30,19 @@ export interface PayoffResult {
   payoff: number[];
 }
 
+/** Perna como o usuário digitou (sem id), para salvar e reabrir uma análise. */
+export interface PernaSalva {
+  type: "call" | "put";
+  position: "long" | "short";
+  strike: string;
+  premium: string;
+  quantity: string;
+}
+
 interface PayoffBuilderProps {
-  onPayoffResult: (result: PayoffResult) => void;
+  onPayoffResult: (result: PayoffResult, pernas: PernaSalva[]) => void;
+  /** Pernas para preencher ao reabrir uma análise (a tela remonta com `key` nova). */
+  pernasIniciais?: PernaSalva[];
 }
 
 let legCounter = 0;
@@ -48,8 +59,10 @@ function newLeg(): OptionLeg {
   };
 }
 
-export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
-  const [legs, setLegs] = useState<OptionLeg[]>([newLeg()]);
+export default function PayoffBuilder({ onPayoffResult, pernasIniciais }: PayoffBuilderProps) {
+  const [legs, setLegs] = useState<OptionLeg[]>(() =>
+    pernasIniciais?.length ? pernasIniciais.map((p) => ({ ...newLeg(), ...p })) : [newLeg()]
+  );
   const [loading, setLoading] = useState(false);
 
   function addLeg() {
@@ -91,10 +104,14 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
         premium: lerNumero(l.premium),
         quantity: Math.round(lerNumero(l.quantity)!),
       }));
-      onPayoffResult(await apiFetch<PayoffResult>("/api/options/payoff", {
+      const resultado = await apiFetch<PayoffResult>("/api/options/payoff", {
         method: "POST",
         body: JSON.stringify({ legs: payload }),
-      }));
+      });
+      onPayoffResult(
+        resultado,
+        legs.map(({ type, position, strike, premium, quantity }) => ({ type, position, strike, premium, quantity }))
+      );
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
