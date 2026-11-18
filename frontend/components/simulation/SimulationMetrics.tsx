@@ -1,37 +1,42 @@
 "use client";
 
+import { formatPercent, formatPreco } from "@/lib/format";
+import { nomeAtivo } from "@/lib/ativos";
 import { SimulationResult } from "./SimulationForm";
 
-interface SimulationMetricsProps {
-  result: SimulationResult;
-}
+export default function SimulationMetrics({ result }: { result: SimulationResult }) {
+  const fmt = (v: number) => formatPreco(result.ticker, v);
+  const metricas = [
+    { rotulo: "Cenário ruim (5% das chances)", valor: result.p5 },
+    { rotulo: "Cenário central", valor: result.p50, destaque: true },
+    { rotulo: "Cenário bom", valor: result.p95 },
+  ];
 
-export default function SimulationMetrics({ result }: SimulationMetricsProps) {
   return (
-    <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-4">
-      <div className="border-b pb-2">
-        <h3 className="text-lg font-semibold">
-          {result.ticker} — {result.dias_simulados} dias
-        </h3>
+    <div className="space-y-4 rounded-xl border border-border bg-card p-6 text-card-foreground">
+      <div className="border-b border-border pb-2">
+        <h2 className="text-lg font-semibold">
+          {nomeAtivo(result.ticker)} · {result.dias_simulados} dias úteis
+        </h2>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P5</p>
-          <p className="text-xl font-bold">{result.p5.toFixed(2)}</p>
-        </div>
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P50 (mediana)</p>
-          <p className="text-xl font-bold">{result.p50.toFixed(2)}</p>
-        </div>
-        <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">P95</p>
-          <p className="text-xl font-bold">{result.p95.toFixed(2)}</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {metricas.map(({ rotulo, valor, destaque }) => (
+          <div key={rotulo} className="space-y-1 text-center">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+            <p className={destaque ? "text-2xl font-bold tabular-nums" : "text-xl font-bold tabular-nums"}>{fmt(valor)}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="border-t pt-2 text-sm text-muted-foreground">
-        Preço inicial: {result.preco_inicial.toFixed(2)}
+      <div className="space-y-1 border-t border-border pt-2 text-sm text-muted-foreground">
+        <p>Preço inicial: {fmt(result.preco_inicial)}</p>
+        {result.pct_passou_limite !== null && (
+          <p>
+            {formatPercent(result.pct_passou_limite, 1)} dos cenários saíram da faixa de ±
+            {formatPercent(result.pct_bound, 0)} em algum dia do prazo.
+          </p>
+        )}
       </div>
     </div>
   );

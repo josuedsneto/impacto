@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { formatDate } from "@/lib/format";
+import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface Suggestion {
   id: string;
@@ -20,15 +19,6 @@ interface Suggestion {
   created_at: string;
 }
 
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export function SuggestionQueue() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,18 +28,10 @@ export function SuggestionQueue() {
   useEffect(() => {
     async function fetchSuggestions() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${BACKEND_URL}/api/admin/suggestions?status=pending`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          toast.error(data.detail ?? "Erro ao carregar sugestões.");
-        } else {
-          setSuggestions(data.suggestions ?? []);
-        }
-      } catch {
-        toast.error("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ suggestions?: Suggestion[] }>("/api/admin/suggestions?status=pending");
+        setSuggestions(data.suggestions ?? []);
+      } catch (e) {
+        toast.error((e as Error).message);
       } finally {
         setLoading(false);
       }
@@ -60,24 +42,15 @@ export function SuggestionQueue() {
   async function handleApprove(id: string, ticker: string) {
     setActionLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/admin/suggestions/${id}`, {
+      await apiFetch(`/api/admin/suggestions/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        timeoutMs: 120_000,
         body: JSON.stringify({ action: "approve" }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao aprovar.");
-      } else {
-        toast.success(`Ticker '${ticker}' aprovado. Backfill iniciado.`);
-        setSuggestions((prev) => prev.filter((s) => s.id !== id));
-      }
-    } catch {
-      toast.error("Erro de conexão com o servidor.");
+      toast.success(`Ativo ${ticker} aprovado. O histórico de preços já foi carregado.`);
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: false }));
     }
@@ -87,24 +60,14 @@ export function SuggestionQueue() {
     const note = rejectNote[id] ?? "";
     setActionLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/admin/suggestions/${id}`, {
+      await apiFetch(`/api/admin/suggestions/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ action: "reject", review_note: note }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.detail ?? "Erro ao rejeitar.");
-      } else {
-        toast.success(`Ticker '${ticker}' rejeitado.`);
-        setSuggestions((prev) => prev.filter((s) => s.id !== id));
-      }
-    } catch {
-      toast.error("Erro de conexão com o servidor.");
+      toast.success(`Ativo ${ticker} rejeitado.`);
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: false }));
     }
@@ -125,7 +88,7 @@ export function SuggestionQueue() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4 font-medium">Ticker</th>
+                  <th className="pb-2 pr-4 font-medium">Código</th>
                   <th className="pb-2 pr-4 font-medium">Nome</th>
                   <th className="pb-2 pr-4 font-medium">Tipo</th>
                   <th className="pb-2 pr-4 font-medium">Sugerido em</th>
@@ -139,7 +102,7 @@ export function SuggestionQueue() {
                     <td className="py-3 pr-4">{s.nome || "—"}</td>
                     <td className="py-3 pr-4">{s.tipo}</td>
                     <td className="py-3 pr-4 text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                      {formatDate(s.created_at)}
                     </td>
                     <td className="py-3">
                       <div className="flex items-start gap-2">

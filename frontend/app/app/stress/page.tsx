@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate, formatPercent, formatPreco } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraStress } from "@/lib/leitura";
+import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
+import { TickerSelect } from "@/components/market/TickerSelect";
 import {
   Table,
   TableBody,
@@ -19,8 +22,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface StressScenario {
   cenario: string;
   periodo_inicio: string;
@@ -29,99 +30,111 @@ interface StressScenario {
   preco_final: number;
 }
 
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
+// Queda acima de 20%: severa; de 10% a 20%: forte; abaixo: moderada.
 function DrawdownBadge({ value }: { value: number }) {
-  const pct = Math.abs(value * 100);
-  if (pct > 20) {
-    return (
-      <Badge variant="destructive">{(value * 100).toFixed(2)}%</Badge>
-    );
-  }
-  if (pct > 10) {
-    return (
-      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
-        {(value * 100).toFixed(2)}%
-      </Badge>
-    );
-  }
-  return <span className="text-sm">{(value * 100).toFixed(2)}%</span>;
+  const pct = Math.abs(value);
+  const texto = formatPercent(value);
+  if (pct > 0.2) return <Badge variant="destructive">{texto} · severa</Badge>;
+  if (pct > 0.1) return <span className="text-sm font-semibold text-negative">{texto} · forte</span>;
+  return <span className="text-sm">{texto}</span>;
 }
 
 export default function StressPage() {
   const [ticker, setTicker] = useState("SB=F");
   const [scenarios, setScenarios] = useState<StressScenario[]>([]);
+  const [ultimoDado, setUltimoDado] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     async function fetchStress() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getAccessToken();
         const params = new URLSearchParams({ ticker });
-        const res = await fetch(`${API}/api/stress?${params}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError((data as { detail?: string }).detail ?? "Erro ao carregar cenários.");
-          return;
-        }
-        setScenarios(data as StressScenario[]);
-      } catch {
-        setError("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ cenarios: StressScenario[]; ultimo_dado: string }>(`/api/stress?${params}`);
+        setScenarios(data.cenarios);
+        setUltimoDado(data.ultimo_dado ?? null);
+      } catch (e) {
+        setError((e as Error).message);
       } finally {
         setLoading(false);
       }
     }
     fetchStress();
-  }, [ticker]);
+  }, [ticker, tentativa]);
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Teste de Estresse</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Teste de estresse"
+        atualizadoEm={ultimoDado ? `Fechamento de ${formatDate(ultimoDado)}` : undefined}
+        descricao="As piores quedas do preço na história e em crises conhecidas (2008 e covid-19)."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Teste de estresse", ticker)}
+            montar={
+              !loading && scenarios.length
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Ativo", nomeAtivo(ticker)]],
+                      tabelas: [
+                        {
+                          colunas: [
+                            "Cenário",
+                            "Início",
+                            "Fim",
+                            "Queda do pico ao fundo (%)",
+                            `Preço no fundo${unidadeAtivo(ticker) ? ` (${unidadeAtivo(ticker)})` : ""}`,
+                          ],
+                          linhas: scenarios.map((s) => [
+                            s.cenario,
+                            s.periodo_inicio === "N/A" ? null : s.periodo_inicio,
+                            s.periodo_fim === "N/A" ? null : s.periodo_fim,
+                            s.drawdown_pct * 100,
+                            s.preco_final,
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Ativo:</span>
-        <Select value={ticker} onValueChange={setTicker}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="SB=F">Açúcar NY</SelectItem>
-            <SelectItem value="USDBRL=X">USD/BRL</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <TickerSelect value={ticker} onChange={setTicker} />
 
       {loading && (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <ErrorState mensagem={error} onRetry={() => setTentativa((t) => t + 1)} />}
 
       {!loading && !error && scenarios.length > 0 && (
-        <div className="rounded-md border">
+        // O primeiro cenário da API é o pior drawdown de toda a história.
+        <Leitura>
+          {leituraStress({
+            drawdown: scenarios[0].drawdown_pct,
+            inicio: scenarios[0].periodo_inicio,
+            fim: scenarios[0].periodo_fim,
+          })}
+        </Leitura>
+      )}
+      {!loading && !error && scenarios.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cenário</TableHead>
                 <TableHead>Período</TableHead>
-                <TableHead>Drawdown (%)</TableHead>
-                <TableHead>Preço Final</TableHead>
+                <TableHead>Queda do pico ao fundo</TableHead>
+                <TableHead className="text-right">Preço no fundo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -129,12 +142,12 @@ export default function StressPage() {
                 <TableRow key={i}>
                   <TableCell className="font-medium">{s.cenario}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {s.periodo_inicio} – {s.periodo_fim}
+                    {s.periodo_inicio === "N/A" ? "Sem dados no período" : `${formatDate(s.periodo_inicio)} a ${formatDate(s.periodo_fim)}`}
                   </TableCell>
                   <TableCell>
                     <DrawdownBadge value={s.drawdown_pct} />
                   </TableCell>
-                  <TableCell>{s.preco_final.toFixed(4)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatPreco(ticker, s.preco_final)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -143,7 +156,7 @@ export default function StressPage() {
       )}
 
       {!loading && !error && scenarios.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum cenário disponível.</p>
+        <EmptyState mensagem="Nenhum cenário disponível para este ativo." />
       )}
     </div>
   );

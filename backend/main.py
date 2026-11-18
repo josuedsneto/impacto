@@ -1,38 +1,41 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import json
 import logging
 import os
 import re
+import time as _time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, time as Hora, timedelta, timezone
+from typing import Annotated, Literal, Optional
 from uuid import UUID
 
+import requests
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated, Literal, Optional
-from datetime import date, timedelta
-import requests
-import yfinance as yf
-from supabase import create_client
+from pydantic import BaseModel, Field, field_validator, model_validator
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from auth import get_current_user, require_admin
+import market_cache
+from market_cache import get_prices, backfill_ticker, supa_client, serie_fechamentos
+from analysis import compute_analysis, IndicatorConfig
+from simulation import run_simulation, DadosInsuficientesError
+from options import compute_payoff, black76_price, mc_black76_price
+from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
+from atr import calibrate_atr, predict_atr
+from observabilidade import RequestIdMiddleware, configurar_logs
+from postgrest.exceptions import APIError
+
+configurar_logs()
 logger = logging.getLogger(__name__)
 
-# Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
-_yf_session = requests.Session()
-_yf_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-})
-from pydantic import BaseModel, Field
-from auth import get_current_user, require_admin
-from market_cache import get_prices, backfill_ticker
-from analysis import compute_analysis, IndicatorConfig
-from simulation import run_simulation
-from options import compute_payoff, bs_call_price, mc_call_price
-from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
-from atr import calibrate_atr, predict_atr, get_sector_defaults
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -41,20 +44,114 @@ ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
 def validate_ticker(ticker: str) -> str:
     t = ticker.strip().upper()
     if not ALLOWED_TICKER_RE.match(t):
-        raise HTTPException(status_code=400, detail="Invalid ticker format")
+        raise HTTPException(status_code=400, detail="Código de ativo inválido. Use letras, números, '=' ou '.' (ex.: SB=F).")
     return t
 
+
+# Constantes de negócio lidas de admin_config. Conjunto fechado: só estas chaves são numéricas.
+CONSTANTES_NEGOCIO: dict[str, tuple[float, str]] = {
+    "breakeven_fator_conversao": (1.12045, "Fator de conversão cents/lb → R$/saca (0,022046 × 50,802). Usado no Breakeven."),
+    "fator_conversao_mtm": (22.928048, "Fator de conversão do valor de mercado (cents/lb → R$/t): 22,0462 × 1,04. Usado em Metas, Risco e Cenários."),
+    "risco_custo_fixo_1": (109212811.0, "Custo fixo 1 do Risco (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
+    "risco_custo_fixo_2": (32947347.0, "Custo fixo 2 do Risco (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_1": (88704735.0, "Custo fixo 1 de Cenários (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_2": (43732035.0, "Custo fixo 2 de Cenários (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_3": (20286465.0, "Custo fixo 3 de Cenários (R$): terceira parcela da fórmula de custo. Confirmar a rubrica."),
+}
+
+
+def _valor_numerico(texto) -> float:
+    """Aceita dígitos com no máximo um separador decimal (ponto ou vírgula). Precisa ser > 0."""
+    t = str(texto).strip()
+    if not re.fullmatch(r"[0-9]+([.,][0-9]+)?", t):
+        raise ValueError(t)
+    valor = float(t.replace(",", "."))
+    if valor <= 0:
+        raise ValueError(t)
+    return valor
+
+
+def _ler_constantes(*chaves: str) -> dict[str, float]:
+    """Lê as constantes de admin_config. Ausente, ilegível ou erro de rede → valor do código + aviso no log."""
+    try:
+        linhas = supa_client().table("admin_config").select("key,value").execute().data or []
+        brutos = {r["key"]: r["value"] for r in linhas}
+    except Exception as exc:
+        logger.warning("Não foi possível ler admin_config (%s); usando valores do código.", exc)
+        brutos = {}
+    valores = {}
+    for chave in chaves:
+        padrao = CONSTANTES_NEGOCIO[chave][0]
+        if chave not in brutos:
+            logger.warning("Constante %s ausente em admin_config; usando %s.", chave, padrao)
+            valores[chave] = padrao
+            continue
+        try:
+            valores[chave] = _valor_numerico(brutos[chave])
+        except ValueError:
+            logger.warning("Valor inválido em admin_config para %s; usando %s.", chave, padrao)
+            valores[chave] = padrao
+    return valores
+
+
+def _num(valor: float) -> str:
+    return f"{valor:g}".replace(".", ",")
+
+
+def _faixa(nome: str, valor: float, minimo: float, maximo: float) -> None:
+    """HARD-01/06: 422 com mensagem em português quando o valor sai da faixa."""
+    if not (minimo <= valor <= maximo):
+        raise HTTPException(status_code=422, detail=f"{nome} deve estar entre {_num(minimo)} e {_num(maximo)}.")
+
+
+def _validar_periodo(start: date, end: date) -> None:
+    if end < start:
+        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
+    if (end - start).days > MAX_DIAS_PERIODO:
+        raise HTTPException(status_code=422, detail="O período não pode passar de 25 anos.")
+
+
+def _validar_paginacao(limit: int, offset: int) -> None:
+    _faixa("O limite", limit, 1, 200)
+    _faixa("O deslocamento (offset)", offset, 0, 100_000)
+
+
+def _lista_periodos(nome: str, texto: str) -> list[int]:
+    """Lista '20,50' → [20, 50]. Até 5 períodos, cada um de 2 a 250 (HARD-01)."""
+    valores = []
+    for parte in (p.strip() for p in texto.split(",")):
+        if not parte:
+            continue
+        if not parte.isdigit() or len(parte) > 6:
+            raise HTTPException(status_code=422, detail=f"Os períodos de {nome} devem ser números inteiros (ex.: 20,50).")
+        valores.append(int(parte))
+    if len(valores) > 5:
+        raise HTTPException(status_code=422, detail=f"Use no máximo 5 médias {nome}.")
+    for v in valores:
+        _faixa(f"Cada média {nome}", v, 2, 250)
+    return valores
+
+
+MAX_DIAS_PERIODO = 25 * 365
+
+# Documentação da API (Swagger, ReDoc e schema) só com ENABLE_DOCS=true.
+_docs_on = os.getenv("ENABLE_DOCS", "").strip().lower() == "true"
 
 app = FastAPI(
     title="Impacto API",
     version="2.0.0",
-    docs_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/docs",
-    redoc_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/redoc",
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
-limiter = Limiter(key_func=get_remote_address)
+from limiter import limiter  # módulo próprio: routers/cambio.py importa sem ciclo
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+# Por dentro do CORS: o erro 500 também sai com cabeçalhos CORS (HARD-02, HARD-10)
+app.add_middleware(RequestIdMiddleware)
+from routers import jobs as jobs_router  # noqa: E402
+app.include_router(jobs_router.router)
 
 # CORS — origins configured via env var; defaults to localhost for local dev
 cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -68,14 +165,31 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+from routers.risco_conjunto import router as risco_conjunto_router  # noqa: E402
+app.include_router(risco_conjunto_router)
+from routers.alertas import router as alertas_router  # noqa: E402
+app.include_router(alertas_router)
+
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
 
+OpcaoCenario = Literal["Moagem", "Câmbio", "NY", "Preço Etanol"]
+
+MAX_JSON_BYTES = 64_000  # teto para JSON livre (inputs/results do Risco)
+
+
+def _limitar_json(valor: dict) -> dict:
+    if len(json.dumps(valor, ensure_ascii=False, default=str)) > MAX_JSON_BYTES:
+        raise ValueError(f"Os dados enviados passam de {MAX_JSON_BYTES // 1000} KB.")
+    return valor
+
+
 class SimulationRequest(BaseModel):
     ticker: str
-    preco_inicial: float
-    dias_simulados: int = Field(default=252, ge=1, le=1000)
-    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
+    preco_inicial: float = Field(gt=0, le=100_000)
+    # Simulated in day blocks (≤ 5M cells each), so peak memory does not grow with the product.
+    dias_simulados: int = Field(default=252, ge=1, le=1260)
+    num_simulacoes: int = Field(default=10_000, ge=1, le=50_000)
     pct_bound: float = Field(default=0.50, gt=0, le=2)
     label: str | None = None
 
@@ -101,7 +215,6 @@ class AcucarRunRequest(BaseModel):
     producao: float
     demanda: float
     estoque_final: float
-    estoque_uso_pct: float
     usdbrl: float
     cl_f: float
 
@@ -121,62 +234,41 @@ class AtrShareBody(BaseModel):
     compartilhado: bool
 
 
+from routers.analises import router as analises_router  # noqa: E402
+app.include_router(analises_router)
+
+
 @app.get("/api/health")
-async def health():
-    return {"status": "ok"}
+@limiter.limit("30/minute")
+def health(request: Request, deep: bool = False):
+    """Sem deep: só diz que o processo responde. Com deep=1: também consulta o Supabase."""
+    if not deep:
+        return {"status": "ok"}
+    try:
+        supa_client().table("market_coverage").select("ticker").limit(1).execute()
+    except Exception:
+        logger.exception("Health profundo: Supabase não respondeu")
+        return JSONResponse(status_code=503, content={"status": "degradado", "supabase": "erro"})
+    return {"status": "ok", "supabase": "ok"}
 
 
 @app.get("/api/focus")
 @limiter.limit("20/minute")
-async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """
     Returns latest BCB Focus report medians for IPCA, Câmbio, Selic, PIB Total
     for the current calendar year, plus the delta vs the reading from ~7 days ago.
     Falls back to None values if the BCB API is unavailable.
     """
-    import asyncio
-    from bcb import Expectativas
+    from focus import fetch_indicator
 
     current_year = str(date.today().year)
-    today = date.today()
-    week_ago = today - timedelta(days=9)  # buffer for weekends
 
     indicators = ["IPCA", "Câmbio", "Selic", "PIB Total"]
     result = {}
 
-    def fetch_indicator(name: str) -> dict:
-        try:
-            expec = Expectativas()
-            ep = expec.get_endpoint("ExpectativasMercadoAnuais")
-            data = (
-                ep.query()
-                .filter(ep.Indicador == name)
-                .filter(ep.DataReferencia == current_year)
-                .filter(ep.baseCalculo == 0)
-                .filter(ep.Data >= str(week_ago))
-                .filter(ep.Data <= str(today))
-                .collect()
-            )
-            if data.empty:
-                return {"value": None, "delta": None}
-            data = data.sort_values("Data")
-            latest = float(data.iloc[-1]["Mediana"])
-            if len(data) >= 2:
-                prior = float(data.iloc[0]["Mediana"])
-                delta = round(latest - prior, 4)
-            else:
-                delta = None
-            return {"value": round(latest, 4), "delta": delta}
-        except Exception:
-            return {"value": None, "delta": None}
-
-    # Run all indicator fetches in a thread pool to avoid blocking the event loop
-    loop = asyncio.get_event_loop()
-    tasks = [
-        loop.run_in_executor(None, fetch_indicator, name)
-        for name in indicators
-    ]
-    values = await asyncio.gather(*tasks)
+    with ThreadPoolExecutor(max_workers=len(indicators)) as pool:
+        values = list(pool.map(lambda nome: fetch_indicator(nome, current_year), indicators))
 
     key_map = {"IPCA": "ipca", "Câmbio": "cambio", "Selic": "selic", "PIB Total": "pib"}
     for name, val in zip(indicators, values):
@@ -188,17 +280,14 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
 
 @app.get("/api/regression/dolar/defaults")
 @limiter.limit("20/minute")
-async def dolar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def dolar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns latest BCB + FRED values to pre-fill the frontend inputs."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    defaults = await loop.run_in_executor(None, get_dolar_defaults)
-    return defaults
+    return get_dolar_defaults()
 
 
 @app.post("/api/regression/dolar/run")
 @limiter.limit("10/minute")
-async def dolar_run(
+def dolar_run(
     request: Request,
     body: DolarRegressionRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -207,10 +296,8 @@ async def dolar_run(
     Trains OLS on BCB+FRED history, predicts taxa_dolar for user inputs,
     persists run to regression_runs, returns regression metrics.
     """
-    import asyncio
-    loop = asyncio.get_event_loop()
     try:
-        resultado = await loop.run_in_executor(None, run_dolar_regression, body.model_dump())
+        resultado = run_dolar_regression(body.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -218,7 +305,7 @@ async def dolar_run(
         raise HTTPException(status_code=500, detail="Erro ao executar regressão.")
 
     # Persist to Supabase
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("regression_runs").insert({
         "user_id": user["id"],
         "tipo": "dolar",
@@ -231,17 +318,14 @@ async def dolar_run(
 
 @app.get("/api/regression/acucar/defaults")
 @limiter.limit("20/minute")
-async def acucar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def acucar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns latest yfinance prices + USDA defaults to pre-fill sugar regression inputs."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    defaults = await loop.run_in_executor(None, get_acucar_defaults)
-    return defaults
+    return get_acucar_defaults()
 
 
 @app.post("/api/regression/acucar/run")
 @limiter.limit("10/minute")
-async def acucar_run(
+def acucar_run(
     request: Request,
     body: AcucarRunRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -250,20 +334,13 @@ async def acucar_run(
     Trains Ridge or XGBoost on annual yfinance+USDA data, predicts SB=F price,
     persists run to regression_runs, returns prediction with uncertainty range.
     """
-    import asyncio
-    loop = asyncio.get_event_loop()
     inputs = body.model_dump(exclude={"model"})
     try:
-        resultado = await loop.run_in_executor(
-            None, lambda: run_acucar_regression(inputs, model_type=body.model)
-        )
+        resultado = run_acucar_regression(inputs, model_type=body.model)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    supa = create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    supa = supa_client()
     supa.table("regression_runs").insert({
         "user_id": str(user["id"]),
         "tipo": "acucar",
@@ -272,8 +349,9 @@ async def acucar_run(
             "sb_f_previsto": resultado["sb_f_previsto"],
             "sb_f_min": resultado["sb_f_min"],
             "sb_f_max": resultado["sb_f_max"],
-            "r2": resultado["r2"],
-            "rmse": resultado["rmse"],
+            "r2_loo": resultado["r2_loo"],
+            "rmse_loo": resultado["rmse_loo"],
+            "confianca": resultado["confianca"],
         },
     }).execute()
 
@@ -282,15 +360,15 @@ async def acucar_run(
 
 @app.get("/api/regression/runs")
 @limiter.limit("20/minute")
-async def regression_runs_list(
+def regression_runs_list(
     request: Request,
     tipo: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Returns the authenticated user's regression runs filtered by tipo."""
     if tipo not in ("dolar", "acucar"):
-        raise HTTPException(status_code=400, detail="tipo must be 'dolar' or 'acucar'")
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        raise HTTPException(status_code=400, detail="Tipo de regressão inválido: use 'dolar' ou 'acucar'.")
+    supa = supa_client()
     res = (
         supa.table("regression_runs")
         .select("id, tipo, inputs, resultado, created_at")
@@ -304,22 +382,17 @@ async def regression_runs_list(
 
 
 @app.get("/api/me")
-async def me(user: Annotated[dict, Depends(get_current_user)]):
+@limiter.limit("60/minute")
+def me(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
     return {"id": user["id"], "email": user["email"], "role": user["role"]}
-
-
-@app.get("/api/admin/ping")
-async def admin_ping(user: Annotated[dict, Depends(require_admin)]):
-    """Admin-only route — verifies role enforcement."""
-    return {"message": "admin ok", "user": user["email"]}
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/market/prices")
 @limiter.limit("30/minute")
-async def market_prices(
+def market_prices(
     request: Request,
     ticker: str,
     start: date,
@@ -332,15 +405,14 @@ async def market_prices(
     MKT-02: only uncached dates are fetched from yfinance.
     """
     ticker = validate_ticker(ticker)
-    if end < start:
-        raise HTTPException(status_code=400, detail="end must be >= start")
+    _validar_periodo(start, end)
     rows = get_prices(ticker, start, end)
     return {"ticker": ticker, "start": start.isoformat(), "end": end.isoformat(), "rows": rows}
 
 
 @app.get("/api/market/analysis")
 @limiter.limit("20/minute")
-async def market_analysis(
+def market_analysis(
     request: Request,
     ticker: str,
     start: date,
@@ -366,12 +438,21 @@ async def market_analysis(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    if end < start:
-        raise HTTPException(status_code=400, detail="end must be >= start")
+    _validar_periodo(start, end)
+
+    for nome, valor in [
+        ("O período do RSI", rsi_period), ("A janela do Bollinger", bb_window),
+        ("O MACD rápido", macd_fast), ("O MACD lento", macd_slow), ("O sinal do MACD", macd_signal),
+        ("O %K do estocástico", stoch_k), ("O %D do estocástico", stoch_d), ("O período do CCI", cci_period),
+    ]:
+        _faixa(nome, valor, 2, 250)
+    _faixa("O desvio do Bollinger", bb_std, 0.5, 5)
+    if macd_fast >= macd_slow:
+        raise HTTPException(status_code=422, detail="O MACD rápido deve ser menor que o lento.")
 
     selected = [i.strip().lower() for i in indicators.split(",") if i.strip()]
-    sma_list = [int(p.strip()) for p in sma_periods.split(",") if p.strip().isdigit()]
-    ema_list = [int(p.strip()) for p in ema_periods.split(",") if p.strip().isdigit()]
+    sma_list = _lista_periodos("SMA", sma_periods)
+    ema_list = _lista_periodos("EMA", ema_periods)
 
     cfg = IndicatorConfig(
         indicators=selected,
@@ -401,35 +482,50 @@ async def market_analysis(
 
     enriched, signals = compute_analysis(df, cfg)
 
-    import json as _json
-
     enriched = enriched.reset_index()
     enriched["date"] = enriched["date"].dt.strftime("%Y-%m-%d")
-    rows = _json.loads(enriched.to_json(orient="records"))
+    rows = json.loads(enriched.to_json(orient="records"))
 
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
 
+# ICE Sugar No. 11: seg–sex, 03:30 às 13:00 (Nova York). Sem feriados (ponytail: calendário fixo).
+PREGAO_TZ = ZoneInfo("America/New_York")
+PREGAO_ABERTURA = Hora(3, 30)
+PREGAO_FECHAMENTO = Hora(13, 0)
+
+
+def estado_pregao(agora: datetime) -> str:
+    """REGULAR dentro do pregão do açúcar nº 11, CLOSED fora dele. Intervalo [abertura, fechamento)."""
+    local = agora.astimezone(PREGAO_TZ)
+    if local.weekday() >= 5:
+        return "CLOSED"
+    return "REGULAR" if PREGAO_ABERTURA <= local.time() < PREGAO_FECHAMENTO else "CLOSED"
+
+
 @app.get("/api/market/status")
 @limiter.limit("30/minute")
-async def market_status(
+def market_status(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
-    """Return current market state for a ticker (REGULAR, PRE, POST, CLOSED)."""
+    """Estado do pregão (REGULAR ou CLOSED); UNKNOWN se não der para calcular. Não consulta o Yahoo."""
     ticker = validate_ticker(ticker)
     try:
-        t = yf.Ticker(ticker, session=_yf_session)
-        state = getattr(t.fast_info, "market_state", None) or "CLOSED"
+        state = estado_pregao(datetime.now(timezone.utc))
     except Exception:
-        state = "CLOSED"
+        logger.exception("Falha ao calcular o estado do pregão")
+        state = "UNKNOWN"
     return {"ticker": ticker, "state": state, "open": state == "REGULAR"}
+
+
+STATUS_PT = {"pending": "aguardando revisão", "approved": "aprovado", "rejected": "rejeitado"}
 
 
 @app.post("/api/market/suggest")
 @limiter.limit("10/minute")
-async def suggest_ticker(
+def suggest_ticker(
     request: Request,
     body: TickerSuggestRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -442,22 +538,22 @@ async def suggest_ticker(
     """
     ticker = validate_ticker(body.ticker)
 
-    # Validate: attempt a minimal yfinance download (last 5 days)
+    # Validate: a sonda consulta o Yahoo (é o objetivo), mas pelo módulo de cache, ponto único de acesso
     try:
-        probe = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
+        probe = market_cache._fetch_from_yfinance(ticker, date.today() - timedelta(days=7), date.today())
     except Exception as exc:
         logger.error("yfinance error for '%s': %s", ticker, exc)
-        raise HTTPException(status_code=400, detail="Failed to fetch market data")
+        raise HTTPException(status_code=400, detail="Não foi possível consultar o mercado agora. Tente novamente em alguns minutos.")
 
     if probe.empty:
         raise HTTPException(
             status_code=400,
-            detail=f"Ticker '{ticker}' not found on yfinance or has no recent data. "
-                   "Check the symbol and try again.",
+            detail=f"Ativo '{ticker}' não encontrado ou sem dados recentes. "
+                   "Confira o código e tente de novo.",
         )
 
     # Write to tickers_catalog only after validation passes
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     existing = (
         client.table("tickers_catalog")
         .select("ticker,status")
@@ -468,7 +564,7 @@ async def suggest_ticker(
         return {
             "ticker": ticker,
             "status": existing.data[0]["status"],
-            "message": f"Ticker '{ticker}' already exists with status '{existing.data[0]['status']}'.",
+            "message": f"O ativo {ticker} já está no catálogo ({STATUS_PT.get(existing.data[0]['status'], existing.data[0]['status'])}).",
         }
 
     client.table("tickers_catalog").insert({
@@ -480,18 +576,21 @@ async def suggest_ticker(
         "adicionado_por": user["id"],
     }).execute()
 
-    return {"ticker": ticker, "status": "pending", "message": f"Ticker '{ticker}' submitted for admin review."}
+    return {"ticker": ticker, "status": "pending", "message": f"Ativo {ticker} enviado para revisão do administrador."}
 
 
 @app.get("/api/admin/suggestions")
-async def admin_list_suggestions(
+@limiter.limit("20/minute")
+def admin_list_suggestions(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """ADM-01: Return ticker suggestions. Optionally filter by status=pending|approved|rejected."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    _validar_paginacao(limit, offset)
+    client = supa_client()
     query = client.table("tickers_catalog").select(
         "id,ticker,nome,tipo,status,backfill_status,review_note,adicionado_por,created_at"
     ).order("created_at", desc=False)
@@ -508,7 +607,9 @@ class SuggestionReviewRequest(BaseModel):
 
 
 @app.patch("/api/admin/suggestions/{suggestion_id}")
-async def admin_review_suggestion(
+@limiter.limit("20/minute")
+def admin_review_suggestion(
+    request: Request,
     suggestion_id: UUID,
     body: SuggestionReviewRequest,
     user: Annotated[dict, Depends(require_admin)],
@@ -519,9 +620,9 @@ async def admin_review_suggestion(
     ADM-04: On reject, stores review_note and sets status='rejected'.
     """
     if body.action not in ("approve", "reject"):
-        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+        raise HTTPException(status_code=400, detail="Ação inválida: use 'approve' ou 'reject'.")
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
 
     # Fetch the suggestion to get the ticker symbol
     existing = (
@@ -531,7 +632,7 @@ async def admin_review_suggestion(
         .execute()
     )
     if not existing.data:
-        raise HTTPException(status_code=404, detail="Suggestion not found")
+        raise HTTPException(status_code=404, detail="Sugestão não encontrada.")
 
     ticker = existing.data[0]["ticker"]
 
@@ -555,7 +656,9 @@ async def admin_review_suggestion(
 
 
 @app.post("/api/admin/market/backfill/{ticker}")
-async def admin_backfill(
+@limiter.limit("5/minute")
+def admin_backfill(
+    request: Request,
     ticker: str,
     user: Annotated[dict, Depends(require_admin)],
 ):
@@ -568,7 +671,7 @@ async def admin_backfill(
     result = backfill_ticker(ticker)
 
     # Update tickers_catalog backfill_status
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("tickers_catalog").update(
         {"backfill_status": "done"}
     ).eq("ticker", ticker.upper()).execute()
@@ -580,7 +683,7 @@ async def admin_backfill(
 
 @app.post("/api/simulations", status_code=201)
 @limiter.limit("10/minute")
-async def create_simulation(
+def create_simulation(
     request: Request,
     body: SimulationRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -589,29 +692,34 @@ async def create_simulation(
     SIM-01: Run MC simulation and persist results.
     Returns scalar metrics + percentiles_series for fan chart rendering.
     """
+    ticker = validate_ticker(body.ticker)
+
     # PARAM-01: fetch user's custom volatility for this ticker, if set
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     params_row = (
         client.table("user_parameters")
         .select("volatilidade_custom")
         .eq("user_id", user["id"])
-        .eq("ticker", body.ticker.strip().upper())
+        .eq("ticker", ticker)
         .limit(1)
         .execute()
     )
     volatilidade_custom = (params_row.data[0] if params_row.data else {}).get("volatilidade_custom")
 
-    result = run_simulation(
-        ticker=body.ticker.strip().upper(),
-        preco_inicial=body.preco_inicial,
-        dias_simulados=body.dias_simulados,
-        num_simulacoes=body.num_simulacoes,
-        pct_bound=body.pct_bound,
-        volatilidade_custom=volatilidade_custom,
-    )
+    try:
+        result = run_simulation(
+            ticker=ticker,
+            preco_inicial=body.preco_inicial,
+            dias_simulados=body.dias_simulados,
+            num_simulacoes=body.num_simulacoes,
+            pct_bound=body.pct_bound,
+            volatilidade_custom=volatilidade_custom,
+        )
+    except DadosInsuficientesError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     # Persist to simulations table with user_id (SIM-04: user isolation)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     insert_payload = {
         "user_id": user["id"],
         "ticker": result["ticker"],
@@ -619,6 +727,7 @@ async def create_simulation(
         "dias_simulados": result["dias_simulados"],
         "num_simulacoes": result["num_simulacoes"],
         "pct_bound": result["pct_bound"],
+        "pct_passou_limite": result["pct_passou_limite"],
         "p5": result["p5"],
         "p20": result["p20"],
         "p25": result["p25"],
@@ -637,7 +746,7 @@ async def create_simulation(
 
 @app.get("/api/simulations")
 @limiter.limit("60/minute")
-async def list_simulations(
+def list_simulations(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
@@ -647,7 +756,8 @@ async def list_simulations(
     SIM-02/SIM-04: List all simulations for the authenticated user only.
     Returns id, ticker, label, p50, created_at (no percentiles_series to keep payload small).
     """
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    _validar_paginacao(limit, offset)
+    client = supa_client()
     result = (
         client.table("simulations")
         .select("id,ticker,label,preco_inicial,dias_simulados,p5,p50,p95,created_at")
@@ -661,7 +771,7 @@ async def list_simulations(
 
 @app.get("/api/simulations/{sim_id}")
 @limiter.limit("60/minute")
-async def get_simulation(
+def get_simulation(
     request: Request,
     sim_id: UUID,
     user: Annotated[dict, Depends(get_current_user)],
@@ -670,7 +780,7 @@ async def get_simulation(
     SIM-03/SIM-04: Fetch a single simulation including percentiles_series.
     Returns 404 if sim_id does not exist OR belongs to a different user.
     """
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("simulations")
         .select("*")
@@ -679,35 +789,35 @@ async def get_simulation(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Simulation not found.")
+        raise HTTPException(status_code=404, detail="Simulação não encontrada.")
     return result.data[0]
 
 
 # ── Options & Pricing ─────────────────────────────────────────────────────────
 
 class OptionLeg(BaseModel):
-    type: str        # "call" | "put"
-    strike: float
-    premium: float
-    position: str    # "long" | "short"
-    quantity: int = 1
+    type: Literal["call", "put"]
+    strike: float = Field(gt=0, le=1_000_000)
+    premium: float = Field(ge=0, le=1_000_000)
+    position: Literal["long", "short"]
+    quantity: int = Field(default=1, ge=1, le=100_000)
 
 
 class PayoffRequest(BaseModel):
-    legs: list[OptionLeg]
+    legs: list[OptionLeg] = Field(min_length=1, max_length=20)
 
 
 class BSPriceRequest(BaseModel):
-    S: float = Field(gt=0, le=100_000)       # current underlying price
-    K: float = Field(gt=0)                    # strike
+    F: float = Field(gt=0, le=100_000)       # preço do futuro (¢/lb)
+    K: float = Field(gt=0, le=1_000_000)     # strike
     T: float = Field(gt=0, le=30)            # time to expiry in years
     r: float = Field(ge=0, le=5)             # risk-free rate (annualized)
     sigma: float = Field(gt=0, le=10)        # volatility (annualized)
 
 
 class MCPriceRequest(BaseModel):
-    S: float = Field(gt=0, le=100_000)
-    K: float = Field(gt=0)
+    F: float = Field(gt=0, le=100_000)
+    K: float = Field(gt=0, le=1_000_000)
     T: float = Field(gt=0, le=30)
     r: float = Field(ge=0, le=5)
     sigma: float = Field(gt=0, le=10)
@@ -715,45 +825,51 @@ class MCPriceRequest(BaseModel):
 
 
 @app.post("/api/options/payoff")
-async def options_payoff(
+@limiter.limit("30/minute")
+def options_payoff(
+    request: Request,
     body: PayoffRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """OPT-01: Compute combined payoff for a multi-leg options strategy."""
     legs = [leg.model_dump() for leg in body.legs]
-    result = compute_payoff(legs, price_range=None)
-    return result
+    try:
+        return compute_payoff(legs, price_range=None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/options/bs-price")
-async def options_bs_price(
+@limiter.limit("60/minute")
+def options_bs_price(
+    request: Request,
     body: BSPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    """OPT-02: Black-Scholes European call price with user-supplied sigma."""
+    """OPT-02: Preço de call sobre futuro por Black-76, com sigma informado pelo usuário."""
     try:
-        price = bs_call_price(S=body.S, K=body.K, T=body.T, r=body.r, sigma=body.sigma)
+        price = black76_price(F=body.F, K=body.K, T=body.T, r=body.r, sigma=body.sigma)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+    return {"price": price, "F": body.F, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
 
 
 @app.post("/api/options/mc-price")
-@limiter.limit("10/minute")
-async def options_mc_price(
+@limiter.limit("60/minute")
+def options_mc_price(
     request: Request,
     body: MCPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    """OPT-03: Risk-neutral MC European call pricer."""
+    """OPT-03: Monte Carlo de call sobre futuro (Black-76, drift zero). Semente fixa: mesmo input, mesmo preço."""
     try:
-        price = mc_call_price(
-            S=body.S, K=body.K, T=body.T, r=body.r,
-            sigma=body.sigma, num_simulacoes=body.num_simulacoes,
+        price = mc_black76_price(
+            F=body.F, K=body.K, T=body.T, r=body.r,
+            sigma=body.sigma, num_simulacoes=body.num_simulacoes, seed=42,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"price": price, "S": body.S, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
+    return {"price": price, "F": body.F, "K": body.K, "T": body.T, "r": body.r, "sigma": body.sigma}
 
 
 # ── User Parameters ────────────────────────────────────────────────────────────
@@ -764,19 +880,15 @@ class UserParamsRequest(BaseModel):
     pct_bound_preferido: float | None = Field(default=None, ge=0.05, le=2)
 
 
-class WatchlistAddRequest(BaseModel):
-    ticker: str
-
-
 @app.get("/api/params/{ticker}")
 @limiter.limit("60/minute")
-async def get_params(
+def get_params(
     request: Request,
     ticker: str,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-01: Return saved simulation params for a ticker, or 404 if not set."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("user_parameters")
         .select("*")
@@ -785,19 +897,20 @@ async def get_params(
         .execute()
     )
     if not result.data:
-        raise HTTPException(status_code=404, detail="Params not found for ticker")
+        raise HTTPException(status_code=404, detail="Nenhum parâmetro salvo para este ativo.")
     return result.data[0]
 
 
 @app.put("/api/params/{ticker}")
 @limiter.limit("30/minute")
-async def upsert_params(
+def upsert_params(
     request: Request,
     ticker: str,
     body: UserParamsRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-02: Upsert per-ticker simulation params for the authenticated user."""
+    ticker = validate_ticker(ticker)
     update_dict: dict = {}
     if body.volatilidade_custom is not None:
         update_dict["volatilidade_custom"] = body.volatilidade_custom
@@ -807,11 +920,11 @@ async def upsert_params(
         update_dict["pct_bound_preferido"] = body.pct_bound_preferido
 
     if not update_dict:
-        raise HTTPException(status_code=400, detail="No params provided")
+        raise HTTPException(status_code=400, detail="Preencha ao menos um parâmetro.")
 
     update_dict["updated_at"] = date.today().isoformat()
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     client.table("user_parameters").upsert(
         {"user_id": user["id"], "ticker": ticker.upper(), **update_dict},
         on_conflict="user_id,ticker",
@@ -820,75 +933,21 @@ async def upsert_params(
     return {"ticker": ticker.upper(), "saved": True}
 
 
-# ── Watchlist ──────────────────────────────────────────────────────────────────
-
-@app.get("/api/watchlist")
-@limiter.limit("60/minute")
-async def get_watchlist(
-    request: Request,
-    user: Annotated[dict, Depends(get_current_user)],
-    limit: int = 50,
-    offset: int = 0,
-):
-    """PARAM-03: Return all tickers in the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    result = (
-        client.table("watchlist")
-        .select("ticker,created_at")
-        .eq("user_id", user["id"])
-        .order("created_at", desc=False)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
-    return {"tickers": [row["ticker"] for row in result.data]}
-
-
-@app.post("/api/watchlist", status_code=201)
-@limiter.limit("30/minute")
-async def add_to_watchlist(
-    request: Request,
-    body: WatchlistAddRequest,
-    user: Annotated[dict, Depends(get_current_user)],
-):
-    """PARAM-03: Add a ticker to the user's watchlist (idempotent)."""
-    ticker = validate_ticker(body.ticker)
-
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    client.table("watchlist").upsert(
-        {"user_id": user["id"], "ticker": ticker},
-        on_conflict="user_id,ticker",
-        ignore_duplicates=True,
-    ).execute()
-
-    return {"ticker": ticker, "added": True}
-
-
-@app.delete("/api/watchlist/{ticker}")
-@limiter.limit("30/minute")
-async def remove_from_watchlist(
-    request: Request,
-    ticker: str,
-    user: Annotated[dict, Depends(get_current_user)],
-):
-    """PARAM-03: Remove a ticker from the user's watchlist."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    client.table("watchlist").delete().eq("user_id", user["id"]).eq("ticker", ticker.upper()).execute()
-    return {"ticker": ticker.upper(), "removed": True}
-
-
 # ── Admin Config ───────────────────────────────────────────────────────────────
 
 class AdminConfigUpdateRequest(BaseModel):
-    value: str
-    description: str | None = None
+    value: str = Field(max_length=2000)
+    description: str | None = Field(default=None, max_length=500)
 
 
 @app.get("/api/admin/config")
-async def admin_get_config(
+@limiter.limit("20/minute")
+def admin_get_config(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Return all admin_config rows ordered by key."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     result = (
         client.table("admin_config")
         .select("key,value,description,updated_at")
@@ -899,31 +958,43 @@ async def admin_get_config(
 
 
 @app.put("/api/admin/config/{key}")
-async def admin_update_config(
+@limiter.limit("20/minute")
+def admin_update_config(
+    request: Request,
     key: str,
     body: AdminConfigUpdateRequest,
     user: Annotated[dict, Depends(require_admin)],
 ):
-    """Upsert a key/value pair in admin_config."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    """Upsert a key/value pair in admin_config. Constantes de negócio precisam ser numéricas (HARD-04)."""
+    if not re.fullmatch(r"[a-z0-9_]{1,64}", key):
+        raise HTTPException(status_code=422, detail="Chave inválida: use letras minúsculas, números e '_' (até 64 caracteres).")
+    valor = body.value
+    if key in CONSTANTES_NEGOCIO:
+        try:
+            _valor_numerico(body.value)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"O valor de {key} precisa ser numérico.")
+        # Grava o texto normalizado (ponto decimal, sem notação científica) para a leitura bater
+        valor = body.value.strip().replace(",", ".")
+    client = supa_client()
     payload = {
         "key": key,
-        "value": body.value,
+        "value": valor,
         "updated_at": date.today().isoformat(),
     }
     if body.description is not None:
         payload["description"] = body.description
     client.table("admin_config").upsert(payload, on_conflict="key").execute()
-    return {"key": key, "value": body.value, "saved": True}
+    return {"key": key, "value": valor, "saved": True}
 
 
 # ── ATR (Açúcar Total Recuperável) ────────────────────────────────────────────
 
 @app.get("/api/atr/usinas")
 @limiter.limit("30/minute")
-async def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-02: Lista usinas associadas ao usuário autenticado."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = (
         supa.table("user_usinas")
         .select("usina_id, usinas(id, nome)")
@@ -933,29 +1004,49 @@ async def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_cu
     return {"usinas": [{"id": r["usinas"]["id"], "nome": r["usinas"]["nome"]} for r in rows]}
 
 
+def _medicoes_para_calibracao(supa, usina_id: str) -> list[dict]:
+    """Medições reais da usina (atr_medicoes). Tabela ainda não criada (atr-dados-reais) = sem medições."""
+    try:
+        rows = (
+            supa.table("atr_medicoes")
+            .select("mes_ref, atr_kg_t, impureza_vegetal_pct, impureza_mineral_pct, precipitacao_mm")
+            .eq("usina_id", usina_id)
+            .order("mes_ref", desc=True)
+            .limit(120)
+            .execute()
+        ).data
+    except APIError as exc:
+        if exc.code in ("PGRST205", "42P01"):
+            logger.warning("atr_medicoes ausente; calibração usa coeficientes do setor")
+            return []
+        raise
+    return [
+        {
+            "chuva_mm": r["precipitacao_mm"],
+            "impureza_pct": (
+                None
+                if r["impureza_vegetal_pct"] is None or r["impureza_mineral_pct"] is None
+                else r["impureza_vegetal_pct"] + r["impureza_mineral_pct"]
+            ),
+            "atr_real": r["atr_kg_t"],
+        }
+        for r in rows
+    ]
+
+
 @app.post("/api/atr/simulate")
 @limiter.limit("20/minute")
-async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
+def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-03: Simula ATR com IC 90% e persiste no Supabase."""
-    import asyncio
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     # Verificar que usuário pertence à usina
     assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).eq("usina_id", body.usina_id).execute()
     if not assoc.data:
         raise HTTPException(status_code=403, detail="Usuário não associado a esta usina.")
-    # Buscar simulações anteriores da usina como proxy para calibração
-    hist_rows = (
-        supa.table("atr_simulacoes")
-        .select("chuva_mm, impureza_pct, atr_esperado")
-        .eq("usina_id", body.usina_id)
-        .order("created_at", desc=True)
-        .limit(100)
-        .execute()
-    ).data
-    history = [{"chuva_mm": r["chuva_mm"], "impureza_pct": r["impureza_pct"], "atr_real": r["atr_esperado"]} for r in hist_rows]
-    loop = asyncio.get_running_loop()
-    params = await loop.run_in_executor(None, calibrate_atr, history)
-    result = await loop.run_in_executor(None, lambda: predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem))
+    history = _medicoes_para_calibracao(supa, body.usina_id)
+    params = calibrate_atr(history)
+    result = predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem)
+    result.update({"calibracao": params["calibracao"], "meses_usados": params["meses_usados"], "aviso": params["aviso"]})
     # Persistir
     supa.table("atr_simulacoes").insert({
         "user_id": user["id"],
@@ -973,32 +1064,34 @@ async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[
 
 @app.get("/api/atr/historico")
 @limiter.limit("30/minute")
-async def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends(get_current_user)]):
+def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-04: Histórico de simulações do usuário para uma usina (próprias + compartilhadas da usina)."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     # Verificar que o usuário está associado à usina
     user_assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).execute().data
     user_usina_ids = {r["usina_id"] for r in user_assoc}
     if usina_id not in user_usina_ids:
         raise HTTPException(status_code=403, detail="Não autorizado para esta usina.")
-    # Buscar todas as simulações da usina via service_role; filtrar por regra de negócio
+    uid = str(UUID(str(user["id"])))
+    # Filtro na query (antes do limit): próprias ou compartilhadas. user_id não sai na resposta.
     rows = (
         supa.table("atr_simulacoes")
         .select("id, user_id, chuva_mm, impureza_pct, atr_min, atr_esperado, atr_max, producao_total, compartilhado, created_at")
         .eq("usina_id", usina_id)
+        .or_(f"user_id.eq.{uid},compartilhado.is.true")
         .order("created_at", desc=True)
         .limit(200)
         .execute()
     ).data
-    visible = [r for r in rows if r["user_id"] == user["id"] or r["compartilhado"]]
+    visible = [{**{k: v for k, v in r.items() if k != "user_id"}, "minha": r["user_id"] == uid} for r in rows]
     return {"historico": visible}
 
 
 @app.patch("/api/atr/simulacoes/{sim_id}/compartilhar")
 @limiter.limit("20/minute")
-async def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, user: Annotated[dict, Depends(get_current_user)]):
+def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, user: Annotated[dict, Depends(get_current_user)]):
     """Publica ou despublica uma simulação ATR para outros membros da mesma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     result = supa.table("atr_simulacoes").update({"compartilhado": body.compartilhado}).eq("id", sim_id).eq("user_id", user["id"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Simulação não encontrada.")
@@ -1009,78 +1102,117 @@ async def atr_compartilhar(request: Request, sim_id: str, body: AtrShareBody, us
 
 @app.get("/api/admin/usinas")
 @limiter.limit("20/minute")
-async def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista todas as usinas cadastradas."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = supa.table("usinas").select("id, nome, created_at").order("nome").execute().data
     return {"usinas": rows}
 
 
 @app.post("/api/admin/usinas")
 @limiter.limit("10/minute")
-async def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated[dict, Depends(require_admin)]):
     """Admin: cria uma nova usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     try:
         row = supa.table("usinas").insert({"nome": body.nome}).execute().data[0]
-    except Exception:
-        raise HTTPException(status_code=409, detail="Usina com este nome já existe.")
+    except APIError as exc:
+        if exc.code == "23505":
+            raise HTTPException(status_code=409, detail="Usina com este nome já existe.")
+        raise
     return {"id": row["id"], "nome": row["nome"]}
 
 
 @app.delete("/api/admin/usinas/{usina_id}")
 @limiter.limit("10/minute")
-async def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_delete(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: deleta uma usina pelo ID."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("usinas").delete().eq("id", usina_id).execute()
     return {"ok": True}
 
 
 @app.post("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
-async def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: associa um usuário a uma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     try:
         supa.table("user_usinas").insert({"usina_id": usina_id, "user_id": user_id_target}).execute()
-    except Exception:
-        raise HTTPException(status_code=409, detail="Associação já existe.")
+    except APIError as exc:
+        if exc.code == "23505":
+            raise HTTPException(status_code=409, detail="Associação já existe.")
+        raise
     return {"ok": True}
 
 
 @app.delete("/api/admin/usinas/{usina_id}/usuarios/{user_id_target}")
 @limiter.limit("10/minute")
-async def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: remove associação de usuário com usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     supa.table("user_usinas").delete().eq("usina_id", usina_id).eq("user_id", user_id_target).execute()
     return {"ok": True}
 
 
+TAMANHO_PAGINA_USUARIOS = 1000
+MAX_PAGINAS_USUARIOS = 50
+
+
+def _todos_usuarios(supa) -> list:
+    """HARD-03: percorre todas as páginas do Supabase Auth, ordenadas por e-mail."""
+    usuarios: list = []
+    for pagina in range(1, MAX_PAGINAS_USUARIOS + 1):
+        lote = supa.auth.admin.list_users(page=pagina, per_page=TAMANHO_PAGINA_USUARIOS)
+        if not lote:  # não confia no tamanho da página: o servidor pode limitar per_page
+            break
+        usuarios.extend(lote)
+    else:
+        logger.warning("Lista de usuários cortada em %d páginas.", MAX_PAGINAS_USUARIOS)
+    return sorted(usuarios, key=lambda u: u.email or "")
+
+
 @app.get("/api/admin/usuarios")
 @limiter.limit("10/minute")
-async def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
+def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista todos os usuários cadastrados no Supabase Auth."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    users = supa.auth.admin.list_users()
+    users = _todos_usuarios(supa_client())
     return {"usuarios": [{"id": u.id, "email": u.email} for u in users]}
 
 
 @app.get("/api/admin/usinas/{usina_id}/usuarios")
 @limiter.limit("20/minute")
-async def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
+def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista IDs dos usuários associados a uma usina."""
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    supa = supa_client()
     rows = supa.table("user_usinas").select("user_id").eq("usina_id", usina_id).execute().data
     return {"user_ids": [r["user_id"] for r in rows]}
+
+
+# ── Fechamentos do cache ───────────────────────────────────────────────────────
+
+INICIO_ESTRESSE = date(2007, 1, 1)
+
+
+def fechamentos(ticker: str, inicio: date, fim: date | None = None):
+    """
+    Série de fechamentos (pandas, índice de datas) e a data do último dado, lidas pelo cache.
+    503 com mensagem em português quando não há nenhum preço (Yahoo fora e cache vazio).
+    """
+    serie = serie_fechamentos(ticker, inicio, fim)
+    if serie.empty:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Não foi possível obter os preços de {ticker} agora. Tente novamente em alguns minutos.",
+        )
+    return serie, serie.index[-1].strftime("%Y-%m-%d")
 
 
 # ── VaR ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/var")
 @limiter.limit("10/minute")
-async def get_var(
+def get_var(
     request: Request,
     ticker: str = "SB=F",
     confidence: float = 0.95,
@@ -1098,16 +1230,14 @@ async def get_var(
     import numpy as np
 
     ticker = validate_ticker(ticker)
-    if not (0 < confidence < 1):
-        raise HTTPException(status_code=400, detail="confidence must be between 0 and 1")
-    if horizon < 1:
-        raise HTTPException(status_code=400, detail="horizon must be >= 1")
+    _faixa("O nível de confiança", confidence, 0.5, 0.999)
+    _faixa("O horizonte (dias úteis)", horizon, 1, 252)
 
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 10:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+    serie, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=365))
+    if len(serie) < 10:
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
-    closes = data["Close"].dropna().values.flatten()
+    closes = serie.values
     returns = np.diff(closes) / closes[:-1]
     last_price = float(closes[-1])
 
@@ -1129,6 +1259,7 @@ async def get_var(
         "var_parametrico_abs": round(var_parametrico, 4),
         "var_parametrico_pct": round(var_parametrico / last_price, 6) if last_price else None,
         "n_observations": len(returns),
+        "ultimo_dado": ultimo_dado,
     }
 
 
@@ -1136,7 +1267,7 @@ async def get_var(
 
 @app.get("/api/breakeven")
 @limiter.limit("30/minute")
-async def get_breakeven(
+def get_breakeven(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -1147,25 +1278,16 @@ async def get_breakeven(
 
     fator_conversao is stored in admin_config and defaults to 1.12045 if not found.
     """
-    # Fetch conversion factor from admin_config
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    config_row = (
-        client.table("admin_config")
-        .select("value")
-        .eq("key", "breakeven_fator_conversao")
-        .limit(1)
-        .execute()
-    )
-    fator_conversao = float((config_row.data[0] if config_row.data else {}).get("value", "1.12045"))
+    fator_conversao = _ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"]
 
-    # Fetch latest prices from Supabase cache
+    # Latest prices from the cache; fechamentos nulos não contam
     today = date.today()
     start = today - timedelta(days=7)
-    sugar_rows = get_prices("SB=F", start, today)
-    usd_rows = get_prices("USDBRL=X", start, today)
+    sugar_rows = [r for r in get_prices("SB=F", start, today) if r["close"] is not None]
+    usd_rows = [r for r in get_prices("USDBRL=X", start, today) if r["close"] is not None]
 
     if not sugar_rows or not usd_rows:
-        raise HTTPException(status_code=503, detail="Could not fetch live prices — backfill needed")
+        raise HTTPException(status_code=503, detail="Não foi possível obter os preços atuais de açúcar e dólar. Tente novamente em alguns minutos.")
 
     preco_acucar_cents = float(sugar_rows[-1]["close"])
     preco_dolar = float(usd_rows[-1]["close"])
@@ -1188,14 +1310,14 @@ class BreakevenSaveRequest(BaseModel):
 
 @app.post("/api/breakeven/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_breakeven(
+def save_breakeven(
     request: Request,
     body: BreakevenSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """Save a manual breakeven simulation for the authenticated user."""
     breakeven = round(body.preco_acucar_cents_lb * body.fator_conversao * body.preco_dolar_brl, 4)
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("breakeven_simulations").insert({
         "user_id": user["id"],
         "preco_acucar_cents_lb": body.preco_acucar_cents_lb,
@@ -1210,14 +1332,15 @@ async def save_breakeven(
 
 @app.get("/api/breakeven/history")
 @limiter.limit("60/minute")
-async def list_breakeven_history(
+def list_breakeven_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
     offset: int = 0,
 ):
     """List saved breakeven simulations for the authenticated user."""
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    _validar_paginacao(limit, offset)
+    client = supa_client()
     result = (
         client.table("breakeven_simulations")
         .select("id,preco_acucar_cents_lb,preco_dolar_brl,fator_conversao,breakeven_brl_saca,label,created_at")
@@ -1239,15 +1362,20 @@ class RiscoSaveRequest(BaseModel):
     results: dict
     label: str | None = None
 
+    @field_validator("inputs", "results")
+    @classmethod
+    def _tamanho_json(cls, valor: dict) -> dict:
+        return _limitar_json(valor)
+
 
 @app.post("/api/risco/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_risco(
+def save_risco(
     request: Request,
     body: RiscoSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("risco_simulations").insert({
         "user_id": user["id"],
         "inputs": body.inputs,
@@ -1262,12 +1390,13 @@ async def save_risco(
 
 @app.get("/api/risco/history")
 @limiter.limit("60/minute")
-async def list_risco_history(
+def list_risco_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    _validar_paginacao(limit, 0)
+    client = supa_client()
     result = (
         client.table("risco_simulations")
         .select("id,fat_media,custo_media,ebitda_media,label,created_at")
@@ -1282,7 +1411,7 @@ async def list_risco_history(
 # ── Cenários history ───────────────────────────────────────────────────────────
 
 class CenariosSaveRequest(BaseModel):
-    opcao: str
+    opcao: OpcaoCenario
     ny: float | None = None
     moagem: float | None = None
     cambio: float | None = None
@@ -1296,12 +1425,12 @@ class CenariosSaveRequest(BaseModel):
 
 @app.post("/api/cenarios/save", status_code=201)
 @limiter.limit("30/minute")
-async def save_cenario(
+def save_cenario(
     request: Request,
     body: CenariosSaveRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = supa_client()
     saved = client.table("cenarios_simulations").insert({
         "user_id": user["id"],
         **body.model_dump(exclude={"label"}),
@@ -1312,12 +1441,13 @@ async def save_cenario(
 
 @app.get("/api/cenarios/history")
 @limiter.limit("60/minute")
-async def list_cenarios_history(
+def list_cenarios_history(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    _validar_paginacao(limit, 0)
+    client = supa_client()
     result = (
         client.table("cenarios_simulations")
         .select("id,opcao,breakeven,probabilidade_abaixo,media,label,created_at")
@@ -1333,7 +1463,7 @@ async def list_cenarios_history(
 
 @app.get("/api/arima/{ticker}")
 @limiter.limit("10/minute")
-async def get_arima(
+def get_arima(
     request: Request,
     ticker: str,
     steps: int = 30,
@@ -1350,13 +1480,11 @@ async def get_arima(
 
     ticker = validate_ticker(ticker)
     if steps < 1 or steps > 365:
-        raise HTTPException(status_code=400, detail="steps must be between 1 and 365")
+        raise HTTPException(status_code=400, detail="O horizonte da previsão precisa estar entre 1 e 365 dias.")
 
-    data = yf.download(ticker, period="2y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
-
-    closes = data["Close"].squeeze().dropna()
+    closes, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=2 * 365))
+    if len(closes) < 30:
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     try:
         model = ARIMA(closes, order=(1, 1, 1))
@@ -1366,7 +1494,7 @@ async def get_arima(
         conf_int = forecast_result.conf_int(alpha=0.05)
     except Exception as exc:
         logger.error("ARIMA fitting failed for '%s': %s", ticker, exc)
-        raise HTTPException(status_code=400, detail="ARIMA model fitting failed. Try a different ticker or period.")
+        raise HTTPException(status_code=400, detail="O modelo ARIMA não convergiu para este ativo. Tente outro ativo ou horizonte.")
 
     last_date = closes.index[-1]
     forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=steps, freq="B")
@@ -1392,6 +1520,7 @@ async def get_arima(
         "ticker": ticker,
         "steps": steps,
         "series": series,
+        "ultimo_dado": ultimo_dado,
     }
 
 
@@ -1399,7 +1528,7 @@ async def get_arima(
 
 @app.get("/api/stress")
 @limiter.limit("10/minute")
-async def get_stress(
+def get_stress(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1416,12 +1545,10 @@ async def get_stress(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    data = yf.download(ticker, period="max", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
-
-    closes = data["Close"].squeeze().dropna()
-    last_price = float(closes.iloc[-1])
+    # Desde 2007: cobre a crise de 2008 (o cache por padrão começa em 2013).
+    closes, ultimo_dado = fechamentos(ticker, INICIO_ESTRESSE)
+    if len(closes) < 30:
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
     def compute_drawdown_window(series: "pd.Series") -> dict:
         """Return the worst drawdown window (start, end, drawdown_pct, price_after)."""
@@ -1442,25 +1569,11 @@ async def get_stress(
             "last_price_after": round(float(series.iloc[worst_idx]), 4),
         }
 
-    # Scenario 1: worst 5% drawdown window from full history
+    # Scenario 1: worst drawdown in the period read (desde 2007)
     worst_dd = compute_drawdown_window(closes)
-
-    # Scenario 2: 2008 financial crisis period
-    crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"] if "2008-08-01" in closes.index or closes.index[0].year <= 2008 else pd.Series(dtype=float)
-    try:
-        crisis_2008_series = closes.loc["2008-08-01":"2009-03-31"]
-    except Exception:
-        crisis_2008_series = pd.Series(dtype=float)
-    crisis_2008 = compute_drawdown_window(crisis_2008_series)
-    crisis_2008["name"] = "Crise 2008"
-
-    # Scenario 3: COVID crash
-    try:
-        covid_series = closes.loc["2020-02-01":"2020-04-30"]
-    except Exception:
-        covid_series = pd.Series(dtype=float)
-    covid = compute_drawdown_window(covid_series)
-    covid["name"] = "COVID 2020"
+    # Scenarios 2 and 3: known crises (index is sorted, so label slicing is safe)
+    crisis_2008 = compute_drawdown_window(closes.loc["2008-08-01":"2009-03-31"])
+    covid = compute_drawdown_window(closes.loc["2020-02-01":"2020-04-30"])
 
     def to_scenario(d: dict, name: str) -> dict:
         return {
@@ -1471,16 +1584,17 @@ async def get_stress(
             "preco_final": d.get("last_price_after") or 0.0,
         }
 
-    return [
-        to_scenario(worst_dd, "Pior drawdown histórico"),
-        to_scenario(crisis_2008, "Crise 2008"),
-        to_scenario(covid, "COVID 2020"),
-    ]
+    return {
+        "cenarios": [
+            to_scenario(worst_dd, "Pior queda desde 2007"),
+            to_scenario(crisis_2008, "Crise 2008"),
+            to_scenario(covid, "COVID 2020"),
+        ],
+        "ultimo_dado": ultimo_dado,
+    }
 
 
 # ── News ───────────────────────────────────────────────────────────────────────
-
-import time as _time
 
 _news_cache: dict = {"ts": 0.0, "items": []}
 _NEWS_TTL = 1800  # 30 minutes
@@ -1488,7 +1602,7 @@ _NEWS_TTL = 1800  # 30 minutes
 
 @app.get("/api/news")
 @limiter.limit("20/minute")
-async def get_news(
+def get_news(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -1503,9 +1617,13 @@ async def get_news(
     if now - _news_cache["ts"] < _NEWS_TTL and _news_cache["items"]:
         return {"items": _news_cache["items"], "cached": True}
 
-    url = "https://news.google.com/rss/search?q=açúcar+NY+futuros+dólar+real&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+    url = "https://news.google.com/rss/search?" + urlencode(
+        {"q": "açúcar NY futuros dólar real", "hl": "pt-BR", "gl": "BR", "ceid": "BR:pt-419"}
+    )
     try:
-        feed = feedparser.parse(url)
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
         items = []
         for entry in feed.entries[:10]:
             published = entry.get("published", "")
@@ -1523,7 +1641,7 @@ async def get_news(
         logger.error("Failed to fetch news: %s", exc)
         if _news_cache["items"]:
             return {"items": _news_cache["items"], "cached": True, "warning": "News fetch failed, showing cached data"}
-        raise HTTPException(status_code=503, detail="Failed to fetch news")
+        raise HTTPException(status_code=503, detail="Não foi possível carregar as notícias agora. Tente novamente em alguns minutos.")
 
     return {"items": items, "cached": False}
 
@@ -1532,7 +1650,7 @@ async def get_news(
 
 @app.get("/api/volatility")
 @limiter.limit("10/minute")
-async def get_volatility(
+def get_volatility(
     request: Request,
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1546,11 +1664,10 @@ async def get_volatility(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    data = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
-    if data.empty or len(data) < 30:
-        raise HTTPException(status_code=400, detail=f"Insufficient data for ticker '{ticker}'")
+    closes, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=365))
+    if len(closes) < 30:
+        raise HTTPException(status_code=400, detail=f"Dados insuficientes para {ticker}. Tente outro ativo ou período.")
 
-    closes = data["Close"].squeeze().dropna()
     last_price = float(closes.iloc[-1])
     log_returns = np.log(closes / closes.shift(1)).dropna()
 
@@ -1582,6 +1699,7 @@ async def get_volatility(
         "vol_1y": round(vol_1y, 6),
         "last_price": round(last_price, 4),
         "rolling_30d": rolling_30d_list,
+        "ultimo_dado": ultimo_dado,
     }
 
 
@@ -1589,38 +1707,48 @@ async def get_volatility(
 
 @app.get("/api/metas")
 @limiter.limit("20/minute")
-async def get_metas(
+def get_metas(
     request: Request,
     meta: float = 2600,
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """MTM history and heatmap data for sugar price targets."""
-    FATOR = 22.0462 * 1.04
+    fator = _ler_constantes("fator_conversao_mtm")["fator_conversao_mtm"]
     end = date.today()
     start = date(2013, 1, 1)
 
-    sugar_rows = get_prices("SB=F", start, end)
-    fx_rows = get_prices("USDBRL=X", start, end)
+    # Fechamentos nulos não contam
+    sugar_rows = [r for r in get_prices("SB=F", start, end) if r["close"] is not None]
+    fx_rows = [r for r in get_prices("USDBRL=X", start, end) if r["close"] is not None]
 
-    if len(sugar_rows) < 10 or len(fx_rows) < 10:
+    if len(sugar_rows) < 10 or len(fx_rows) < 10 or not any(r["close"] for r in fx_rows):
         raise HTTPException(status_code=503, detail="Dados insuficientes.")
 
-    sugar_map = {r["date"]: r["close"] for r in sugar_rows if r["close"]}
-    fx_map = {r["date"]: r["close"] for r in fx_rows if r["close"]}
+    # HARD-05: o mapa é centrado no último fechamento de cada preço
+    limite = (end - timedelta(days=7)).isoformat()
+    if str(sugar_rows[-1]["date"])[:10] < limite or str(fx_rows[-1]["date"])[:10] < limite:
+        raise HTTPException(status_code=503, detail="Sem preços recentes para montar o mapa de metas.")
+    spot_acucar = float(sugar_rows[-1]["close"])
+    spot_dolar = float(fx_rows[-1]["close"])
+
+    sugar_map = {r["date"]: r["close"] for r in sugar_rows}
+    fx_map = {r["date"]: r["close"] for r in fx_rows}
     common_dates = sorted(set(sugar_map) & set(fx_map))
 
     mtm_series = [
         {
             "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
-            "mtm": round(FATOR * sugar_map[d] * fx_map[d], 2),
+            "mtm": round(fator * sugar_map[d] * fx_map[d], 2),
             "meta": meta,
         }
         for d in common_dates
     ]
 
-    acucares = [round(24 - 0.5 * i, 2) for i in range(11)]
-    dolares = [round(4.8 + 0.05 * i, 2) for i in range(10)]
-    heatmap = [[round(FATOR * a * d - meta, 2) for d in dolares] for a in acucares]
+    # Açúcar: ±25% em passos de 5% (linhas, do maior para o menor).
+    # Dólar: ±10% em passos de 2% (colunas, crescente). Centro = índice 5 nos dois eixos.
+    acucares = [round(spot_acucar * (1 + 0.05 * k), 2) for k in range(5, -6, -1)]
+    dolares = [round(spot_dolar * (1 + 0.02 * k), 2) for k in range(-5, 6)]
+    heatmap = [[round(fator * a * d - meta, 2) for d in dolares] for a in acucares]
 
     return {
         "meta": meta,
@@ -1635,7 +1763,7 @@ async def get_metas(
 
 class JumpDiffusionRequest(BaseModel):
     ticker: str = "SB=F"
-    sigma: float | None = None
+    sigma: float | None = Field(default=None, gt=0, le=1)  # diária
     lambda_jumps: float = Field(default=0.1, ge=0, le=5)
     mu_jump: float = Field(default=-0.02, ge=-1, le=1)
     sigma_jump: float = Field(default=0.05, ge=0, le=1)
@@ -1644,7 +1772,7 @@ class JumpDiffusionRequest(BaseModel):
 
 @app.post("/api/jump-diffusion")
 @limiter.limit("15/minute")
-async def jump_diffusion(
+def jump_diffusion(
     request: Request,
     body: JumpDiffusionRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1656,31 +1784,35 @@ async def jump_diffusion(
     start = end - timedelta(days=3 * 365)
     rows = get_prices(ticker, start, end)
 
-    if len(rows) < 20:
+    closes = np.array([r["close"] for r in rows if r["close"]], dtype=float)
+    if len(rows) < 20 or len(closes) < 2:
         raise HTTPException(status_code=400, detail="Dados históricos insuficientes.")
 
-    closes = np.array([r["close"] for r in rows if r["close"]], dtype=float)
     log_returns = np.diff(np.log(closes))
     mu = float(np.mean(log_returns))
     sigma = float(body.sigma) if body.sigma is not None else float(np.std(log_returns, ddof=1))
     s0 = float(closes[-1])
 
-    dt = 1.0 / body.steps
+    # mu e sigma são diários (log-retornos de fechamentos diários): cada passo é um pregão.
+    # lambda_jumps é anual (tooltip), por isso /252.
+    # mu já é o drift em log da série: não se subtrai σ²/2 de novo. Como mu traz os saltos
+    # históricos, tira-se a média dos saltos por passo (λ_d·μ_salto) para não contar duas vezes.
+    lam_d = body.lambda_jumps / 252
     rng = np.random.default_rng()
-    prices = [s0]
-    for _ in range(body.steps):
-        n_jumps = int(rng.poisson(body.lambda_jumps * dt))
-        jump_mag = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, n_jumps))) if n_jumps > 0 else 0.0
-        diffusion = (mu - 0.5 * sigma ** 2) * dt + sigma * float(rng.normal()) * (dt ** 0.5)
-        prices.append(prices[-1] * float(np.exp(diffusion + jump_mag)))
+    n = body.steps
+    n_saltos = rng.poisson(lam_d, n)
+    # Soma de N saltos N(m, s²) i.i.d. ~ N(N·m, N·s²): exato em distribuição, sem loop
+    saltos = n_saltos * body.mu_jump + np.sqrt(n_saltos) * body.sigma_jump * rng.standard_normal(n)
+    incrementos = (mu - lam_d * body.mu_jump) + sigma * rng.standard_normal(n) + saltos
+    precos = s0 * np.exp(np.concatenate(([0.0], np.cumsum(incrementos))))
 
     return {
         "ticker": ticker,
         "s0": round(s0, 4),
         "sigma": round(sigma, 6),
         "mu": round(mu, 6),
-        "prices": [{"step": i, "price": round(p, 4)} for i, p in enumerate(prices)],
-        "mean": round(float(np.mean(prices)), 4),
+        "prices": [{"step": i, "price": round(float(p), 4)} for i, p in enumerate(precos)],
+        "mean": round(float(np.mean(precos)), 4),
     }
 
 
@@ -1703,9 +1835,15 @@ class RiscoRequest(BaseModel):
     num_simulacoes: int = Field(default=10000, ge=1000, le=50000)
 
 
+ROTULOS_RISCO = {
+    "moagem": "Moagem", "atr": "ATR", "vhp_total": "VHP total", "ny": "NY",
+    "cambio": "Câmbio", "preco_cbios": "Preço do CBIO", "preco_etanol": "Preço do etanol",
+}
+
+
 @app.post("/api/risco")
 @limiter.limit("10/minute")
-async def simular_risco(
+def simular_risco(
     request: Request,
     body: RiscoRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1713,6 +1851,12 @@ async def simular_risco(
     """Monte Carlo simulation of revenue, cost and EBITDA."""
     import numpy as np
     from scipy.stats import norm as _norm
+
+    for nome, v in [(k, getattr(body, k)) for k in ROTULOS_RISCO]:
+        if not (v.p15 < v.media < v.p85):
+            raise HTTPException(status_code=422, detail=f"{ROTULOS_RISCO[nome]}: é preciso P15 < média < P85.")
+
+    cfg = _ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1", "risco_custo_fixo_2")
 
     def _std(v: VariavelRisco) -> float:
         return (v.p85 - v.p15) / (2 * _norm.ppf(0.85))
@@ -1723,17 +1867,16 @@ async def simular_risco(
     def _s(v: VariavelRisco) -> np.ndarray:
         return rng.normal(v.media, _std(v), n)
 
-    moagem = _s(body.moagem)
-    atr = _s(body.atr)
+    # NY não pode ser negativo (trunca em zero). Moagem e ATR não entram: na fórmula de custo
+    # moagem × ATR × atr_mtm = 0,6 × (faturamento − CBIO), então se cancelam.
+    ny = np.maximum(_s(body.ny), 0.0)
     vhp = _s(body.vhp_total)
-    ny = _s(body.ny)
     cambio = _s(body.cambio)
     cbios = _s(body.preco_cbios)
     etanol = _s(body.preco_etanol)
 
-    fat = ((ny - 0.19) * 22.0462 * 1.04 * cambio) * vhp + 17283303 + etanol * 35524 + 24479549 + cbios * 31616
-    atr_mtm = 0.6 * (fat - cbios) / (moagem * atr)
-    custo = 109212811 + 32947347 + atr_mtm * moagem * atr
+    fat = ((ny - 0.19) * cfg["fator_conversao_mtm"] * cambio) * vhp + 17283303 + etanol * 35524 + 24479549 + cbios * 31616
+    custo = cfg["risco_custo_fixo_1"] + cfg["risco_custo_fixo_2"] + 0.6 * (fat - cbios)
     ebitda = fat - custo + 7219092
 
     pcts = [1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 85, 90, 95, 99]
@@ -1754,7 +1897,7 @@ async def simular_risco(
 # ── Cenários ──────────────────────────────────────────────────────────────────
 
 class CenariosRequest(BaseModel):
-    opcao: Literal["Moagem", "Câmbio", "NY", "Preço Etanol"]
+    opcao: OpcaoCenario
     ny: float = 20.0
     moagem: float = 1300000.0
     cambio: float = 5.25
@@ -1763,7 +1906,7 @@ class CenariosRequest(BaseModel):
 
 @app.post("/api/cenarios")
 @limiter.limit("20/minute")
-async def simular_cenarios(
+def simular_cenarios(
     request: Request,
     body: CenariosRequest,
     user: Annotated[dict, Depends(get_current_user)] = None,
@@ -1772,39 +1915,45 @@ async def simular_cenarios(
     import numpy as np
     from scipy.stats import norm as _norm
 
+    cfg = _ler_constantes(
+        "fator_conversao_mtm", "cenarios_custo_fixo_1", "cenarios_custo_fixo_2", "cenarios_custo_fixo_3",
+    )
+    fator = cfg["fator_conversao_mtm"]
+    custo_fixo = cfg["cenarios_custo_fixo_1"] + cfg["cenarios_custo_fixo_2"] + cfg["cenarios_custo_fixo_3"]
+
     def _ebitda(moagem: float, cambio: float, preco_etanol: float, ny: float) -> float:
         vhp = (89.45 * 0.8346 * moagem) / 1000
         eth = (0.1654 * 80.18 * moagem + 327.19 * 60075) / 1000
         fat = (
-            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            (vhp - 4047) * (ny - 0.19) * fator * cambio
             + (eth - 1000) * (preco_etanol + 349.83) * 0.96
             + 3227430 + 22061958
             + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
         )
         custo = 0.6 * 0.93 * (
-            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            (vhp - 4047) * (ny - 0.19) * fator * cambio
             + (eth - 1000) * (preco_etanol + 349.83) * 0.96
             + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
-        ) + 88704735 + 43732035 + 20286465
+        ) + custo_fixo
         return fat - custo
 
-    step_map = {"Moagem": 1000.0, "Câmbio": 0.01, "NY": 0.01, "Preço Etanol": 0.01}
-    step = step_map[body.opcao]
-    ny, moagem, cambio, preco_etanol = body.ny, body.moagem, body.cambio, body.preco_etanol
+    from scipy.optimize import brentq
 
-    for _ in range(100000):
-        if _ebitda(moagem, cambio, preco_etanol, ny) > 0:
-            break
-        if body.opcao == "Moagem":
-            moagem += step
-        elif body.opcao == "Câmbio":
-            cambio += step
-        elif body.opcao == "NY":
-            ny += step
-        else:
-            preco_etanol += step
+    # EBITDA is increasing in every variable, so the breakeven is the unique root.
+    # The old upward step-search returned the input itself whenever EBITDA was
+    # already positive (true for the defaults), so it never found the real breakeven.
+    base = {"moagem": body.moagem, "cambio": body.cambio, "preco_etanol": body.preco_etanol, "ny": body.ny}
+    key = {"Moagem": "moagem", "Câmbio": "cambio", "NY": "ny", "Preço Etanol": "preco_etanol"}[body.opcao]
 
-    breakeven = {"Moagem": moagem, "Câmbio": cambio, "NY": ny, "Preço Etanol": preco_etanol}[body.opcao]
+    def f(x: float) -> float:
+        return _ebitda(**{**base, key: x})
+
+    try:
+        # O front envia 0 na variável analisada; a escala do intervalo vem do valor típico (default do modelo).
+        escala = max(base[key], CenariosRequest.model_fields[key].default)
+        breakeven = brentq(f, 1e-6, escala * 100)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Sem breakeven no intervalo para esses parâmetros.")
 
     dist_params: dict[str, dict] = {
         "Moagem":       {"media": 1300000.0, "p80": 1400000.0},
@@ -1831,3 +1980,13 @@ async def simular_cenarios(
         "percentis": percentis,
         "distribuicao": distribuicao,
     }
+
+# ── Posições da safra (routers/posicoes.py) ──
+from routers import posicoes as _posicoes  # noqa: E402
+app.include_router(_posicoes.router)
+# Previsão do câmbio (faixa de possibilidades): routers/cambio.py
+from routers.cambio import router as cambio_router  # noqa: E402
+app.include_router(cambio_router)
+# Hedge cambial: routers/hedge_cambial.py
+from routers.hedge_cambial import router as hedge_cambial_router  # noqa: E402
+app.include_router(hedge_cambial_router)

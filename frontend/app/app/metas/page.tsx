@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatBRL, formatDate, formatNumber } from "@/lib/format";
+import { toast } from "sonner";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraMetas } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,8 +20,6 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface MetasResult {
   meta: number;
   mtm_series: { date: string; mtm: number; meta: number }[];
@@ -21,82 +28,116 @@ interface MetasResult {
   dolares: number[];
 }
 
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
-}
+const CHAVE_META = "metas.ultimaMeta";
+const META_PADRAO = 2600;
 
-function cellColor(v: number): string {
-  if (v >= 200) return "#16a34a";
-  if (v >= 0) return "#4ade80";
-  if (v >= -200) return "#f87171";
-  return "#dc2626";
+// Escala divergente: verde acima da meta, vermelho abaixo; mais forte além de ±200 R$/t.
+function cellClass(v: number): string {
+  if (v >= 200) return "bg-positive/25 text-positive font-bold";
+  if (v >= 0) return "bg-positive/10 text-positive";
+  if (v >= -200) return "bg-negative/10 text-negative";
+  return "bg-negative/25 text-negative font-bold";
 }
 
 export default function MetasPage() {
-  const [meta, setMeta] = useState(2600);
+  // Meta padrão: a última usada neste navegador (o backend não guarda meta); sem ela, R$ 2.600/t.
+  const [meta, setMeta] = useState(META_PADRAO);
+  const [origemMeta, setOrigemMeta] = useState<"padrao" | "ultima">("padrao");
   const [result, setResult] = useState<MetasResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const salva = Number(localStorage.getItem(CHAVE_META));
+    if (Number.isFinite(salva) && salva > 0) {
+      setMeta(salva);
+      setOrigemMeta("ultima");
+    }
+  }, []);
 
   async function handleCalc() {
     setLoading(true);
-    setError(null);
     try {
-      const token = await getToken();
-      const res = await fetch(`${API}/api/metas?meta=${meta}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as MetasResult);
-    } catch { setError("Erro de conexão."); }
+      setResult(await apiFetch<MetasResult>(`/api/metas?meta=${meta}`));
+      localStorage.setItem(CHAVE_META, String(meta));
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Metas</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Metas"
+        descricao="Compara o valor de mercado do açúcar em R$/t com a sua meta, no histórico e em cenários de preço e câmbio."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Metas", null)}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Meta (R$/t)", result.meta]],
+                      tabelas: [
+                        {
+                          colunas: ["Data", "Valor de mercado (R$/t)", "Meta (R$/t)", "Diferença (R$/t)"],
+                          linhas: result.mtm_series.map((p) => [p.date, p.mtm, p.meta, p.mtm - p.meta]),
+                        },
+                        {
+                          // Mapa de cenários: diferença para a meta por açúcar (linhas) e câmbio (colunas)
+                          colunas: ["Açúcar (¢/lb) \\ Câmbio (R$/US$)", ...result.dolares.map((d) => String(d).replace(".", ","))],
+                          linhas: result.acucares.map((a, i) => [a, ...result.heatmap[i]]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
       <Card className="max-w-sm">
-        <CardHeader><CardTitle className="text-sm font-medium">Meta (R$/Ton)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm font-medium">Meta (R$/t)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Meta: <span className="font-bold">{meta}</span></Label>
+            <Label>
+              Meta: <span className="font-bold tabular-nums">{formatBRL(meta)}/t</span>
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {origemMeta === "ultima" ? "· última meta usada neste navegador" : "· valor padrão"}
+              </span>
+            </Label>
           </div>
+          {/* A faixa cobre a meta salva mesmo que esteja fora de 2.400–2.800. */}
           <Slider
-            min={2400} max={2800} step={10}
+            min={Math.min(2400, meta)} max={Math.max(2800, meta)} step={10}
             value={[meta]}
             onValueChange={([v]) => setMeta(v)}
+            thumbLabel="Meta de preço (R$/t)"
           />
           <Button onClick={handleCalc} disabled={loading} className="w-full">
             {loading ? "Calculando..." : "Calcular"}
           </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </CardContent>
       </Card>
 
+      {!result && <EmptyState mensagem="Escolha a meta e clique em Calcular para ver o mapa de cenários e o histórico." />}
+
       {result && (
         <>
+          <Leitura>{leituraMetas({ mtm: result.mtm_series.at(-1)?.mtm, meta: result.meta })}</Leitura>
           {/* Heatmap */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
-                Produto − Meta (R$/Ton) · 22.0462 × 1.04 × Açúcar × Dólar − {result.meta}
+                Diferença para a meta (R$/t) por preço do açúcar (¢/lb) e câmbio (R$/US$)
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1 text-muted-foreground font-normal">Açúcar\Dólar</th>
+                    <th className="sticky left-0 z-10 bg-card px-2 py-1 font-normal text-muted-foreground">Açúcar \ Dólar</th>
                     {result.dolares.map((d) => (
                       <th key={d} className="px-2 py-1 text-center font-normal text-muted-foreground">
-                        {d.toFixed(2)}
+                        {formatNumber(d, 2)}
                       </th>
                     ))}
                   </tr>
@@ -104,16 +145,21 @@ export default function MetasPage() {
                 <tbody>
                   {result.acucares.map((a, i) => (
                     <tr key={a}>
-                      <td className="px-2 py-1 font-medium text-muted-foreground">{a.toFixed(2)}</td>
-                      {result.heatmap[i].map((v, j) => (
+                      <td className="sticky left-0 z-10 bg-card px-2 py-1 font-medium text-muted-foreground">{formatNumber(a, 2)}</td>
+                      {result.heatmap[i].map((v, j) => {
+                        // HARD-05: o centro do mapa é o preço de hoje (último fechamento)
+                        const atual = i === Math.floor(result.acucares.length / 2) && j === Math.floor(result.dolares.length / 2);
+                        return (
                         <td
                           key={j}
-                          className="px-2 py-1 text-center font-semibold text-white"
-                          style={{ background: cellColor(v), minWidth: 72 }}
+                          aria-current={atual ? "true" : undefined}
+                          className={`min-w-[72px] px-2 py-1 text-center tabular-nums ${cellClass(v)} ${atual ? "font-bold ring-2 ring-ring" : ""}`}
                         >
-                          {v > 0 ? "+" : ""}{v.toFixed(0)}
+                          {v > 0 ? "+" : ""}
+                          {formatNumber(v, 0)}
                         </td>
-                      ))}
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -124,25 +170,45 @@ export default function MetasPage() {
           {/* MTM Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">MTM Histórico vs Meta</CardTitle>
+              <CardTitle className="text-sm font-medium">Valor de mercado (R$/t) no histórico e meta</CardTitle>
             </CardHeader>
             <CardContent>
+              <div role="img" aria-label="Valor de mercado do açúcar no histórico, com a linha da meta de preço.">
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart
                   data={result.mtm_series.filter((_, i) => i % 5 === 0)}
                   margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(0, 7)} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v: number, name: string) => [v.toFixed(2), name === "mtm" ? "MTM" : "Meta"]}
-                    labelFormatter={(l) => l}
+                  <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    minTickGap={32}
+                    tickFormatter={(v: string) => formatDate(v).slice(3)}
                   />
-                  <ReferenceLine y={result.meta} stroke="#ef4444" strokeDasharray="4 2" label={{ value: `Meta ${result.meta}`, position: "right", fontSize: 10 }} />
-                  <Line type="monotone" dataKey="mtm" stroke="#3b82f6" dot={false} strokeWidth={1.5} name="mtm" />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={64}
+                    tickFormatter={(v: number) => formatNumber(v, 0)}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number) => [`${formatBRL(v)}/t`, "Valor de mercado"]}
+                    labelFormatter={(l: string) => formatDate(l)}
+                  />
+                  <ReferenceLine
+                    y={result.meta}
+                    stroke="var(--negative)"
+                    strokeDasharray="4 2"
+                    label={{ value: `Meta ${formatNumber(result.meta, 0)}`, position: "insideTopRight", fontSize: 10, fill: "var(--negative)" }}
+                  />
+                  <Line type="monotone" dataKey="mtm" stroke="var(--chart-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </>

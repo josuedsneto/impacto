@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 6,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "surviving_mutant::teste de allowlist de redirecionamento deve incluir destino protocol relative host e caminho interno fora do prefixo nao so url absoluta e null",
+      "text": "Teste de allowlist de redirecionamento deve incluir destino protocol-relative (//host) e caminho interno fora do prefixo, não só URL absoluta e null.",
+      "signal": "surviving_mutant",
+      "scope": "frontend/auth",
+      "status": "candidate",
+      "features": [
+        "cliente-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "frontend/lib/api.ts:destinoSeguro (frontend/auth)"
+      ],
+      "created": "2026-10-05T14:28:03Z",
+      "last_seen": "2026-10-05T14:28:03Z"
+    },
+    {
+      "id": "L-002",
+      "key": "gate_fail::encadear gate e commit com sobre saida filtrada por grep nao para em erro de lint usar o codigo de saida do eslint ou checar contagem de erros 0 antes de commitar",
+      "text": "Encadear gate e commit com && sobre saída filtrada por grep não para em erro de lint; usar o código de saída do eslint ou checar contagem de erros > 0 antes de commitar.",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "fundacao-ui"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "commit d5f072d (tooling)"
+      ],
+      "created": "2026-10-05T17:51:37Z",
+      "last_seen": "2026-10-05T17:51:37Z"
+    },
+    {
+      "id": "L-003",
+      "key": "gate_fail::com set o pipefail cmd grep falha nao dispara quando cmd sai com erro capture a saida numa variavel e teste se esta vazia",
+      "text": "Com set -o pipefail, 'cmd | grep . && falha' não dispara quando cmd sai com erro; capture a saída numa variável e teste se está vazia.",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "commit cac7ac3 (tooling)"
+      ],
+      "created": "2026-10-05T18:12:55Z",
+      "last_seen": "2026-10-05T18:12:55Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::ao remover itens de uma lista por sed com padrao de linha confira se o mesmo texto aparece em outra lista do arquivo prefira editar por bloco nomeado ou indentacoes distintas",
+      "text": "Ao remover itens de uma lista por sed com padrão de linha, confira se o mesmo texto aparece em outra lista do arquivo; prefira editar por bloco nomeado (ou indentações distintas).",
+      "signal": "gate_fail",
+      "scope": "tooling",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "lib/regras-linguagem.test.ts FERRAMENTAS (tooling)"
+      ],
+      "created": "2026-10-05T18:31:27Z",
+      "last_seen": "2026-10-05T18:31:27Z"
+    },
+    {
+      "id": "L-005",
+      "key": "surviving_mutant::testes de conversao numerica precisam de entradas que geram erro de ponto flutuante 0 07 100 nao so valores que dao conta exata",
+      "text": "Testes de conversão numérica precisam de entradas que geram erro de ponto flutuante (0,07 × 100), não só valores que dão conta exata.",
+      "signal": "surviving_mutant",
+      "scope": "frontend/lib",
+      "status": "candidate",
+      "features": [
+        "linguagem-clara"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "frontend/lib/numero.ts:fracaoParaPercentual (frontend/lib)"
+      ],
+      "created": "2026-10-05T18:42:32Z",
+      "last_seen": "2026-10-05T18:42:32Z"
+    }
+  ]
+}

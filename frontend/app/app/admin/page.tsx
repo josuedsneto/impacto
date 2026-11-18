@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SuggestionQueue } from '@/components/admin/SuggestionQueue'
 import { AdminConfig } from '@/components/admin/AdminConfig'
 import { AtrUsinasAdmin } from '@/components/admin/AtrUsinasAdmin'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminPage() {
   const supabase = await createServerSupabaseClient()
@@ -18,11 +19,14 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="container mx-auto py-8 space-y-10">
-      <h1 className="text-2xl font-semibold mb-6">Painel do Administrador</h1>
+    <div className="space-y-10">
+      <PageHeader
+        titulo="Administração"
+        descricao="Aprove ativos sugeridos, ajuste configurações do sistema e gerencie usinas e acessos."
+      />
       <SuggestionQueue />
       <AdminConfig />
       <AtrUsinasAdmin />
-    </main>
+    </div>
   )
 }

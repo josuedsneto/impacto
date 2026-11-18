@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatBRL, formatCents, formatDate, formatFX, formatNumber } from "@/lib/format";
+import { CampoNumero } from "@/components/ui/campo-numero";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraBreakeven } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
+import { lerNumero } from "@/lib/numero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface BreakevenResult {
   preco_acucar_cents_lb: number;
@@ -28,20 +38,11 @@ interface BreakevenSim {
   created_at: string;
 }
 
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
-}
-
 function MetricItem({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-3xl font-bold">{value}</span>
+      <span className="text-3xl font-bold tabular-nums">{value}</span>
       {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
     </div>
   );
@@ -52,12 +53,13 @@ function ResultCards({ acucar, dolar, fator, breakeven }: {
 }) {
   return (
     <>
-      <Card className="border-2 border-primary">
+      <Leitura>{leituraBreakeven({ acucar, dolar, breakeven })}</Leitura>
+      <Card className="border-2 border-brand">
         <CardHeader><CardTitle className="text-lg">Breakeven</CardTitle></CardHeader>
         <CardContent>
           <MetricItem
             label="Preço mínimo de venda"
-            value={`R$ ${breakeven.toFixed(2)}/saca`}
+            value={`${formatBRL(breakeven)}/saca`}
             sub="Calculado com base nos dados informados"
           />
         </CardContent>
@@ -65,15 +67,15 @@ function ResultCards({ acucar, dolar, fator, breakeven }: {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Preço Açúcar NY</CardTitle></CardHeader>
-          <CardContent><MetricItem label="" value={`${acucar.toFixed(2)} ¢/lb`} /></CardContent>
+          <CardContent><MetricItem label="" value={formatCents(acucar)} /></CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Câmbio USD/BRL</CardTitle></CardHeader>
-          <CardContent><MetricItem label="" value={`R$ ${dolar.toFixed(4)}`} /></CardContent>
+          <CardContent><MetricItem label="" value={formatFX(dolar)} /></CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">Fator de Conversão</CardTitle></CardHeader>
-          <CardContent><MetricItem label="" value={fator.toFixed(4)} sub="¢/lb → R$/saca" /></CardContent>
+          <CardContent><MetricItem label="" value={formatNumber(fator, 4)} sub="¢/lb → R$/saca" /></CardContent>
         </Card>
       </div>
     </>
@@ -84,103 +86,94 @@ export default function BreakevenPage() {
   const [tab, setTab] = useState("live");
 
   // Live tab
-  const [live, setLive] = useState<BreakevenResult | null>(null);
-  const [liveFator, setLiveFator] = useState("");
-  const [liveLoading, setLiveLoading] = useState(true);
-  const [liveError, setLiveError] = useState<string | null>(null);
+  const { dados: live, carregando: liveLoading, erro: liveError, recarregar: recarregarLive } =
+    useApi<BreakevenResult>("/api/breakeven");
+  // Fator editado pelo usuário; enquanto não edita, mostra o da API.
+  const [fatorEditado, setFatorEditado] = useState<string | null>(null);
+  const liveFator = fatorEditado ?? (live ? String(live.fator_conversao).replace(".", ",") : "");
 
   // Manual tab
   const [acucar, setAcucar] = useState("");
   const [dolar, setDolar] = useState("");
-  const [fator, setFator] = useState("1.12045");
+  const [fator, setFator] = useState("1,12045");
   const [manualLabel, setManualLabel] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // History tab
   const [history, setHistory] = useState<BreakevenSim[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  // ANA-05: reabrir uma análise salva preenche a aba Manual.
+  useReabrirAnalise("breakeven", (p) => {
+    setAcucar(String(p.acucar_cents_lb ?? "").replace(".", ","));
+    setDolar(String(p.dolar_brl ?? "").replace(".", ","));
+    setFator(String(p.fator ?? "").replace(".", ","));
+    setManualLabel(typeof p.nome === "string" ? p.nome : "");
+    setTab("manual");
+  });
 
-  useEffect(() => {
-    async function fetchLive() {
-      try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API}/api/breakeven`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) { setLiveError(data.detail ?? "Erro."); return; }
-        setLive(data as BreakevenResult);
-        setLiveFator(String((data as BreakevenResult).fator_conversao));
-      } catch { setLiveError("Erro de conexão."); }
-      finally { setLiveLoading(false); }
-    }
-    fetchLive();
-  }, []);
-
-  const liveFatorNum = parseFloat(liveFator);
-  const liveBreakeven = live && !isNaN(liveFatorNum) && liveFatorNum > 0
+  const positivo = (t: string) => {
+    const v = lerNumero(t);
+    return v !== null && v > 0 ? v : null;
+  };
+  const liveFatorNum = positivo(liveFator);
+  const liveBreakeven = live && liveFatorNum !== null
     ? live.preco_acucar_cents_lb * liveFatorNum * live.preco_dolar_brl : null;
 
-  const manualAcucar = parseFloat(acucar);
-  const manualDolar = parseFloat(dolar);
-  const manualFator = parseFloat(fator);
+  const manualAcucar = positivo(acucar);
+  const manualDolar = positivo(dolar);
+  const manualFator = positivo(fator);
   const manualBreakeven =
-    !isNaN(manualAcucar) && !isNaN(manualDolar) && !isNaN(manualFator) &&
-    manualAcucar > 0 && manualDolar > 0 && manualFator > 0
+    manualAcucar !== null && manualDolar !== null && manualFator !== null
       ? manualAcucar * manualFator * manualDolar : null;
-
-  async function handleSave() {
-    if (manualBreakeven === null) { setSaveError("Preencha todos os campos."); return; }
-    setSaving(true); setSaveMsg(null); setSaveError(null);
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/breakeven/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          preco_acucar_cents_lb: manualAcucar,
-          preco_dolar_brl: manualDolar,
-          fator_conversao: manualFator,
-          label: manualLabel.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setSaveError(data.detail ?? "Erro ao salvar."); }
-      else {
-        setSaveMsg("Simulação salva!");
-        setHistory((prev) => [data as BreakevenSim, ...prev]);
-      }
-    } catch { setSaveError("Erro de conexão."); }
-    finally { setSaving(false); }
-  }
 
   async function handleTabHistory() {
     if (historyLoaded) return;
     setHistoryLoading(true);
+    setHistoryError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/breakeven/history`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) { setHistory(data.simulations ?? []); setHistoryLoaded(true); }
-    } catch { /* silent */ }
+      const data = await apiFetch<{ simulations?: BreakevenSim[] }>("/api/breakeven/history");
+      setHistory(data.simulations ?? []);
+      setHistoryLoaded(true);
+    } catch (e) { setHistoryError((e as Error).message); }
     finally { setHistoryLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Breakeven — Açúcar</h1>
-        <p className="text-sm text-muted-foreground mt-1">Preço mínimo de venda para cobrir custos de produção</p>
-      </div>
+    <div>
+      <PageHeader
+        titulo="Preço de equilíbrio do açúcar (R$/saca)"
+        descricao="Converte o preço de NY e o câmbio em R$/saca, com dados ao vivo ou valores informados por você."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Breakeven do acucar", null)}
+            montar={
+              history.length
+                ? () =>
+                    gerarCsv({
+                      tabelas: [
+                        {
+                          colunas: ["Data", "Nome", "Açúcar NY (¢/lb)", "Câmbio (R$/US$)", "Fator ¢/lb → R$/saca", "Breakeven (R$/saca)"],
+                          linhas: history.map((s) => [
+                            s.created_at.slice(0, 10),
+                            s.label,
+                            s.preco_acucar_cents_lb,
+                            s.preco_dolar_brl,
+                            s.fator_conversao,
+                            s.breakeven_brl_saca,
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "historico") handleTabHistory(); }}>
         <TabsList>
-          <TabsTrigger value="live">Live</TabsTrigger>
+          <TabsTrigger value="live">Ao vivo</TabsTrigger>
           <TabsTrigger value="manual">Manual</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
@@ -190,32 +183,36 @@ export default function BreakevenPage() {
           {liveLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-32 rounded-lg bg-muted animate-pulse" />
+                <Skeleton key={i} className="h-32" />
               ))}
             </div>
           )}
-          {liveError && <p className="text-sm text-red-600">{liveError}</p>}
+          {liveError && (
+            <ErrorState
+              mensagem={liveError}
+              onRetry={() => {
+                setFatorEditado(null);
+                recarregarLive();
+              }}
+            />
+          )}
           {!liveLoading && !liveError && live && (
             <>
-              <div className="max-w-xs space-y-1">
-                <Label htmlFor="live-fator">
-                  Fator de conversão{" "}
-                  <FieldTooltip text="Converte ¢/lb para R$/saca. Ajuste para simular diferentes cenários." />
-                </Label>
-                <Input
-                  id="live-fator"
-                  type="number"
-                  step={0.0001}
-                  min={0.0001}
-                  value={liveFator}
-                  onChange={(e) => setLiveFator(e.target.value)}
-                />
-              </div>
+              <CampoNumero
+                id="live-fator"
+                rotulo="Fator ¢/lb → R$/saca"
+                ajuda="Converte o preço em centavos de dólar por libra para reais por saca. Mude para testar outro fator."
+                valor={liveFator}
+                onChange={setFatorEditado}
+                min={0.0001}
+                max={100}
+                className="max-w-xs"
+              />
               {liveBreakeven !== null && (
                 <ResultCards
                   acucar={live.preco_acucar_cents_lb}
                   dolar={live.preco_dolar_brl}
-                  fator={liveFatorNum}
+                  fator={liveFatorNum!}
                   breakeven={liveBreakeven}
                 />
               )}
@@ -224,82 +221,101 @@ export default function BreakevenPage() {
         </TabsContent>
 
         {/* ── Manual ── */}
-        <TabsContent value="manual" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-            <div className="space-y-1">
-              <Label htmlFor="m-acucar">
-                Preço açúcar (¢/lb){" "}
-                <FieldTooltip text="Preço do açúcar NY #11 em centavos de dólar por libra" />
-              </Label>
-              <Input id="m-acucar" type="number" step={0.01} min={0} value={acucar}
-                onChange={(e) => setAcucar(e.target.value)} placeholder="ex: 19.50" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="m-dolar">
-                Câmbio USD/BRL{" "}
-                <FieldTooltip text="Taxa de câmbio dólar/real" />
-              </Label>
-              <Input id="m-dolar" type="number" step={0.01} min={0} value={dolar}
-                onChange={(e) => setDolar(e.target.value)} placeholder="ex: 5.20" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="m-fator">
-                Fator de conversão{" "}
-                <FieldTooltip text="Converte ¢/lb para R$/saca. Padrão: 1.12045" />
-              </Label>
-              <Input id="m-fator" type="number" step={0.0001} min={0.0001} value={fator}
-                onChange={(e) => setFator(e.target.value)} />
-            </div>
+        <TabsContent value="manual" className="mt-6">
+          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-start">
+          <div className="space-y-4 rounded-xl border border-border bg-card p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CampoNumero
+              id="m-acucar"
+              rotulo="Açúcar NY"
+              termo="vhp"
+              unidade="¢/lb"
+              ajuda="Preço do açúcar em Nova York, em centavos de dólar por libra."
+              valor={acucar}
+              onChange={setAcucar}
+              min={0.0001}
+              max={1000}
+              placeholder="ex.: 19,50"
+            />
+            <CampoNumero
+              id="m-dolar"
+              rotulo="Câmbio"
+              unidade="R$/US$"
+              ajuda="Quantos reais vale um dólar."
+              valor={dolar}
+              onChange={setDolar}
+              min={0.0001}
+              max={100}
+              placeholder="ex.: 5,20"
+            />
+            <CampoNumero
+              id="m-fator"
+              rotulo="Fator ¢/lb → R$/saca"
+              ajuda="Converte o preço em centavos de dólar por libra para reais por saca. O padrão é 1,12045."
+              valor={fator}
+              onChange={setFator}
+              min={0.0001}
+              max={100}
+            />
             <div className="space-y-1">
               <Label htmlFor="m-label">
-                Nome (opcional){" "}
-                <FieldTooltip text="Identificador para esta simulação no histórico" />
+                Nome <span className="font-normal text-muted-foreground">· opcional</span>
               </Label>
+              <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
               <Input id="m-label" value={manualLabel}
-                onChange={(e) => setManualLabel(e.target.value)} placeholder="ex: Cenário pessimista" />
+                onChange={(e) => setManualLabel(e.target.value)} placeholder="ex.: Cenário pessimista" />
             </div>
           </div>
 
-          {manualBreakeven !== null && (
-            <ResultCards
-              acucar={manualAcucar}
-              dolar={manualDolar}
-              fator={manualFator}
-              breakeven={manualBreakeven}
-            />
-          )}
+          <BotaoSalvarAnalise
+            ferramenta="breakeven"
+            parametros={{ acucar_cents_lb: manualAcucar, dolar_brl: manualDolar, fator: manualFator, nome: manualLabel.trim() || null }}
+            resultado={
+              manualAcucar !== null && manualDolar !== null && manualFator !== null && manualBreakeven !== null
+                ? {
+                    breakeven_brl_saca: manualBreakeven,
+                    leitura: leituraBreakeven({ acucar: manualAcucar, dolar: manualDolar, breakeven: manualBreakeven }),
+                  }
+                : null
+            }
+          />
+          </div>
 
-          <div className="flex items-center gap-4">
-            <Button onClick={handleSave} disabled={saving || manualBreakeven === null}>
-              {saving ? "Salvando..." : "Salvar simulação"}
-            </Button>
-            {saveMsg && <p className="text-sm text-green-600">{saveMsg}</p>}
-            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+          {manualBreakeven !== null ? (
+            <div className="min-w-0 space-y-4">
+              <ResultCards acucar={manualAcucar!} dolar={manualDolar!} fator={manualFator!} breakeven={manualBreakeven} />
+            </div>
+          ) : (
+            <EmptyState mensagem="Informe o preço do açúcar, o câmbio e o fator para ver o breakeven." />
+          )}
           </div>
         </TabsContent>
 
         {/* ── Histórico ── */}
         <TabsContent value="historico" className="mt-6">
-          {historyLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
-          {!historyLoading && history.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma simulação salva.</p>
+          {historyLoading && (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
+          )}
+          {historyError && <ErrorState mensagem={historyError} onRetry={handleTabHistory} />}
+          {!historyLoading && !historyError && history.length === 0 && (
+            <EmptyState mensagem="Nenhuma simulação salva. Use a aba Manual para salvar a primeira." />
           )}
           {!historyLoading && history.length > 0 && (
             <ul className="space-y-2">
               {history.map((s) => (
-                <li key={s.id} className="rounded-lg border bg-card px-4 py-3">
+                <li key={s.id} className="rounded-lg border border-border bg-card px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{s.label ?? "—"}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString("pt-BR")}
-                    </span>
+                    <span className="font-medium">{s.label ?? "Sem nome"}</span>
+                    <span className="text-sm text-muted-foreground">{formatDate(s.created_at)}</span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Açúcar: {s.preco_acucar_cents_lb} ¢/lb · Dólar: R$ {s.preco_dolar_brl} ·
-                    Fator: {s.fator_conversao} →{" "}
-                    <span className="font-semibold text-foreground">
-                      R$ {s.breakeven_brl_saca.toFixed(2)}/saca
-                    </span>
+                    Açúcar: {formatCents(s.preco_acucar_cents_lb)} · Dólar: {formatFX(s.preco_dolar_brl)} · Fator:{" "}
+                    {formatNumber(s.fator_conversao, 4)} →{" "}
+                    <span className="font-semibold text-foreground">{formatBRL(s.breakeven_brl_saca)}/saca</span>
                   </div>
                 </li>
               ))}

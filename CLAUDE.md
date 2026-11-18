@@ -1,42 +1,53 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Orientação para o Claude Code (claude.ai/code) neste repositório.
 
-## Project Overview
+## Visão geral
 
-**Impacto** is a Streamlit web application for Monte Carlo price simulations and options pricing on Brazilian financial assets (sugar futures, USD/BRL exchange rate). The UI and variables are in Portuguese.
+**Sugarcane / Impacto** é uma plataforma interna de análise de mercado e risco para usinas de açúcar: simulações Monte Carlo, opções, VaR, regressões, ATR e fixações. A interface e os textos são em português.
 
-## Running the Application
+## Arquitetura
+
+| Parte | Pasta | Tecnologia |
+|---|---|---|
+| Frontend | `frontend/` | Next.js 16 (App Router), React 19, Tailwind 4, shadcn/ui, Recharts |
+| API | `backend/` | FastAPI, NumPy/SciPy, statsmodels, yfinance |
+| Banco e login | `supabase/migrations/` | Supabase: Auth (JWT ES256), Postgres com RLS |
+
+- O frontend autentica no Supabase e chama a API com `Authorization: Bearer <token>`. A API valida o JWT localmente (`backend/auth.py`) e usa a service role para o banco.
+- Preços históricos passam pelo cache em `backend/market_cache.py` (`get_prices`): tabela `market_prices` + `market_coverage`, buscando no Yahoo só o que falta.
+- Rotas do app ficam em `frontend/app/app/<ferramenta>/page.tsx`; o menu está em `frontend/components/layout/AppSidebar.tsx`.
+- Specs do refactoring em andamento: `.specs/` (decisões em `.specs/STATE.md`).
+
+## Rodar localmente
 
 ```bash
-pip install -r requirements.txt
-streamlit run Painel.py
+# API (porta 8000) — copie backend/.env.example para backend/.env
+cd backend && pip install -r requirements.txt && uvicorn main:app --reload
+
+# Frontend (porta 3000) — copie frontend/.env.example para frontend/.env.local
+cd frontend && npm ci && npm run dev
 ```
 
-The app runs on `http://localhost:8501`. There are no tests or linting configurations.
+## Testes e checagens
 
-## Architecture
+```bash
+cd backend && pip install pytest==9.1.1 httpx==0.27.2 && pytest tests && python test_calcs.py && python test_mensagens.py   # API, cálculos e mensagens em português
+cd frontend && npm test && npm run build && npm run lint
+```
 
-This is a multi-page Streamlit app:
+O workflow `.github/workflows/ci.yml` (nome `ci`, jobs `backend` e `frontend`) roda esses mesmos comandos em todo pull request e push na `main`.
 
-- **`config.py`** — Single source of truth for all asset configs (CSV filename, default price, bounds). Both pages import `ATIVOS` from here.
-- **`Painel.py`** — Entry point / dashboard home. Shows live prices and an index of all modules.
-- **`pages/09_Monte_Carlo.py`** — Monte Carlo simulation fan chart (P5–P95 percentiles).
-- **`pages/08_Payoff_Opções.py`** — Multi-leg options strategy payoff diagram builder.
-- **`pages/23_Opções.py`** — European call pricer via Monte Carlo across a range of strikes.
+## Deploy
 
-### Data Loading
+- **Frontend:** Vercel, pela integração Git. Root Directory `frontend/` (a confirmar no painel).
+- **Backend:** Railway, pela integração Git, com `backend/railway.toml` (nixpacks, `uvicorn main:app`). Host público a confirmar; a Vercel aponta para ele pela variável `NEXT_PUBLIC_API_URL`.
+- Não há deploy por CLI nem por SSH: o CI só testa.
 
-CSV files use European number formatting (comma as decimal separator, `DD.MM.YYYY` dates). `carregar_dados()` handles the normalization and is decorated with `@st.cache_data` to avoid re-reading CSVs on every interaction.
+**Não faça push na `main` sem autorização explícita.**
 
-### Simulation Design
+## Convenções
 
-Prices are clipped to `[limite_inferior, limite_superior]` each day during simulation. Returns are drawn from a normal distribution parameterized by historical daily mean and std. `preco_inicial` is passed explicitly as a function parameter to `simulacao_monte_carlo()`. The Opções.py formula prices European calls: `np.mean(np.maximum(precos[-1, :] - strike, 0))` — payoff is evaluated only at the final day.
-
-### CSV Data Files
-
-| File | Asset |
-|------|-------|
-| `Dados Históricos - Açúcar NY nº11 Futuros (6).csv` | Sugar NY #11 futures |
-| `USD_BRL Dados Históricos (2).csv` | USD/BRL exchange rate |
-| `sbv24.csv` | SBV24 sugar futures contract |
+- Volatilidades e taxas que o usuário configura são anuais; as simulações andam em passos diários (divida por √252).
+- Endpoints com I/O bloqueante são `def` (não `async def`) para rodar no threadpool do FastAPI.
+- Use `supa_client()` de `market_cache.py`; não crie clientes Supabase por requisição.

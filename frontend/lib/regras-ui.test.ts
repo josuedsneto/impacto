@@ -1,0 +1,56 @@
+// Regras de UI da spec fundacao-ui, verificadas no código-fonte:
+// - UI-06 AC5: sem cor literal (hex, rgb, hsl, oklch) fora de components/ui e globals.css
+// - UI-02: sem toFixed em texto de tela (use lib/format.ts)
+// - UI-09 AC2: <h1> só dentro do PageHeader
+// Vale para todo arquivo de app/ e components/ (exceto components/ui/, gerado pelo shadcn).
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const RAIZ = join(__dirname, "..");
+
+const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [
+  { nome: "cor literal", re: /(?<![&\w])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|\b(?:rgba?|hsla?|oklch)\(/ },
+  { nome: "toFixed", re: /\.toFixed\(/ },
+  // Datas e números em pt-BR passam por lib/format.ts (FD-09), que é o único que usa Intl.
+  { nome: "toLocale*String/Intl direto", re: /toLocale\w*String\(|\bIntl\./, exceto: "lib/format.ts" },
+  // Cores fixas do Tailwind (bg-blue-600, text-gray-700, bg-white) não mudam com o tema.
+  // Fundo escurecido com opacidade (bg-black/50) é permitido.
+  {
+    nome: "cor fixa do Tailwind",
+    re: /\b(?:bg|text|border|ring|fill|stroke|from|to|divide|outline)-(?:(?:white|black)\b(?!\/)|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b)/,
+  },
+  // Login e landing têm título próprio; a regra vale para as rotas /app e seus componentes.
+  { nome: "<h1> fora do PageHeader", re: /<h1[\s>]/, exceto: "components/layout/PageHeader.tsx", so: /^(app\/app|components)\// },
+];
+
+function arquivosTsx(dir: string): string[] {
+  return readdirSync(dir).flatMap((nome) => {
+    const caminho = join(dir, nome);
+    if (statSync(caminho).isDirectory()) return arquivosTsx(caminho);
+    return caminho.endsWith(".tsx") || caminho.endsWith(".ts") ? [caminho] : [];
+  });
+}
+
+const arquivos = [...arquivosTsx(join(RAIZ, "app")), ...arquivosTsx(join(RAIZ, "components"))]
+  .map((a) => relative(RAIZ, a).replaceAll("\\", "/"))
+  .filter((a) => !a.startsWith("components/ui/"));
+
+function violacoes(arquivo: string): string[] {
+  const texto = readFileSync(join(RAIZ, arquivo), "utf-8");
+  return REGRAS.filter((r) => r.exceto !== arquivo && (!r.so || r.so.test(arquivo)) && r.re.test(texto)).map((r) => r.nome);
+}
+
+describe("regras de UI", () => {
+  it.each(arquivos)("%s segue as regras", (arquivo) => {
+    expect(violacoes(arquivo)).toEqual([]);
+  });
+});
+
+// UXA-09: os primitivos gerados do shadcn que têm cor fixa de branco/preto usam tokens (AD-008).
+describe("tokens nos primitivos de UI", () => {
+  it.each(["components/ui/button.tsx", "components/ui/slider.tsx"])("%s sem text-white/bg-white", (arquivo) => {
+    const texto = readFileSync(join(RAIZ, arquivo), "utf-8");
+    expect(/\b(?:text|bg)-white\b/.test(texto)).toBe(false);
+  });
+});

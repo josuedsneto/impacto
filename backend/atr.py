@@ -1,77 +1,105 @@
 """
 atr.py — ATR (Açúcar Total Recuperável) calibration and prediction module.
 
-Provides sector-default coefficients, OLS calibration from historical data,
-and prediction with 90% confidence interval.
+Calibração por OLS com medições reais (atr-calibracao). Sem medições suficientes
+ou com dados colineares, usa os coeficientes do setor e devolve um aviso.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 import statsmodels.api as sm
+from scipy import stats
 
 logger = logging.getLogger(__name__)
+
+MIN_MESES = 12  # 9 graus de liberdade com 3 parâmetros
+LIMITE_CORRELACAO = 0.95  # |corr(chuva, impureza)| acima disso é colinearidade (VIF ≥ 10)
+AVISO_SETOR = "Usando coeficientes padrão; lance dados reais de ATR."
+AVISO_COLINEAR = "Chuva e impureza estão correlacionadas demais para calibrar. " + AVISO_SETOR
 
 
 def get_sector_defaults() -> dict:
     """
-    Return Consecana/Unica sector empirical coefficients for ATR estimation.
+    Coeficientes empíricos do setor (Consecana/Unica) para estimativa de ATR.
 
-    Used as fallback when a usina has fewer than 5 historical data points.
+    Usados quando a usina não tem medições suficientes para calibrar.
 
     Returns:
-        dict with intercept, coef_chuva, coef_impureza, sigma
+        dict com intercept, coef_chuva, coef_impureza, sigma
     """
     return {
         "intercept": 135.0,       # ATR base kg/tc
         "coef_chuva": 0.15,       # ATR increase per mm of rainfall
         "coef_impureza": -1.8,    # ATR decrease per percentage point of impurity
-        "sigma": 5.0,             # residual std deviation for CI computation
+        "sigma": 5.0,             # desvio do erro usado no intervalo sem calibração
     }
+
+
+def _valido(h: dict) -> bool:
+    """Linha entra na calibração só com as três variáveis finitas."""
+    valores = (h.get("chuva_mm"), h.get("impureza_pct"), h.get("atr_real"))
+    return all(v is not None and math.isfinite(float(v)) for v in valores)
+
+
+def _setor(meses: int, aviso: str | None) -> dict:
+    params = get_sector_defaults()
+    params.update({"calibracao": "setor", "meses_usados": meses, "aviso": aviso})
+    return params
 
 
 def calibrate_atr(history: list[dict]) -> dict:
     """
-    Calibrate ATR model from historical observations using OLS.
+    Calibra o modelo ATR por OLS com ATR medido.
 
-    If fewer than 5 data points, returns sector defaults.
-    Falls back to sector defaults if OLS fails (e.g. collinear data).
+    Linhas com valores ausentes ou não finitos são descartadas. Com menos de
+    MIN_MESES linhas válidas, ou com chuva e impureza colineares, devolve os
+    coeficientes do setor com `calibracao="setor"` e `aviso`.
 
     Args:
-        history: list of dicts with keys chuva_mm, impureza_pct, atr_real
+        history: lista de dicts com chuva_mm, impureza_pct, atr_real
 
     Returns:
-        dict with intercept, coef_chuva, coef_impureza, sigma
+        dict com intercept, coef_chuva, coef_impureza, sigma (= sqrt(SSR/(n-3))),
+        cov (matriz 3x3 de covariância dos coeficientes, numpy), gl (n-3),
+        meses_usados, calibracao ("usina" ou "setor") e aviso. Sem arredondamento.
     """
-    if len(history) < 5:
-        logger.info("calibrate_atr: fewer than 5 points (%d), using sector defaults", len(history))
-        return get_sector_defaults()
+    rows = [h for h in history if _valido(h)]
+    n = len(rows)
+    if n < MIN_MESES:
+        logger.info("calibrate_atr: %d meses válidos (mínimo %d); usando setor", n, MIN_MESES)
+        return _setor(n, AVISO_SETOR)
 
-    try:
-        chuva = np.array([h["chuva_mm"] for h in history], dtype=float)
-        impureza = np.array([h["impureza_pct"] for h in history], dtype=float)
-        atr_real = np.array([h["atr_real"] for h in history], dtype=float)
+    chuva = np.array([float(h["chuva_mm"]) for h in rows])
+    impureza = np.array([float(h["impureza_pct"]) for h in rows])
+    atr_real = np.array([float(h["atr_real"]) for h in rows])
 
-        X = np.column_stack([chuva, impureza])
-        X_with_const = sm.add_constant(X, has_constant="add")
+    if chuva.std() < 1e-9 or impureza.std() < 1e-9:
+        logger.warning("calibrate_atr: variável constante; usando setor")
+        return _setor(n, AVISO_COLINEAR)
+    if abs(np.corrcoef(chuva, impureza)[0, 1]) >= LIMITE_CORRELACAO:
+        logger.warning("calibrate_atr: chuva e impureza colineares; usando setor")
+        return _setor(n, AVISO_COLINEAR)
 
-        fitted = sm.OLS(endog=atr_real, exog=X_with_const).fit()
+    X = sm.add_constant(np.column_stack([chuva, impureza]), has_constant="add")
+    fitted = sm.OLS(endog=atr_real, exog=X).fit()
 
-        residuals = atr_real - fitted.fittedvalues
-        sigma = float(np.std(residuals))
-
-        params = fitted.params
-        return {
-            "intercept": round(float(params[0]), 3),
-            "coef_chuva": round(float(params[1]), 3),
-            "coef_impureza": round(float(params[2]), 3),
-            "sigma": round(sigma, 3),
-        }
-    except Exception as exc:
-        logger.warning("calibrate_atr OLS failed (%s); falling back to sector defaults", exc)
-        return get_sector_defaults()
+    gl = n - 3
+    params = fitted.params
+    return {
+        "intercept": float(params[0]),
+        "coef_chuva": float(params[1]),
+        "coef_impureza": float(params[2]),
+        "sigma": math.sqrt(float(fitted.ssr) / gl),
+        "cov": np.asarray(fitted.cov_params()),  # s²·(XᵀX)⁻¹, s² = SSR/(n-3)
+        "gl": gl,
+        "meses_usados": n,
+        "calibracao": "usina",
+        "aviso": None,
+    }
 
 
 def predict_atr(
@@ -81,16 +109,21 @@ def predict_atr(
     volume_moagem: float | None = None,
 ) -> dict:
     """
-    Predict ATR with 90% confidence interval.
+    Prevê o ATR com intervalo de previsão de 90%.
+
+    Com parâmetros calibrados (com `cov`), o intervalo é o de uma nova observação:
+    ŷ ± t(0,95; gl) · sqrt(x₀ᵀ·cov·x₀ + s²), igual ao obs_ci do statsmodels.
+    Sem `cov` (coeficientes do setor), usa ŷ ± 1,645 · sigma.
 
     Args:
-        chuva_mm: rainfall in mm
-        impureza_pct: impurity percentage (0-100)
-        params: calibration dict (intercept, coef_chuva, coef_impureza, sigma)
-        volume_moagem: optional crushing volume in tonnes of cane (tc)
+        chuva_mm: chuva em mm
+        impureza_pct: impureza total em % (0-100)
+        params: dict de calibração (intercept, coef_chuva, coef_impureza, sigma e,
+            se calibrado, cov e gl)
+        volume_moagem: moagem opcional em toneladas de cana (tc)
 
     Returns:
-        dict with atr_min, atr_esperado, atr_max, producao_total (or None)
+        dict com atr_min, atr_esperado, atr_max, producao_total (ou None)
     """
     atr_esperado = (
         params["intercept"]
@@ -98,7 +131,13 @@ def predict_atr(
         + params["coef_impureza"] * impureza_pct
     )
 
-    margin = 1.645 * params["sigma"]   # z = 1.645 for 90% CI
+    if params.get("cov") is not None:
+        x0 = np.array([1.0, chuva_mm, impureza_pct])
+        var_previsao = float(x0 @ params["cov"] @ x0) + params["sigma"] ** 2
+        margin = float(stats.t.ppf(0.95, params["gl"])) * math.sqrt(var_previsao)
+    else:
+        margin = 1.645 * params["sigma"]   # z = 1.645 para 90%
+
     atr_min = max(0.0, atr_esperado - margin)
     atr_max = atr_esperado + margin
 

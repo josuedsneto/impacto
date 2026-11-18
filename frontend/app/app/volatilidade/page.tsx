@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { formatDate, formatPercent } from "@/lib/format";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraVolatilidade } from "@/lib/leitura";
+import { nomeAtivo } from "@/lib/ativos";
+import { TickerSelect } from "@/components/market/TickerSelect";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
   LineChart,
   Line,
@@ -17,23 +23,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 interface VolatilityResult {
   ticker: string;
-  vol_30d: number;
-  vol_90d: number;
+  ultimo_dado?: string;
+  vol_30d: number | null;
+  vol_90d: number | null;
   vol_1y: number;
   rolling_30d: { date: string; vol: number }[];
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? "";
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -60,19 +56,10 @@ function VolPanel({ ticker }: { ticker: string }) {
     setLoading(true);
     setError(null);
     try {
-      const token = await getAccessToken();
       const params = new URLSearchParams({ ticker });
-      const res = await fetch(`${API}/api/volatility?${params}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError((data as { detail?: string }).detail ?? "Erro ao carregar volatilidade.");
-        return;
-      }
-      setResult(data as VolatilityResult);
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      setResult(await apiFetch<VolatilityResult>(`/api/volatility?${params}`));
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -84,37 +71,66 @@ function VolPanel({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="space-y-4 mt-4">
-        <div className="grid grid-cols-3 gap-4">
+      <div className="mt-4 space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
-        <div className="h-64 rounded-lg bg-muted animate-pulse" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
   if (error) {
-    return <p className="text-sm text-red-600 mt-4">{error}</p>;
+    return (
+      <div className="mt-4">
+        <ErrorState mensagem={error} onRetry={fetchVol} />
+      </div>
+    );
   }
 
   if (!result) return null;
 
   return (
     <div className="space-y-6 mt-4">
+      <div className="flex justify-end">
+        <BotaoExportar
+          arquivo={nomeArquivo("Volatilidade", ticker)}
+          montar={() =>
+            gerarCsv({
+              parametros: [
+                ["Ativo", nomeAtivo(ticker)],
+                ["Volatilidade 30 dias (% a.a.)", result.vol_30d == null ? null : result.vol_30d * 100],
+                ["Volatilidade 90 dias (% a.a.)", result.vol_90d == null ? null : result.vol_90d * 100],
+                ["Volatilidade 1 ano (% a.a.)", result.vol_1y * 100],
+              ],
+              tabelas: [
+                {
+                  colunas: ["Data", "Volatilidade 30 dias (% a.a.)"],
+                  linhas: result.rolling_30d.map((p) => [p.date, p.vol * 100]),
+                },
+              ],
+            })
+          }
+        />
+      </div>
+      <Leitura>{leituraVolatilidade({ vol30: result.vol_30d, vol1a: result.vol_1y })}</Leitura>
+      {result?.ultimo_dado && (
+        <p className="text-xs text-muted-foreground">Fechamento de {formatDate(result.ultimo_dado)}</p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Vol. Realizada 30d (a.a.)"
-          value={`${(result.vol_30d * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_30d)}
         />
         <MetricCard
           label="Vol. Realizada 90d (a.a.)"
-          value={`${(result.vol_90d * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_90d)}
         />
         <MetricCard
           label="Vol. Realizada 1 ano (a.a.)"
-          value={`${(result.vol_1y * 100).toFixed(2)}%`}
+          value={formatPercent(result.vol_1y)}
         />
       </div>
 
@@ -125,86 +141,53 @@ function VolPanel({ ticker }: { ticker: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div role="img" aria-label="Volatilidade do ativo ao longo do tempo.">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart
               data={result.rolling_30d}
               margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: string) => v.slice(0, 7)}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                minTickGap={32}
+                tickFormatter={(v: string) => formatDate(v).slice(3)}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatPercent(v, 0)}
               />
               <Tooltip
-                formatter={(v: number) => [`${(v * 100).toFixed(2)}%`, "Vol 30d"]}
-                labelFormatter={(l: string) => l}
+                contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                formatter={(v: number) => [formatPercent(v), "Volatilidade 30 dias"]}
+                labelFormatter={(l: string) => formatDate(l)}
               />
-              <Line
-                type="monotone"
-                dataKey="vol"
-                stroke="#3b82f6"
-                dot={false}
-                strokeWidth={2}
-              />
+              <Line type="monotone" dataKey="vol" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-const QUICK_TICKERS = [
-  { label: "Açúcar NY", value: "SB=F" },
-  { label: "USD/BRL", value: "USDBRL=X" },
-];
-
 export default function VolatilityPage() {
-  const [input, setInput] = useState("SB=F");
   const [ticker, setTicker] = useState("SB=F");
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const t = input.trim().toUpperCase();
-    if (t) setTicker(t);
-  }
-
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Volatilidade Realizada</h1>
+    <div className="space-y-6">
+      <PageHeader
+        titulo="Volatilidade"
+        atualizadoEm={`Ativo: ${nomeAtivo(ticker)}`}
+        descricao="Quanto o preço oscilou de fato em 30 dias, 90 dias e 1 ano, em base anual."
+      />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
-        <Label htmlFor="vol-ticker">
-          Ticker{" "}
-          <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F, USDBRL=X, PETR4.SA" />
-        </Label>
-        <div className="flex gap-2">
-          <Input
-            id="vol-ticker"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="SB=F"
-          />
-          <Button type="submit">Calcular</Button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {QUICK_TICKERS.map(({ label, value }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => { setInput(value); setTicker(value); }}
-              className="text-xs px-2 py-1 rounded border border-input hover:bg-accent transition-colors"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </form>
+      <TickerSelect value={ticker} onChange={setTicker} />
 
       <VolPanel ticker={ticker} />
     </div>

@@ -1,31 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraAtr } from "@/lib/leitura";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AtrForm, { Usina, AtrResult } from "@/components/atr/AtrForm";
 import { AtrMetrics } from "@/components/atr/AtrMetrics";
 import { AtrHistorico, HistoricoItem } from "@/components/atr/AtrHistorico";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-async function getCurrentUserId(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user.id ?? null;
-}
 
 export default function AtrPage() {
   const [usinas, setUsinas] = useState<Usina[]>([]);
@@ -38,27 +26,16 @@ export default function AtrPage() {
   const [historicoError, setHistoricoError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("simular");
   const [selectedUsinaId, setSelectedUsinaId] = useState<string>("");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
       setUsinasLoading(true);
       setUsinasError(null);
       try {
-        const [token, userId] = await Promise.all([getAccessToken(), getCurrentUserId()]);
-        setCurrentUserId(userId);
-
-        const res = await fetch(`${API}/api/atr/usinas`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setUsinasError((data as { detail?: string }).detail ?? "Erro ao carregar usinas.");
-        } else {
-          setUsinas((data as { usinas: Usina[] }).usinas);
-        }
-      } catch {
-        setUsinasError("Erro de conexão com o servidor.");
+        const data = await apiFetch<{ usinas: Usina[] }>("/api/atr/usinas");
+        setUsinas(data.usinas);
+      } catch (e) {
+        setUsinasError((e as Error).message);
       } finally {
         setUsinasLoading(false);
       }
@@ -71,34 +48,30 @@ export default function AtrPage() {
     setHistoricoError(null);
   }, [selectedUsinaId]);
 
-  async function handleTabChange(value: string) {
+  async function carregarHistorico() {
+    setHistoricoLoading(true);
+    setHistoricoError(null);
+    try {
+      const data = await apiFetch<{ historico: HistoricoItem[] }>(
+        `/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`
+      );
+      setHistorico(data.historico);
+      setHistoricoLoaded(true);
+    } catch (e) {
+      setHistoricoError((e as Error).message);
+    } finally {
+      setHistoricoLoading(false);
+    }
+  }
+
+  function handleTabChange(value: string) {
     setActiveTab(value);
     if (value === "historico" && !historicoLoaded) {
       if (!selectedUsinaId) {
-        // Cannot load historico without a selected usina
         setHistoricoError("Selecione uma usina na aba Simular para ver o histórico.");
         return;
       }
-      setHistoricoLoading(true);
-      setHistoricoError(null);
-      try {
-        const token = await getAccessToken();
-        const url = `${API}/api/atr/historico?usina_id=${encodeURIComponent(selectedUsinaId)}`;
-        const res = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setHistoricoError((data as { detail?: string }).detail ?? "Erro ao carregar histórico.");
-        } else {
-          setHistorico((data as { historico: HistoricoItem[] }).historico);
-          setHistoricoLoaded(true);
-        }
-      } catch {
-        setHistoricoError("Erro de conexão com o servidor.");
-      } finally {
-        setHistoricoLoading(false);
-      }
+      carregarHistorico();
     }
   }
 
@@ -110,32 +83,66 @@ export default function AtrPage() {
 
   async function handleToggleShare(id: string, compartilhado: boolean) {
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${API}/api/atr/simulacoes/${encodeURIComponent(id)}/compartilhar`, {
+      await apiFetch(`/api/atr/simulacoes/${encodeURIComponent(id)}/compartilhar`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ compartilhado }),
       });
-      if (res.ok) {
-        setHistorico((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, compartilhado } : item
-          )
-        );
-      }
-    } catch {
-      // Silently fail — user can retry
+      setHistorico((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, compartilhado } : item
+        )
+      );
+      toast.success(compartilhado ? "Simulação compartilhada com a usina." : "Simulação agora é privada.");
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">ATR — Açúcar Total Recuperável</h1>
+    <div>
+      <PageHeader
+        titulo="ATR da usina"
+        descricao="Estima o açúcar total recuperável (kg por tonelada de cana) a partir de chuva e impureza, com faixa de 90%."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("ATR da usina", usinas.find((u) => u.id === selectedUsinaId)?.nome)}
+            montar={
+              historico.length
+                ? () =>
+                    gerarCsv({
+                      parametros: [["Usina", usinas.find((u) => u.id === selectedUsinaId)?.nome ?? ""]],
+                      tabelas: [
+                        {
+                          colunas: [
+                            "Data",
+                            "Chuva (mm)",
+                            "Impureza (%)",
+                            "ATR mínimo (kg/t)",
+                            "ATR esperado (kg/t)",
+                            "ATR máximo (kg/t)",
+                            "Produção total (t)",
+                            "Compartilhada",
+                          ],
+                          linhas: historico.map((h) => [
+                            h.created_at.slice(0, 10),
+                            h.chuva_mm,
+                            h.impureza_pct,
+                            h.atr_min,
+                            h.atr_esperado,
+                            h.atr_max,
+                            h.producao_total,
+                            h.compartilhado ? "sim" : "não",
+                          ]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
-      {usinasError && <p className="text-sm text-red-600">{usinasError}</p>}
+      {usinasError && <ErrorState mensagem={usinasError} onRetry={() => window.location.reload()} />}
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
@@ -143,36 +150,56 @@ export default function AtrPage() {
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="simular" className="space-y-6 mt-6">
-          {usinasLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando usinas...</p>
-          ) : (
-            <AtrForm
-              usinas={usinas}
-              onResult={handleResult}
-              onUsinaChange={setSelectedUsinaId}
-            />
-          )}
+        <TabsContent value="simular" className="mt-6">
+          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-start">
+            <div className="rounded-xl border border-border bg-card p-6">
+              {usinasLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10" />
+                  ))}
+                </div>
+              ) : (
+                <AtrForm usinas={usinas} onResult={handleResult} onUsinaChange={setSelectedUsinaId} />
+              )}
+            </div>
 
-          {activeResult && <AtrMetrics result={activeResult} />}
+            {activeResult ? (
+              <div className="min-w-0 space-y-4">
+                <Leitura>
+                  {leituraAtr({
+                    chuva: activeResult.entrada?.chuva_mm,
+                    impureza: activeResult.entrada?.impureza_pct,
+                    atr: activeResult.atr_esperado,
+                    min: activeResult.atr_min,
+                    max: activeResult.atr_max,
+                    producao: activeResult.producao_total,
+                  })}
+                </Leitura>
+                <AtrMetrics result={activeResult} />
+              </div>
+            ) : (
+              <EmptyState mensagem="Escolha a usina, informe chuva e impureza e clique em Simular." />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="historico" className="mt-6">
           {historicoLoading && (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
           )}
           {historicoError && (
-            <p className="text-sm text-red-600">{historicoError}</p>
+            <ErrorState mensagem={historicoError} onRetry={selectedUsinaId ? carregarHistorico : undefined} />
           )}
           {!historicoLoading && !historicoError && historicoLoaded && historico.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma simulação encontrada.</p>
+            <EmptyState mensagem="Nenhuma simulação para esta usina ainda." />
           )}
           {!historicoLoading && historico.length > 0 && (
-            <AtrHistorico
-              historico={historico}
-              onToggleShare={handleToggleShare}
-              currentUserId={currentUserId ?? ""}
-            />
+            <AtrHistorico historico={historico} onToggleShare={handleToggleShare} />
           )}
         </TabsContent>
       </Tabs>

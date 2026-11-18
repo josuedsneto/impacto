@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
+import type { Data, Layout } from "plotly.js";
+import { useTheme } from "@/components/ThemeProvider";
 
 // react-plotly.js requires dynamic import (no SSR) — Plotly uses window
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -42,16 +44,19 @@ interface Props {
   chartType: "candlestick" | "line";
 }
 
-const SMA_COLORS = ["#94a3b8", "#64748b", "#475569"];
-const EMA_COLORS = ["#38bdf8", "#0ea5e9"];
-
-const INDICATOR_COLORS: Record<string, string> = {
-  bollinger: "#f59e0b",
-  rsi: "#8b5cf6",
-  macd: "#3b82f6",
-  stoch: "#10b981",
-  cci: "#f43f5e",
-};
+// Plotly precisa da cor resolvida (não aceita var(--x)); lemos os tokens do tema ativo.
+// O tema é parâmetro só para deixar explícito que as cores mudam com ele.
+function lerCores(_tema: string) {  // eslint-disable-line @typescript-eslint/no-unused-vars
+  const css = typeof window === "undefined" ? null : getComputedStyle(document.documentElement);
+  const v = (nome: string) => css?.getPropertyValue(`--${nome}`).trim() ?? "";
+  return {
+    serie: [v("chart-1"), v("chart-2"), v("chart-3"), v("chart-4"), v("chart-5")],
+    alta: v("positive"),
+    baixa: v("negative"),
+    texto: v("muted-foreground"),
+    grade: v("chart-grid"),
+  };
+}
 
 export function FixacoesChart({
   rows,
@@ -61,6 +66,9 @@ export function FixacoesChart({
   emaPeriods,
   chartType,
 }: Props) {
+  const { theme } = useTheme();
+  const cor = useMemo(() => lerCores(theme), [theme]);
+
   const oscillators = selectedIndicators.filter((i) =>
     ["rsi", "macd", "stoch", "cci"].includes(i)
   );
@@ -68,8 +76,12 @@ export function FixacoesChart({
   const dates = rows.map((r) => r.date);
 
   const traces = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const t: any[] = [];
+    const [c1, c2, c3, c4, c5] = cor.serie;
+    const SMA_COLORS = [c3, c4, c5];
+    const EMA_COLORS = [c1, c2];
+    const INDICATOR_COLORS: Record<string, string> = { bollinger: c4, rsi: c5, macd: c1, stoch: c3, cci: c2 };
+    // Séries do Plotly são montadas com nulos e campos opcionais; o tipo do Plotly é aplicado só em <Plot>.
+    const t: Record<string, unknown>[] = [];
 
     // ── Price trace ──────────────────────────────────────────────────────
     if (chartType === "candlestick") {
@@ -83,8 +95,8 @@ export function FixacoesChart({
         name: "Preço",
         xaxis: "x",
         yaxis: "y",
-        increasing: { line: { color: "#22c55e" } },
-        decreasing: { line: { color: "#ef4444" } },
+        increasing: { line: { color: cor.alta } },
+        decreasing: { line: { color: cor.baixa } },
       });
     } else {
       t.push({
@@ -93,7 +105,7 @@ export function FixacoesChart({
         x: dates,
         y: rows.map((r) => r.close),
         name: "Preço",
-        line: { color: "#3b82f6", width: 1.5 },
+        line: { color: c1, width: 1.5 },
         xaxis: "x",
         yaxis: "y",
       });
@@ -155,7 +167,7 @@ export function FixacoesChart({
         x: buySignals.map((s) => s.date),
         y: buySignals.map((s) => s.price),
         name: "Compra",
-        marker: { symbol: "triangle-up", size: 12, color: "#22c55e" },
+        marker: { symbol: "triangle-up", size: 12, color: cor.alta },
         customdata: buySignals.map((s) => s.indicator),
         hovertemplate: "Compra (%{customdata})<br>%{x}<br>%{y:.4f}<extra></extra>",
         xaxis: "x", yaxis: "y",
@@ -168,7 +180,7 @@ export function FixacoesChart({
         x: sellSignals.map((s) => s.date),
         y: sellSignals.map((s) => s.price),
         name: "Venda",
-        marker: { symbol: "triangle-down", size: 12, color: "#ef4444" },
+        marker: { symbol: "triangle-down", size: 12, color: cor.baixa },
         customdata: sellSignals.map((s) => s.indicator),
         hovertemplate: "Venda (%{customdata})<br>%{x}<br>%{y:.4f}<extra></extra>",
         xaxis: "x", yaxis: "y",
@@ -196,7 +208,7 @@ export function FixacoesChart({
           type: "bar", x: dates,
           y: rows.map((r) => r.macd_hist),
           name: "MACD Hist.",
-          marker: { color: rows.map((r) => ((r.macd_hist ?? 0) >= 0 ? "#22c55e" : "#ef4444")) },
+          marker: { color: rows.map((r) => ((r.macd_hist ?? 0) >= 0 ? cor.alta : cor.baixa)) },
           xaxis, yaxis,
         });
         t.push({
@@ -210,7 +222,7 @@ export function FixacoesChart({
           type: "scatter", mode: "lines", x: dates,
           y: rows.map((r) => r.macd_signal),
           name: "Sinal MACD",
-          line: { color: "#f59e0b", width: 1.5 },
+          line: { color: c4, width: 1.5 },
           xaxis, yaxis,
         });
       }
@@ -227,7 +239,7 @@ export function FixacoesChart({
           type: "scatter", mode: "lines", x: dates,
           y: rows.map((r) => r.stoch_d),
           name: "%D",
-          line: { color: "#34d399", width: 1.5, dash: "dot" },
+          line: { color: c3, width: 1.5, dash: "dot" },
           xaxis, yaxis,
         });
       }
@@ -244,16 +256,15 @@ export function FixacoesChart({
     });
 
     return t;
-  }, [rows, signals, selectedIndicators, smaPeriods, emaPeriods, chartType, dates, oscillators]);
+  }, [rows, signals, selectedIndicators, smaPeriods, emaPeriods, chartType, dates, oscillators, cor]);
 
   // Reference line shapes for oscillator panels
   const shapes = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const s: any[] = [];
+    const s: Record<string, unknown>[] = [];
     oscillators.forEach((ind, i) => {
       const row = i + 2;
       const yref = `y${row}`;
-      const base = { type: "line", xref: "paper", yref, x0: 0, x1: 1, line: { dash: "dot", width: 1, color: "#6b7280" } };
+      const base = { type: "line", xref: "paper", yref, x0: 0, x1: 1, line: { dash: "dot", width: 1, color: cor.texto } };
       if (ind === "rsi") {
         s.push({ ...base, y0: 70, y1: 70 });
         s.push({ ...base, y0: 30, y1: 30 });
@@ -268,31 +279,30 @@ export function FixacoesChart({
       }
     });
     return s;
-  }, [oscillators]);
+  }, [oscillators, cor]);
 
   const priceHeight = totalRows === 1 ? 1 : 0.55;
   const oscHeight = oscillators.length > 0 ? 0.45 / oscillators.length : 0;
 
   const layout = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const l: any = {
+    const l: Record<string, unknown> = {
       height: 320 + oscillators.length * 200,
       margin: { t: 20, b: 40, l: 60, r: 20 },
       paper_bgcolor: "transparent",
       plot_bgcolor: "transparent",
-      font: { color: "#374151", size: 11 },
+      font: { color: cor.texto, size: 11 },
       showlegend: true,
       legend: { orientation: "h", y: -0.06, font: { size: 10 } },
       shapes,
       xaxis: {
         showgrid: true,
-        gridcolor: "#e5e7eb",
+        gridcolor: cor.grade,
         rangeslider: { visible: false },
         domain: [0, 1],
       },
       yaxis: {
         showgrid: true,
-        gridcolor: "#e5e7eb",
+        gridcolor: cor.grade,
         domain: [1 - priceHeight, 1],
       },
     };
@@ -305,7 +315,7 @@ export function FixacoesChart({
 
       l[`xaxis${row}`] = {
         showgrid: true,
-        gridcolor: "#e5e7eb",
+        gridcolor: cor.grade,
         matches: "x",
         showticklabels: i === oscillators.length - 1,
         domain: [0, 1],
@@ -314,14 +324,14 @@ export function FixacoesChart({
       l[`yaxis${row}`] = {
         title: { text: ind.toUpperCase(), font: { size: 10 } },
         showgrid: true,
-        gridcolor: "#e5e7eb",
+        gridcolor: cor.grade,
         domain: [Math.max(0, bottom), top - 0.01],
         anchor: `x${row}`,
       };
     });
 
     return l;
-  }, [totalRows, oscillators, shapes, priceHeight, oscHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [totalRows, oscillators, shapes, priceHeight, oscHeight, cor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (rows.length === 0) {
     return (
@@ -330,12 +340,14 @@ export function FixacoesChart({
   }
 
   return (
-    <Plot
-      data={traces}
-      layout={layout}
-      config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
-      style={{ width: "100%" }}
-      useResizeHandler
-    />
+    <div role="img" aria-label="Gráfico de candles ou linha do preço no período escolhido.">
+      <Plot
+        data={traces as unknown as Data[]}
+        layout={layout as unknown as Partial<Layout>}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
+        style={{ width: "100%" }}
+        useResizeHandler
+      />
+    </div>
   );
 }

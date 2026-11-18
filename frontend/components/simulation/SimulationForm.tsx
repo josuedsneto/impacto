@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { TickerSelect } from "@/components/market/TickerSelect";
+import { unidadeAtivo } from "@/lib/ativos";
+import { fracaoParaPercentual, lerNumero } from "@/lib/numero";
+import { formatDate, formatPreco } from "@/lib/format";
+import { LIMITE_CENARIOS_SIMULACAO } from "@/lib/simulacao";
 
 export interface SimulationResult {
   id: string;
@@ -14,6 +21,7 @@ export interface SimulationResult {
   dias_simulados: number;
   num_simulacoes: number;
   pct_bound: number;
+  pct_passou_limite: number | null;
   label: string | null;
   p5: number;
   p20: number;
@@ -28,40 +36,77 @@ interface SimulationFormProps {
   onResult: (result: SimulationResult) => void;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
 export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [ticker, setTicker] = useState("SB=F");
-  const [precoInicial, setPrecoInicial] = useState<number>(0);
-  const [diasSimulados, setDiasSimulados] = useState<number>(252);
-  const [numSimulacoes, setNumSimulacoes] = useState<number>(10000);
-  const [pctBound, setPctBound] = useState<number>(0.5);
+  const [precoInicial, setPrecoInicial] = useState("");
+  const [diasSimulados, setDiasSimulados] = useState("252");
+  const [numSimulacoes, setNumSimulacoes] = useState("10000");
+  const [variacaoMax, setVariacaoMax] = useState("50");
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const controle = useRef<AbortController | null>(null);
+
+  // Faixas aceitas pela API (backend/main.py SimulationRequest)
+  const FAIXAS = {
+    preco: { min: 0.0001, max: 100_000 },
+    dias: { min: 1, max: 1260 },
+    cenarios: LIMITE_CENARIOS_SIMULACAO,
+    variacao: { min: 1, max: 200 },
+  };
+
+  // Último fechamento do ativo, para preencher o preço de partida.
+  const [ultimoFechamento, setUltimoFechamento] = useState<{ preco: number; data: string } | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarUltimoFechamento() {
+      // Data local (não UTC): depois das 21h em Brasília, UTC já é o dia seguinte.
+      const iso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const params = new URLSearchParams({
+        ticker,
+        start: iso(new Date(Date.now() - 10 * 86_400_000)),
+        end: iso(new Date()),
+      });
+      try {
+        const data = await apiFetch<{ rows: { date: string; close: number | null }[] }>(
+          `/api/market/prices?${params}`
+        );
+        const ultimo = [...data.rows]
+          .reverse()
+          .find((r) => r.close !== null && Number.isFinite(r.close));
+        if (cancelado) return;
+        if (ultimo && ultimo.close !== null) {
+          setUltimoFechamento({ preco: ultimo.close, data: ultimo.date });
+          // yfinance traz floats com artefato (19.459999…); arredonda antes de preencher.
+          setPrecoInicial(String(Math.round(ultimo.close * 1e4) / 1e4).replace(".", ","));
+        } else {
+          setUltimoFechamento(null);
+          setPrecoInicial("");
+        }
+      } catch {
+        if (!cancelado) {
+          setUltimoFechamento(null);
+          setPrecoInicial("");
+        }
+      }
+    }
+    carregarUltimoFechamento();
+    return () => {
+      cancelado = true;
+    };
+  }, [ticker]);
 
   useEffect(() => {
     async function loadParams() {
       try {
-        const token = await getAccessToken();
-        const res = await fetch(`${BACKEND_URL}/api/params/${encodeURIComponent(ticker)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.pct_bound_preferido != null) setPctBound(data.pct_bound_preferido);
-        }
+        const data = await apiFetch<{ pct_bound_preferido?: number | null }>(
+          `/api/params/${encodeURIComponent(ticker)}`
+        );
+        // Parâmetro salvo como fração (0.5); a tela trabalha em % (50).
+        if (data.pct_bound_preferido != null) setVariacaoMax(fracaoParaPercentual(data.pct_bound_preferido));
       } catch {
-        // silently ignore — defaults remain
+        // Sem parâmetro salvo: fica o padrão da tela.
       }
     }
     loadParams();
@@ -69,127 +114,131 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const ok =
+      campoValido(precoInicial, FAIXAS.preco) &&
+      campoValido(diasSimulados, FAIXAS.dias) &&
+      campoValido(numSimulacoes, FAIXAS.cenarios) &&
+      campoValido(variacaoMax, FAIXAS.variacao);
+    if (!ok) {
+      toast.error("Corrija os campos destacados antes de simular.");
+      return;
+    }
     setLoading(true);
-    setError(null);
+    controle.current = new AbortController();
 
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${BACKEND_URL}/api/simulations`, {
+      const data = await apiFetch<SimulationResult>("/api/simulations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        timeoutMs: 120_000,
+        signal: controle.current.signal,
         body: JSON.stringify({
           ticker: ticker.trim().toUpperCase(),
-          preco_inicial: precoInicial,
-          dias_simulados: diasSimulados,
-          num_simulacoes: numSimulacoes,
-          pct_bound: pctBound,
+          preco_inicial: lerNumero(precoInicial),
+          dias_simulados: Math.round(lerNumero(diasSimulados)!),
+          num_simulacoes: Math.round(lerNumero(numSimulacoes)!),
+          pct_bound: lerNumero(variacaoMax)! / 100,
           label: label.trim() || null,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const detail = data.detail;
-        setError(
-          Array.isArray(detail)
-            ? detail.map((e: { msg: string }) => e.msg).join(", ")
-            : (detail ?? "Erro ao executar simulação.")
-        );
-      } else {
-        onResult(data as SimulationResult);
-      }
-    } catch {
-      setError("Erro de conexão com o servidor.");
+      onResult(data);
+      toast.success("Simulação concluída e salva no histórico.");
+    } catch (e) {
+      // Cancelado pelo usuário: volta ao formulário sem erro.
+      if ((e as Error).name !== "AbortError") toast.error((e as Error).message);
     } finally {
       setLoading(false);
+      controle.current = null;
     }
   }
 
+  function cancelar() {
+    controle.current?.abort();
+  }
+
+  const unidade = unidadeAtivo(ticker);
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
-      <div className="space-y-1">
-        <Label htmlFor="ticker">Ticker <FieldTooltip text="Símbolo do ativo no Yahoo Finance. Ex: SB=F (açúcar NY #11), USDBRL=X (dólar/real)" /></Label>
-        <Input
-          id="ticker"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="SB=F"
-          disabled={loading}
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <TickerSelect value={ticker} onChange={setTicker} disabled={loading} />
+
+      <CampoNumero
+        id="preco_inicial"
+        rotulo="Preço de partida"
+        unidade={unidade || undefined}
+        ajuda="Preço de onde os cenários começam. Use o preço atual para ver o futuro a partir de hoje."
+        valor={precoInicial}
+        onChange={setPrecoInicial}
+        {...FAIXAS.preco}
+        placeholder="ex.: 19,50"
+        disabled={loading}
+      />
+      <p className="-mt-2 text-xs text-muted-foreground">
+        {ultimoFechamento
+          ? `Último fechamento: ${formatPreco(ticker, ultimoFechamento.preco)} em ${formatDate(ultimoFechamento.data)}`
+          : "Sem fechamento recente para este ativo."}
+      </p>
+
+      <CampoNumero
+        id="dias_simulados"
+        rotulo="Prazo da simulação"
+        unidade="dias úteis"
+        ajuda="Até onde os cenários vão. 252 dias úteis são cerca de 1 ano."
+        valor={diasSimulados}
+        onChange={setDiasSimulados}
+        {...FAIXAS.dias}
+        disabled={loading}
+      />
+
+      <CampoNumero
+        id="num_simulacoes"
+        rotulo="Quantidade de cenários"
+        termo="monte-carlo"
+        ajuda="Mais cenários deixam o resultado mais estável, mas a simulação demora mais."
+        valor={numSimulacoes}
+        onChange={setNumSimulacoes}
+        {...FAIXAS.cenarios}
+        disabled={loading}
+      />
+
+      <CampoNumero
+        id="variacao_max"
+        rotulo="Limite de referência"
+        unidade="%"
+        ajuda="Não corta os cenários. Mostramos quantos deles saem desta faixa, para cima ou para baixo, em algum dia do prazo."
+        valor={variacaoMax}
+        onChange={setVariacaoMax}
+        {...FAIXAS.variacao}
+        disabled={loading}
+      />
 
       <div className="space-y-1">
-        <Label htmlFor="preco_inicial">Preço inicial <FieldTooltip text="Preço de entrada para a simulação, em centavos/libra (açúcar) ou reais (câmbio)" /></Label>
-        <Input
-          id="preco_inicial"
-          type="number"
-          step={0.01}
-          value={precoInicial}
-          onChange={(e) => setPrecoInicial(parseFloat(e.target.value))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="dias_simulados">Dias simulados <FieldTooltip text="Dias úteis a simular. 252 = 1 ano útil" /></Label>
-        <Input
-          id="dias_simulados"
-          type="number"
-          min={1}
-          max={1260}
-          value={diasSimulados}
-          onChange={(e) => setDiasSimulados(parseInt(e.target.value, 10))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="num_simulacoes">Número de simulações <FieldTooltip text="Quantidade de caminhos Monte Carlo. Mais = maior precisão, porém mais lento" /></Label>
-        <Input
-          id="num_simulacoes"
-          type="number"
-          min={100}
-          max={50000}
-          value={numSimulacoes}
-          onChange={(e) => setNumSimulacoes(parseInt(e.target.value, 10))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="pct_bound">Limite percentual (pct_bound) <FieldTooltip text="Limite de variação diária máxima como fração do preço. 0.5 = ±50% por dia" /></Label>
-        <Input
-          id="pct_bound"
-          type="number"
-          step={0.01}
-          min={0.01}
-          max={1.0}
-          value={pctBound}
-          onChange={(e) => setPctBound(parseFloat(e.target.value))}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="label">Nome da simulação (opcional) <FieldTooltip text="Nome opcional para identificar esta simulação no histórico" /></Label>
+        <Label htmlFor="label">
+          Nome da simulação <span className="font-normal text-muted-foreground">· opcional</span>
+          <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
+        </Label>
         <Input
           id="label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Nome da simulação (opcional)"
+          placeholder="ex.: Safra 26/27 pessimista"
           disabled={loading}
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" disabled={loading}>
-        {loading ? "Simulando..." : "Simular"}
-      </Button>
+      {loading && (
+        <p className="text-sm text-muted-foreground" role="status">
+          Isso pode levar até 1 minuto.
+        </p>
+      )}
+      {loading ? (
+        <Button type="button" variant="outline" onClick={cancelar} className="w-full">
+          Cancelar
+        </Button>
+      ) : (
+        <Button type="submit" className="w-full">
+          Simular
+        </Button>
+      )}
     </form>
   );
 }

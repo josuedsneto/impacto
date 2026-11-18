@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { formatDataHora } from "@/lib/format";
+import { apiFetch } from "@/lib/api";
+import { EmptyState, Skeleton } from "@/components/ui/feedback";
 
 interface NewsItem {
   title: string;
@@ -10,8 +12,6 @@ interface NewsItem {
   source: string;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export function NewsFeed() {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,19 +19,8 @@ export function NewsFeed() {
   useEffect(() => {
     async function fetchNews() {
       try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        const { data: session } = await supabase.auth.getSession();
-        const token = session.session?.access_token ?? "";
-
-        const res = await fetch(`${API}/api/news`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        setItems((data.items as NewsItem[]).slice(0, 4));
+        const data = await apiFetch<{ items: NewsItem[] }>("/api/news");
+        setItems(data.items.slice(0, 4));
       } catch {
         // silently fail
       } finally {
@@ -42,64 +31,33 @@ export function NewsFeed() {
   }, []);
 
   return (
-    <div
-      className="rounded-[10px] p-5"
-      style={{ background: "#fff", border: "1px solid #e5e7eb" }}
-    >
-      <p
-        className="font-bold mb-3 pb-3"
-        style={{
-          fontSize: 13,
-          color: "#111827",
-          borderBottom: "1px solid #f3f4f6",
-        }}
-      >
-        Notícias do Mercado
-      </p>
+    <div className="rounded-xl border border-border bg-card p-5 text-card-foreground">
+      <p className="mb-3 border-b border-border pb-3 text-[13px] font-bold">Notícias do mercado</p>
 
       {loading && (
-        <p style={{ fontSize: 12, color: "#9ca3af" }}>Carregando notícias...</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
       )}
-      {!loading && items.length === 0 && (
-        <p style={{ fontSize: 12, color: "#9ca3af" }}>Nenhuma notícia encontrada.</p>
-      )}
+      {!loading && items.length === 0 && <EmptyState mensagem="Nenhuma notícia encontrada agora." />}
 
-      {items.map((item, i) => (
+      {items.map((item) => (
         <a
-          key={i}
+          key={item.link}
           href={item.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="block"
-          style={{
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderBottom: i < 3 ? "1px solid #f9fafb" : "none",
-          }}
+          className="block rounded-md border-b border-border py-2.5 outline-none last:border-0 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span
-            className="inline-block font-bold rounded mb-1"
-            style={{
-              fontSize: 10,
-              padding: "2px 6px",
-              letterSpacing: "0.3px",
-              background: "#eff6ff",
-              color: "#1d4ed8",
-            }}
-          >
+          <span className="mb-1 inline-block rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.3px] text-brand">
             {item.source}
           </span>
-          <p className="leading-snug" style={{ fontSize: 12, color: "#1f2937" }}>
-            {item.title}
-          </p>
-          <p className="mt-0.5" style={{ fontSize: 11, color: "#9ca3af" }}>
+          <p className="text-xs leading-snug text-foreground">{item.title}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             {item.published
-              ? new Date(item.published).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+              ? formatDataHora(item.published)
               : ""}
           </p>
         </a>

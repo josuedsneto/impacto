@@ -1,14 +1,8 @@
-interface SimulationRow {
-  id: string;
-  ticker: string;
-  label: string | null;
-  preco_inicial: number;
-  dias_simulados: number;
-  p5: number;
-  p50: number;
-  p95: number;
-  created_at: string;
-}
+import Link from "next/link";
+import type { SimulationRow } from "@/lib/types/api";
+import { formatDataHora } from "@/lib/format";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatPreco } from "@/lib/format";
 
 interface AccountSummaryProps {
   lastSim: SimulationRow | null;
@@ -16,81 +10,45 @@ interface AccountSummaryProps {
 }
 
 export function AccountSummary({ lastSim, simCountMonth }: AccountSummaryProps) {
-  const rows = [
-    {
-      label: "Última simulação MC",
-      value: lastSim
-        ? `${lastSim.ticker} · P50: ${lastSim.p50.toFixed(2)}`
-        : "Nenhuma",
-      sub: lastSim
-        ? new Date(lastSim.created_at).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : null,
-    },
-    {
-      label: "P5 / P95 (última sim.)",
-      value: lastSim
-        ? `${lastSim.p5.toFixed(2)} — ${lastSim.p95.toFixed(2)}`
-        : "—",
-      sub: lastSim ? `${lastSim.dias_simulados} dias simulados` : null,
-    },
-    {
-      label: "Preço inicial (última sim.)",
-      value: lastSim ? lastSim.preco_inicial.toFixed(2) : "—",
-      sub: null,
-    },
-    {
-      label: "Simulações este mês",
-      value: simCountMonth.toString(),
-      sub: null,
-    },
-  ];
+  const fmt = (v: number) => formatPreco(lastSim?.ticker ?? "", v);
+  const rows = lastSim
+    ? [
+        {
+          label: "Última simulação",
+          value: `${lastSim.ticker} · ${fmt(lastSim.p50)}`,
+          sub: formatDataHora(lastSim.created_at),
+        },
+        {
+          label: "Faixa de 90% (P5 a P95)",
+          value: `${fmt(lastSim.p5)} a ${fmt(lastSim.p95)}`,
+          sub: `${lastSim.dias_simulados} dias úteis`,
+        },
+        { label: "Preço inicial", value: fmt(lastSim.preco_inicial), sub: null },
+        { label: "Simulações este mês", value: String(simCountMonth), sub: null },
+      ]
+    : [];
 
   return (
-    <div
-      className="rounded-[10px] p-5"
-      style={{ background: "#fff", border: "1px solid #e5e7eb" }}
-    >
-      <p
-        className="font-bold mb-3 pb-3"
-        style={{
-          fontSize: 13,
-          color: "#111827",
-          borderBottom: "1px solid #f3f4f6",
-        }}
-      >
-        Resumo da Conta
-      </p>
+    <div className="rounded-xl border border-border bg-card p-5 text-card-foreground">
+      <p className="mb-3 border-b border-border pb-3 text-[13px] font-bold">Suas simulações</p>
 
-      {rows.map(({ label, value, sub }, i) => (
-        <div
-          key={label}
-          className="flex items-center justify-between"
-          style={{
-            paddingTop: 10,
-            paddingBottom: 10,
-            borderBottom: i < rows.length - 1 ? "1px solid #f9fafb" : "none",
-          }}
-        >
-          <p style={{ fontSize: 13, color: "#6b7280" }}>{label}</p>
+      {!lastSim && (
+        <EmptyState
+          mensagem="Você ainda não fez nenhuma simulação Monte Carlo."
+          acao={
+            <Link href="/app/simulation" className="text-sm font-medium text-brand underline-offset-4 hover:underline">
+              Fazer a primeira simulação
+            </Link>
+          }
+        />
+      )}
+
+      {rows.map(({ label, value, sub }) => (
+        <div key={label} className="flex items-center justify-between gap-3 border-b border-border py-2.5 last:border-0">
+          <p className="text-[13px] text-muted-foreground">{label}</p>
           <div className="text-right">
-            <p
-              className="font-bold"
-              style={{
-                fontSize: 14,
-                color: "#111827",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {value}
-            </p>
-            {sub && (
-              <p style={{ fontSize: 11, color: "#9ca3af" }}>{sub}</p>
-            )}
+            <p className="text-sm font-bold tabular-nums">{value}</p>
+            {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
           </div>
         </div>
       ))}

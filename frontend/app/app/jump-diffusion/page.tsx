@@ -1,17 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { apiFetch } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/ui/feedback";
+import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { FieldTooltip } from "@/components/ui/field-tooltip";
+import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { Leitura } from "@/components/ui/leitura";
+import { leituraJump } from "@/lib/leitura";
+import { lerNumero } from "@/lib/numero";
+import { ATIVOS, nomeAtivo, unidadeAtivo } from "@/lib/ativos";
+import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { gerarCsv, nomeArquivo } from "@/lib/csv";
+
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface JDResult {
   ticker: string;
@@ -22,75 +30,105 @@ interface JDResult {
   prices: { step: number; price: number }[];
 }
 
-async function getToken(): Promise<string> {
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await sb.auth.getSession();
-  return data.session?.access_token ?? "";
-}
+const TICKERS = ["SB=F", "USDBRL=X"].map((value) => ({ label: ATIVOS[value].nome, value }));
 
-const TICKERS = [
-  { label: "Açúcar NY", value: "SB=F" },
-  { label: "USD/BRL", value: "USDBRL=X" },
-];
+// Faixas aceitas pela API (backend/main.py JumpDiffusionRequest); campos em % na tela.
+const FAIXAS = {
+  sigma: { min: 0.01, max: 20, opcional: true },
+  steps: { min: 10, max: 1260 },
+  lambda: { min: 0, max: 5 },
+  muJump: { min: -100, max: 100 },
+  sigmaJump: { min: 0, max: 100 },
+};
 
 export default function JumpDiffusionPage() {
   const [ticker, setTicker] = useState("SB=F");
   const [sigma, setSigma] = useState("");
-  const [lambdaJumps, setLambdaJumps] = useState("0.1");
-  const [muJump, setMuJump] = useState("-0.02");
-  const [sigmaJump, setSigmaJump] = useState("0.05");
+  const [lambdaJumps, setLambdaJumps] = useState("0,1");
+  const [muJump, setMuJump] = useState("-2");
+  const [sigmaJump, setSigmaJump] = useState("5");
   const [steps, setSteps] = useState("252");
   const [result, setResult] = useState<JDResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleSimulate() {
+    const ok =
+      campoValido(sigma, FAIXAS.sigma) &&
+      campoValido(steps, FAIXAS.steps) &&
+      campoValido(lambdaJumps, FAIXAS.lambda) &&
+      campoValido(muJump, FAIXAS.muJump) &&
+      campoValido(sigmaJump, FAIXAS.sigmaJump);
+    if (!ok) {
+      toast.error("Corrija os campos destacados antes de simular.");
+      return;
+    }
     setLoading(true);
-    setError(null);
     try {
-      const token = await getToken();
+      // Percentuais da tela viram fração para a API.
       const body = {
         ticker,
-        sigma: sigma ? parseFloat(sigma) : null,
-        lambda_jumps: parseFloat(lambdaJumps),
-        mu_jump: parseFloat(muJump),
-        sigma_jump: parseFloat(sigmaJump),
-        steps: parseInt(steps),
+        sigma: sigma.trim() ? lerNumero(sigma)! / 100 : null,
+        lambda_jumps: lerNumero(lambdaJumps),
+        mu_jump: lerNumero(muJump)! / 100,
+        sigma_jump: lerNumero(sigmaJump)! / 100,
+        steps: Math.round(lerNumero(steps)!),
       };
-      const res = await fetch(`${API}/api/jump-diffusion`, {
+      const data = await apiFetch<JDResult>("/api/jump-diffusion", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.detail ?? "Erro."); return; }
-      setResult(data as JDResult);
-    } catch { setError("Erro de conexão."); }
+      setResult(data);
+    } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Jump Diffusion</h1>
-      <p className="text-sm text-muted-foreground">Modelo de Merton: difusão GBM + saltos aleatórios (Poisson)</p>
+    <div>
+      <PageHeader
+        titulo="Simulação com saltos"
+        descricao="Simula um caminho de preço com oscilação diária e saltos bruscos ocasionais (modelo de Merton)."
+        acoes={
+          <BotaoExportar
+            arquivo={nomeArquivo("Simulacao com saltos", result?.ticker)}
+            montar={
+              result
+                ? () =>
+                    gerarCsv({
+                      parametros: [
+                        ["Ativo", nomeAtivo(result.ticker)],
+                        ["Preço inicial", result.s0],
+                        ["Volatilidade diária usada (%)", result.sigma * 100],
+                        ["Tendência diária (%)", result.mu * 100],
+                        ["Saltos por ano", lerNumero(lambdaJumps)],
+                        ["Tamanho médio do salto (%)", lerNumero(muJump)],
+                        ["Variação do tamanho do salto (%)", lerNumero(sigmaJump)],
+                      ],
+                      tabelas: [
+                        {
+                          colunas: ["Dia útil", `Preço${unidadeAtivo(result.ticker) ? ` (${unidadeAtivo(result.ticker)})` : ""}`],
+                          linhas: result.prices.map((p) => [p.step, p.price]),
+                        },
+                      ],
+                    })
+                : null
+            }
+          />
+        }
+      />
 
-      <Card className="max-w-lg">
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
+      <Card>
         <CardContent className="pt-6 space-y-4">
           {/* Ticker */}
           <div className="space-y-1">
-            <Label>Ativo</Label>
-            <div className="flex gap-2">
+            <Label id="jd-ativo">Ativo</Label>
+            <div className="flex gap-2" role="group" aria-labelledby="jd-ativo">
               {TICKERS.map(({ label, value }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setTicker(value)}
+                  aria-pressed={ticker === value}
                   className={`px-3 py-1.5 rounded border text-sm transition-colors ${
                     ticker === value
                       ? "bg-primary text-primary-foreground border-primary"
@@ -103,75 +141,99 @@ export default function JumpDiffusionPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="jd-sigma">
-                Sigma (vol) <FieldTooltip text="Volatilidade diária. Deixe em branco para usar a histórica." />
-              </Label>
-              <Input id="jd-sigma" type="number" step={0.001} min={0} value={sigma}
-                onChange={(e) => setSigma(e.target.value)} placeholder="automático" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-steps">
-                Steps <FieldTooltip text="Número de passos diários (252 = 1 ano útil)" />
-              </Label>
-              <Input id="jd-steps" type="number" min={10} max={1260} value={steps}
-                onChange={(e) => setSteps(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-lambda">
-                λ saltos <FieldTooltip text="Frequência esperada de saltos por ano (ex: 0.1 = ~1 a cada 10 anos)" />
-              </Label>
-              <Input id="jd-lambda" type="number" step={0.01} min={0} value={lambdaJumps}
-                onChange={(e) => setLambdaJumps(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="jd-mu-jump">
-                μ salto <FieldTooltip text="Magnitude média do salto (ex: -0.02 = queda de 2%)" />
-              </Label>
-              <Input id="jd-mu-jump" type="number" step={0.01} value={muJump}
-                onChange={(e) => setMuJump(e.target.value)} />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label htmlFor="jd-sigma-jump">
-                σ salto <FieldTooltip text="Desvio padrão do tamanho do salto" />
-              </Label>
-              <Input id="jd-sigma-jump" type="number" step={0.01} min={0} value={sigmaJump}
-                onChange={(e) => setSigmaJump(e.target.value)} />
-            </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CampoNumero
+              id="jd-sigma"
+              rotulo="Volatilidade diária"
+              unidade="% ao dia"
+              ajuda="Quanto o preço oscila em um dia normal. Em branco, usa a volatilidade dos últimos 3 anos."
+              valor={sigma}
+              onChange={setSigma}
+              {...FAIXAS.sigma}
+              placeholder="automática"
+            />
+            <CampoNumero
+              id="jd-steps"
+              rotulo="Prazo"
+              unidade="dias úteis"
+              ajuda="Até onde o caminho vai. 252 dias úteis são cerca de 1 ano."
+              valor={steps}
+              onChange={setSteps}
+              {...FAIXAS.steps}
+            />
+            <CampoNumero
+              id="jd-lambda"
+              rotulo="Saltos por ano"
+              ajuda="Quantos choques bruscos de preço esperar por ano. 0,1 é cerca de um a cada 10 anos."
+              valor={lambdaJumps}
+              onChange={setLambdaJumps}
+              {...FAIXAS.lambda}
+            />
+            <CampoNumero
+              id="jd-mu-jump"
+              rotulo="Tamanho médio do salto"
+              unidade="%"
+              ajuda="Variação típica do preço em cada choque. Use -2 para uma queda de 2%, ou 2 para uma alta de 2%."
+              valor={muJump}
+              onChange={setMuJump}
+              {...FAIXAS.muJump}
+            />
+            <CampoNumero
+              id="jd-sigma-jump"
+              rotulo="Variação do tamanho do salto"
+              unidade="%"
+              ajuda="Quanto os choques variam em torno do tamanho médio. Maior valor gera saltos mais imprevisíveis."
+              valor={sigmaJump}
+              onChange={setSigmaJump}
+              {...FAIXAS.sigmaJump}
+              className="sm:col-span-2"
+            />
           </div>
 
           <Button onClick={handleSimulate} disabled={loading} className="w-full">
             {loading ? "Simulando..." : "Simular"}
           </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </CardContent>
       </Card>
 
+      {!result && <EmptyState mensagem="Ajuste os parâmetros e clique em Simular para ver um caminho de preço." />}
+
       {result && (
-        <Card>
+        <div className="min-w-0 space-y-4">
+        <Leitura>
+          {leituraJump({ ticker: result.ticker, s0: result.s0, final: result.prices.at(-1)?.price })}
+        </Leitura>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Simulação · {result.ticker} · Preço inicial: {result.s0.toFixed(2)} · Média: {result.mean.toFixed(2)}
+              {nomeAtivo(result.ticker)} · Preço inicial: {formatPreco(result.ticker, result.s0)} · Média do caminho: {formatPreco(result.ticker, result.mean)}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-6 text-sm text-muted-foreground mb-4">
-              <span>σ usado: {(result.sigma * 100).toFixed(3)}%</span>
-              <span>μ diário: {(result.mu * 100).toFixed(4)}%</span>
+            <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              <span>Volatilidade diária usada: {formatPercent(result.sigma, 3)}</span>
+              <span>Tendência diária: {formatPercent(result.mu, 4)}</span>
             </div>
+            <div role="img" aria-label="Trajetórias simuladas do preço com saltos (jump diffusion) e a faixa dos cenários.">
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="step" tick={{ fontSize: 10 }} tickFormatter={(v) => `D${v}`} />
-                <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
-                <Tooltip formatter={(v: number) => [v.toFixed(4), "Preço"]} labelFormatter={(l) => `Step ${l}`} />
-                <Line type="monotone" dataKey="price" stroke="#8b5cf6" dot={false} strokeWidth={1.5} />
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="step" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} tickFormatter={(v) => `D${v}`} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={(v: number) => formatNumber(v, 2)} />
+                <Tooltip
+                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: number) => [formatPreco(result.ticker, v), "Preço"]}
+                  labelFormatter={(l) => `Dia ${l}`}
+                />
+                <Line type="monotone" dataKey="price" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
+        </div>
       )}
+      </div>
     </div>
   );
 }
