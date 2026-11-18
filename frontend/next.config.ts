@@ -6,7 +6,7 @@ const isDev = process.env.NODE_ENV === "development";
 // nem wildcard): se faltarem, o build falha em vez de gerar um CSP frouxo.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-if (!isDev && (!supabaseUrl || !apiUrl)) {
+if (process.env.NODE_ENV === "production" && (!supabaseUrl || !apiUrl)) {
   throw new Error(
     "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_API_URL para o build de produção (connect-src do CSP)."
   );

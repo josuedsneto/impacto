@@ -83,11 +83,11 @@ async function requisitar(path: string, init: RequestInit, timeoutMs: number) {
   const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   try {
     return await fetch(`${API_URL}${path}`, { ...init, headers, signal });
-  } catch {
+  } catch (e) {
     // Cancelado pelo chamador: não é erro de rede, o chamador decide o que mostrar.
     if (init.signal?.aborted) throw new DOMException("Cancelado pelo usuário", "AbortError");
     // Estourou o tempo limite: não é falta de conexão (FD-08).
-    if (timeout.aborted) throw new ApiError(MSG_TIMEOUT, 0);
+    if (timeout.aborted || (e instanceof DOMException && e.name === "TimeoutError")) throw new ApiError(MSG_TIMEOUT, 0);
     throw new ApiError(MSG_REDE, 0);
   }
 }

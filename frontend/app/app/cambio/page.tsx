@@ -86,30 +86,30 @@ export default function CambioPage() {
   const [niveisDigitados, setNiveisDigitados] = useState("");
   const [niveisAplicados, setNiveisAplicados] = useState("");
   const [erroNiveis, setErroNiveis] = useState<string | null>(null);
-  const [dados, setDados] = useState<CambioResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  // Resposta marcada com a chave do pedido: se a chave não é a atual, a tela está carregando.
+  const chave = `${opcao}|${niveisAplicados}|${tentativa}`;
+  const [resposta, setResposta] = useState<{ chave: string; dados?: CambioResponse; erro?: string } | null>(null);
+  const loading = resposta?.chave !== chave;
+  const dados = resposta?.dados ?? null;
+  const error = !loading ? resposta?.erro ?? null : null;
 
   useEffect(() => {
     let ativo = true;
     const params = new URLSearchParams({ horizonte: String(horizonteParaApi(opcao)) });
     if (niveisAplicados) params.set("niveis", niveisAplicados);
-    setLoading(true);
-    setError(null);
     apiFetch<CambioResponse>(`/api/cambio/previsao?${params}`, { timeoutMs: 60_000 })
       .then((json) => {
-        if (ativo) setDados(json);
+        if (ativo) setResposta({ chave, dados: json });
       })
       .catch((e) => {
-        if (ativo) setError((e as Error).message);
-      })
-      .finally(() => {
-        if (ativo) setLoading(false);
+        if (ativo) setResposta({ chave, erro: (e as Error).message });
       });
     return () => {
       ativo = false;
     };
+    // chave já inclui opcao, niveisAplicados e tentativa
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opcao, niveisAplicados, tentativa]);
 
   function aplicarNiveis() {

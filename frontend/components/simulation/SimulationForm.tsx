@@ -79,7 +79,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         if (ultimo && ultimo.close !== null) {
           setUltimoFechamento({ preco: ultimo.close, data: ultimo.date });
           // yfinance traz floats com artefato (19.459999…); arredonda antes de preencher.
-          setPrecoInicial(String(Number(ultimo.close.toFixed(4))).replace(".", ","));
+          setPrecoInicial(String(Math.round(ultimo.close * 1e4) / 1e4).replace(".", ","));
         } else {
           setUltimoFechamento(null);
           setPrecoInicial("");
