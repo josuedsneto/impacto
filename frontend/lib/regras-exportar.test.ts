@@ -13,13 +13,13 @@ const TELAS = [
   "app/app/stress/page.tsx",
   "app/app/arima/page.tsx",
   "app/app/risco/page.tsx",
-  "app/app/cenarios/page.tsx",
+  "app/app/breakeven-safra/page.tsx",
   "app/app/metas/page.tsx",
   "app/app/breakeven/page.tsx",
   "app/app/regressao-dolar/page.tsx",
   "app/app/regressao-acucar/page.tsx",
   "app/app/atr/page.tsx",
-  "app/app/fixacoes/page.tsx",
+  "app/app/mercado/page.tsx",
 ];
 
 const exporta = (tela: string) => readFileSync(join(RAIZ, tela), "utf-8").includes("<BotaoExportar");

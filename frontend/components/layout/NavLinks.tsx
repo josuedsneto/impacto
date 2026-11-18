@@ -6,41 +6,44 @@ import { cn } from "@/lib/utils";
 
 const NAV_SECTIONS = [
   {
-    label: "Mercado",
+    label: "Preço e mercado",
     items: [
-      { href: "/app/fixacoes", label: "Mercado e sinais" },
-      { href: "/app/market", label: "Preços diários" },
-      { href: "/app/metas", label: "Metas" },
+      { href: "/app/mercado", label: "Mercado" },
+      { href: "/app/noticias", label: "Notícias" },
+      { href: "/app/focus", label: "Boletim Focus" },
+      // reservado: Câmbio (outra thread)
+      // reservado: Alertas (outra thread)
+    ],
+  },
+  {
+    label: "Cenários e simulações",
+    items: [
+      { href: "/app/simulation", label: "Simulação de preços (Monte Carlo)" },
+      { href: "/app/jump-diffusion", label: "Simulação com saltos" },
       { href: "/app/options", label: "Opções" },
     ],
   },
   {
-    label: "Simulação",
-    items: [
-      { href: "/app/simulation", label: "Monte Carlo" },
-      { href: "/app/jump-diffusion", label: "Simulação com saltos" },
-      { href: "/app/arima", label: "Previsão de preço (ARIMA)" },
-      { href: "/app/volatilidade", label: "Volatilidade" },
-    ],
-  },
-  {
-    label: "Risco",
+    label: "Risco e resultado",
     items: [
       { href: "/app/var", label: "Perda máxima (VaR)" },
-      { href: "/app/breakeven", label: "Breakeven do açúcar" },
+      { href: "/app/volatilidade", label: "Volatilidade" },
       { href: "/app/stress", label: "Teste de estresse" },
       { href: "/app/risco", label: "Risco do EBITDA" },
-      { href: "/app/cenarios", label: "Breakeven da safra" },
+      { href: "/app/breakeven", label: "Preço de equilíbrio do açúcar (R$/saca)" },
+      { href: "/app/breakeven-safra", label: "Ponto de equilíbrio da safra (EBITDA zero)" },
+      { href: "/app/metas", label: "Metas" },
+      { href: "/app/atr", label: "ATR da usina" },
+      // reservado: Fixações e hedge (outra thread)
+      // reservado: Receita da safra (R$) (outra thread)
     ],
   },
   {
-    label: "Análise",
+    label: "Modelos",
     items: [
-      { href: "/app/noticias", label: "Notícias" },
-      { href: "/app/focus", label: "Boletim Focus" },
-      { href: "/app/regressao-dolar", label: "Modelo do dólar" },
+      { href: "/app/arima", label: "Projeção de preço" },
       { href: "/app/regressao-acucar", label: "Modelo do açúcar" },
-      { href: "/app/atr", label: "ATR da usina" },
+      { href: "/app/regressao-dolar", label: "Modelo do dólar" },
     ],
   },
   {
@@ -48,6 +51,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/app/params", label: "Parâmetros" },
       { href: "/app/glossario", label: "Glossário" },
+      // reservado: Análises salvas (outra thread)
     ],
   },
 ];

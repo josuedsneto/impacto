@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/feedback";
-import { formatNumber, formatPercent } from "@/lib/format";
+import { formatDate, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
@@ -59,22 +59,89 @@ const CAMPOS: Record<string, { rotulo: string; unidade: string; ajuda: string }>
   preco_etanol: { rotulo: "Etanol", unidade: "R$/m³", ajuda: "Preço de venda do etanol." },
 };
 
-const FAIXA = { min: 0.0001, max: 100_000_000 };
+// Faixa aceita por variável (validação do campo, LING-02 AC6).
+const FAIXAS: Record<string, { min: number; max: number }> = {
+  ny: { min: 1, max: 200 },
+  moagem: { min: 1_000, max: 100_000_000 },
+  cambio: { min: 0.5, max: 20 },
+  preco_etanol: { min: 100, max: 20_000 },
+};
+
+interface MercadoHoje {
+  ny: number;
+  cambio: number;
+  data: string;
+}
+
+/** Último fechamento disponível de um ativo nos últimos 15 dias corridos. */
+async function ultimoFechamento(ticker: string): Promise<{ close: number; date: string }> {
+  const end = new Date();
+  const start = new Date(Date.now() - 15 * 864e5);
+  const params = new URLSearchParams({
+    ticker,
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  });
+  const data = await apiFetch<{ rows: { date: string; close: number | null }[] }>(`/api/market/prices?${params}`);
+  const ultimo = data.rows.filter((r) => r.close != null).at(-1);
+  if (!ultimo || ultimo.close == null) throw new Error("sem fechamento");
+  return { close: ultimo.close, date: ultimo.date };
+}
+
+const paraTexto = (v: number) => String(v).replace(".", ",");
+
+/** Valores de entrada de uma variável; NY e câmbio vêm do mercado quando há dado. */
+function valoresIniciais(o: Opcao, hoje: MercadoHoje | null): Record<string, string> {
+  const base: Record<string, string> = { ...DEFAULTS[o] };
+  if (hoje && "ny" in base) base.ny = paraTexto(hoje.ny);
+  if (hoje && "cambio" in base) base.cambio = paraTexto(hoje.cambio);
+  return base;
+}
 
 export default function CenariosPage() {
   const [opcao, setOpcao] = useState<Opcao>("NY");
-  const [values, setValues] = useState<Record<string, string>>({ ...DEFAULTS["NY"] });
+  const [hoje, setHoje] = useState<MercadoHoje | null>(null);
+  const [mercadoFalhou, setMercadoFalhou] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>(() => valoresIniciais("NY", null));
   const [result, setResult] = useState<CenariosResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    let ativo = true;
+    Promise.all([ultimoFechamento("SB=F"), ultimoFechamento("USDBRL=X")])
+      .then(([ny, cambio]) => {
+        if (!ativo) return;
+        // Usa a data mais antiga das duas como referência da fonte.
+        const data = [ny.date, cambio.date].sort()[0];
+        setHoje({ ny: ny.close, cambio: cambio.close, data });
+      })
+      .catch(() => {
+        if (ativo) setMercadoFalhou(true);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // Quando o mercado chega, troca NY e câmbio só se ainda estiverem no padrão (não sobrescreve o que a pessoa digitou).
+  useEffect(() => {
+    if (!hoje) return;
+    setValues((prev) => {
+      const novo = { ...prev };
+      if ("ny" in novo && novo.ny === DEFAULTS["Moagem"].ny) novo.ny = paraTexto(hoje.ny);
+      if ("cambio" in novo && novo.cambio === DEFAULTS["Moagem"].cambio) novo.cambio = paraTexto(hoje.cambio);
+      return novo;
+    });
+  }, [hoje]);
+
   function handleOpcaoChange(o: Opcao) {
     setOpcao(o);
-    setValues({ ...DEFAULTS[o] });
+    setValues(valoresIniciais(o, hoje));
     setResult(null);
   }
 
   async function handleSimulate() {
-    if (!Object.values(values).every((v) => campoValido(v, FAIXA))) {
+    if (!Object.entries(values).every(([k, v]) => campoValido(v, FAIXAS[k]))) {
       toast.error("Corrija os campos destacados antes de calcular.");
       return;
     }
@@ -105,11 +172,11 @@ export default function CenariosPage() {
   return (
     <div>
       <PageHeader
-        titulo="Breakeven da safra"
+        titulo="Ponto de equilíbrio da safra (EBITDA zero)"
         descricao="Encontra o valor de uma variável em que o EBITDA zera e a chance de o mercado ficar abaixo dele."
         acoes={
           <BotaoExportar
-            arquivo={nomeArquivo("Breakeven da safra", NOME_OPCAO[opcao])}
+            arquivo={nomeArquivo("Ponto de equilibrio da safra", NOME_OPCAO[opcao])}
             montar={
               result
                 ? () =>
@@ -160,6 +227,17 @@ export default function CenariosPage() {
               </div>
             </div>
 
+            {hoje && (
+              <p className="text-xs text-muted-foreground">
+                Açúcar NY e câmbio: último fechamento de {formatDate(hoje.data)} (Yahoo Finance).
+              </p>
+            )}
+            {mercadoFalhou && (
+              <p className="text-xs text-muted-foreground">
+                Não foi possível buscar o preço de hoje; use os valores padrão.
+              </p>
+            )}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {otherInputs.map((key) => (
                 <CampoNumero
@@ -170,7 +248,7 @@ export default function CenariosPage() {
                   ajuda={CAMPOS[key].ajuda}
                   valor={values[key] ?? ""}
                   onChange={(t) => setValues((prev) => ({ ...prev, [key]: t }))}
-                  {...FAIXA}
+                  {...FAIXAS[key]}
                 />
               ))}
             </div>

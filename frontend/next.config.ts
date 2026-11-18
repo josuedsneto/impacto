@@ -34,6 +34,14 @@ const csp = isDev
     ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Rotas antigas da reorganização do menu. permanent: false para não ficarem gravadas no navegador.
+  async redirects() {
+    return [
+      { source: "/app/cenarios", destination: "/app/breakeven-safra", permanent: false },
+      { source: "/app/market", destination: "/app/mercado?aba=precos", permanent: false },
+      { source: "/app/fixacoes", destination: "/app/mercado?aba=sinais", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
