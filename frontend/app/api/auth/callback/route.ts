@@ -1,16 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
-
-// Use the configured site URL as the trusted origin; fall back to the request
-// origin only in local dev (where NEXT_PUBLIC_SITE_URL is typically unset).
-function getTrustedOrigin(requestOrigin: string): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? requestOrigin
-}
+import { origemConfiavel } from '@/lib/origem-confiavel'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url)
-  const trustedOrigin = getTrustedOrigin(requestOrigin)
+  const trustedOrigin = origemConfiavel(requestOrigin)
+  if (!trustedOrigin) {
+    return new NextResponse('Configuração ausente: defina NEXT_PUBLIC_SITE_URL.', { status: 500 })
+  }
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/app/dashboard'
   const safePath = next.startsWith('/app/') ? next : '/app/dashboard'
