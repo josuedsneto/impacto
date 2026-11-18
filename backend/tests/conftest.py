@@ -1,5 +1,6 @@
 """Supabase e Yahoo simulados para os testes do backend (sem rede)."""
 import sys
+import uuid
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -54,8 +55,33 @@ class _Query:
         self.op, self.linhas, self.chaves, self.ignorar = "upsert", linhas, on_conflict.split(","), ignore_duplicates
         return self
 
+    def insert(self, linhas):
+        self.op, self.linhas = "insert", linhas
+        return self
+
+    def update(self, dados):
+        self.op, self.dados = "update", dados
+        return self
+
+    def delete(self):
+        self.op = "delete"
+        return self
+
     def execute(self):
         tabela = self.db.setdefault(self.tabela, {})
+        if self.op == "insert":
+            for linha in self.linhas if isinstance(self.linhas, list) else [self.linhas]:
+                novo_id = str(uuid.uuid4())
+                tabela[novo_id] = {"id": novo_id, **linha}
+            return _Resp([])
+        if self.op in ("update", "delete"):
+            alvo = [(k, r) for k, r in tabela.items() if all(f(r) for f in self.filtros)]
+            for k, r in alvo:
+                if self.op == "update":
+                    r.update(self.dados)
+                else:
+                    del tabela[k]
+            return _Resp([r for _, r in alvo])
         if self.op == "upsert":
             for linha in self.linhas if isinstance(self.linhas, list) else [self.linhas]:
                 chave = tuple(linha[k] for k in self.chaves)
