@@ -3,6 +3,7 @@ import {
   AUSENTE,
   leituraArima,
   leituraCall,
+  leituraHedge,
   leituraJump,
   leituraMonteCarlo,
   leituraPayoff,
@@ -82,5 +83,13 @@ describe("frases de leitura de mercado (LING-03, LING-04)", () => {
     expect(leituraVolatilidade({ vol30: null, vol1a: 0.2 })).toBe(AUSENTE);
     expect(leituraCall(null)).toBe(AUSENTE);
     expect(AUSENTE).toBe("Sem dados suficientes para este cálculo.");
+  });
+
+  it("hedge cambial: aberto vs forward, com AUSENTE sem dados", () => {
+    const frase = leituraHedge({ medianaAberto: 5_250_000, pAbaixoAberto: 0.32, orcamento: 5.25, medianaForward: 5_250_000 });
+    expect(frase).toContain("Ficando aberto, a receita mediana é R$ 5,3 mi");
+    expect(frase).toContain("em 32,0% dos cenários");
+    expect(frase).toContain("Travando tudo no forward, a receita é R$ 5,3 mi.");
+    expect(leituraHedge({ medianaAberto: null, pAbaixoAberto: 0.3, orcamento: 5, medianaForward: 5 })).toBe(AUSENTE);
   });
 });

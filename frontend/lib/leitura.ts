@@ -140,6 +140,12 @@ export function leituraAtr(r: { chuva: N; impureza: N; atr: N; min: N; max: N; p
   return falta(r.producao) ? frase : `${frase} Produção estimada: ${formatNumber(r.producao! / 1000, 0)} mil toneladas.`;
 }
 
+/** Hedge cambial: o que acontece ficando aberto e travando tudo no forward (receitas medianas). */
+export function leituraHedge(r: { medianaAberto: N; pAbaixoAberto: N; orcamento: N; medianaForward: N }) {
+  if (falta(r.medianaAberto, r.pAbaixoAberto, r.orcamento, r.medianaForward)) return AUSENTE;
+  return `Ficando aberto, a receita mediana é ${formatCompactBRL(r.medianaAberto)} e em ${probabilidade(r.pAbaixoAberto!)} dos cenários o câmbio fica abaixo de ${formatFX(r.orcamento)}. Travando tudo no forward, a receita é ${formatCompactBRL(r.medianaForward)}.`;
+}
+
 export function leituraRiscoConjunto(r: { prob: N; meta: number; p50: N }) {
   if (falta(r.prob, r.p50)) return AUSENTE;
   return `Há ${probabilidade(r.prob!)} de chance de a receita ficar abaixo de ${formatBRL(r.meta)}/t. A receita mediana é ${formatBRL(r.p50)}/t.`;
