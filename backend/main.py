@@ -102,7 +102,6 @@ class AcucarRunRequest(BaseModel):
     producao: float
     demanda: float
     estoque_final: float
-    estoque_uso_pct: float
     usdbrl: float
     cl_f: float
 
@@ -270,8 +269,9 @@ async def acucar_run(
             "sb_f_previsto": resultado["sb_f_previsto"],
             "sb_f_min": resultado["sb_f_min"],
             "sb_f_max": resultado["sb_f_max"],
-            "r2": resultado["r2"],
-            "rmse": resultado["rmse"],
+            "r2_loo": resultado["r2_loo"],
+            "rmse_loo": resultado["rmse_loo"],
+            "confianca": resultado["confianca"],
         },
     }).execute()
 
