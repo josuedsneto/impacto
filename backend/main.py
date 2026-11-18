@@ -33,6 +33,8 @@ from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from atr import calibrate_atr, predict_atr, get_sector_defaults
+from routers.alertas import router as alertas_router
+from routers.jobs import router as jobs_router
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -67,6 +69,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+app.include_router(alertas_router)
+app.include_router(jobs_router)
 
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
