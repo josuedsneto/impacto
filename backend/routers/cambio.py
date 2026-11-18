@@ -4,7 +4,6 @@ routers/cambio.py — GET /api/cambio/previsao: faixa de possibilidades do USD/B
 Modelo M1 (cambio.py). Faixa e probabilidades, não previsão pontual.
 """
 
-from __future__ import annotations
 
 import math
 from datetime import date, timedelta
