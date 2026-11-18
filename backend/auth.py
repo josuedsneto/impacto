@@ -25,16 +25,22 @@ def _load_public_key():
 
 _PUBLIC_KEY = _load_public_key()
 
+# Supabase emite iss = "<SUPABASE_URL>/auth/v1". Sem SUPABASE_URL, _ISSUER fica
+# vazio e verify_jwt recusa tudo (fail closed).
+_SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+_ISSUER = f"{_SUPABASE_URL}/auth/v1" if _SUPABASE_URL else ""
+
 
 def verify_jwt(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer)],
 ) -> dict:
     """
     Validate the Bearer JWT using Supabase's ES256 public key (P-256 JWK).
-    Returns the decoded payload dict. Raises HTTP 401 on any failure.
+    Confere alg, aud, iss, exp e sub. Returns the decoded payload dict.
+    Raises HTTP 401 on any token failure; HTTP 500 if the server is misconfigured.
     No network call is made — verification is fully local.
     """
-    if not _PUBLIC_KEY:
+    if not _PUBLIC_KEY or not _ISSUER:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Autenticação do servidor não configurada. Avise o administrador.",
@@ -44,8 +50,9 @@ def verify_jwt(
             credentials.credentials,
             _PUBLIC_KEY,
             algorithms=["ES256"],
-            options={"require": ["sub", "exp", "aud"]},
+            options={"require": ["sub", "exp", "aud", "iss"]},
             audience="authenticated",
+            issuer=_ISSUER,
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sua sessão expirou. Entre novamente para continuar.")

@@ -2,9 +2,15 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Trusted backend origins — fall back to localhost for local dev.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Origens confiáveis. Em produção são obrigatórias (sem fallback para localhost
+// nem wildcard): se faltarem, o build falha em vez de gerar um CSP frouxo.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+if (!isDev && (!supabaseUrl || !apiUrl)) {
+  throw new Error(
+    "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_API_URL para o build de produção (connect-src do CSP)."
+  );
+}
 
 // Next.js App Router injects dynamic inline scripts (RSC flight data) whose
 // content changes per request and cannot be pre-hashed. 'unsafe-inline' is
@@ -16,7 +22,7 @@ const csp = isDev
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data: https://fonts.gstatic.com",
-      `connect-src 'self' ${supabaseUrl} ${apiUrl} ws://localhost:* http://localhost:*`,
+      `connect-src 'self' ${supabaseUrl || "https://*.supabase.co"} ${apiUrl || "http://localhost:8000"} ws://localhost:* http://localhost:*`,
       "img-src 'self' data: blob:",
       "base-uri 'self'",
       "form-action 'self'",
