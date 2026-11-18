@@ -85,7 +85,7 @@ function LoginForm() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full">
           <TabsTrigger value="senha" className="flex-1">Email + Senha</TabsTrigger>
-          <TabsTrigger value="magic" className="flex-1">Magic Link</TabsTrigger>
+          <TabsTrigger value="magic" className="flex-1">Link por e-mail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="senha" className="mt-4">

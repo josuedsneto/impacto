@@ -35,12 +35,12 @@ function CartaoPreco({ rotulo, valor, unidade, variacao, alta, className }: {
 }) {
   return (
     <div className={`absolute rounded-xl border border-border bg-background/90 px-5 py-3 backdrop-blur ${className}`}>
-      <p className="mb-1 text-[9px] font-bold uppercase tracking-[1.5px] text-muted-foreground">{rotulo}</p>
+      <p className="mb-1 text-[11px] font-bold uppercase tracking-[1.5px] text-muted-foreground">{rotulo}</p>
       <p className="text-2xl font-extrabold text-foreground">
         {valor} {unidade && <span className="text-sm font-normal text-muted-foreground">{unidade}</span>}
       </p>
       <p className={`mt-0.5 text-[11px] font-semibold ${alta ? 'text-positive' : 'text-negative'}`}>{variacao}</p>
-      <p className="mt-1 text-[8px] tracking-[0.5px] text-muted-foreground">ILUSTRATIVO</p>
+      <p className="mt-1 text-[11px] tracking-[0.5px] text-muted-foreground">ILUSTRATIVO</p>
     </div>
   )
 }
@@ -69,7 +69,7 @@ export default async function HomePage() {
 
       <div className="flex flex-1 flex-col md:min-h-[420px] md:flex-row">
         <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 md:py-14">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-[3px] text-positive">
+          <p className="mb-4 text-[11px] font-bold uppercase tracking-[3px] text-positive">
             Plataforma de risco · mercado sucroenergético
           </p>
           <h1 className="mb-4 text-3xl font-black leading-tight sm:text-4xl">
@@ -101,7 +101,7 @@ export default async function HomePage() {
           <CartaoPreco className="right-4 top-4 sm:right-6 sm:top-6" rotulo="USD / BRL" valor="R$ 5,72" variacao="▼ −0,21%" alta={false} />
           <CartaoPreco className="bottom-10 right-4 sm:right-6" rotulo="Açúcar NY nº 11" valor="18,42" unidade="¢/lb" variacao="▲ +0,83% hoje" alta />
 
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] text-foreground/40">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] text-foreground/40">
             Foto de{' '}
             <a
               href="https://unsplash.com/pt-br/@joshwithers?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText"

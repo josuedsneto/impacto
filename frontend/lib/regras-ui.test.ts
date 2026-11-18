@@ -44,3 +44,11 @@ describe("regras de UI", () => {
     expect(violacoes(arquivo)).toEqual([]);
   });
 });
+
+// UXA-09: os primitivos gerados do shadcn que têm cor fixa de branco/preto usam tokens (AD-008).
+describe("tokens nos primitivos de UI", () => {
+  it.each(["components/ui/button.tsx", "components/ui/slider.tsx"])("%s sem text-white/bg-white", (arquivo) => {
+    const texto = readFileSync(join(RAIZ, arquivo), "utf-8");
+    expect(/\b(?:text|bg)-white\b/.test(texto)).toBe(false);
+  });
+});
