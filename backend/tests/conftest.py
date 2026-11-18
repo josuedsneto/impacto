@@ -72,7 +72,7 @@ class _Query:
         if self.op == "insert":
             for linha in self.linhas if isinstance(self.linhas, list) else [self.linhas]:
                 novo_id = str(uuid.uuid4())
-                tabela[novo_id] = {"id": novo_id, **linha}
+                tabela[novo_id] = {"id": novo_id, "created_at": str(len(tabela)), **linha}
             return _Resp([])
         if self.op in ("update", "delete"):
             alvo = [(k, r) for k, r in tabela.items() if all(f(r) for f in self.filtros)]

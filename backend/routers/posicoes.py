@@ -2,8 +2,8 @@
 from datetime import date, timedelta
 from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from pydantic import BaseModel, ConfigDict, Field
 
 import market_cache
 from auth import get_current_user
@@ -24,13 +24,17 @@ MSG_PRECO = "Não foi possível obter os preços de {} agora. Tente novamente em
 MSG_SEM_ACESSO = "Usuário não associado a esta usina."
 
 
+UUID_PADRAO = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+
 class PosicaoBase(BaseModel):
     """Campos de uma posição, sem safra (o lote traz a safra no topo)."""
+    model_config = ConfigDict(allow_inf_nan=False)
     instrumento: Literal["fixacao_acucar", "futuro_acucar", "ndf_dolar", "opcao_acucar", "opcao_dolar"]
-    volume: float = Field(gt=0)
-    preco_fixado: float = Field(gt=0)
-    cambio_fixado: Optional[float] = Field(default=None, gt=0)
-    premio: float = Field(default=0, ge=0)
+    volume: float = Field(gt=0, lt=1e13)  # abaixo do limite de NUMERIC(16,2)
+    preco_fixado: float = Field(gt=0, lt=1e6)
+    cambio_fixado: Optional[float] = Field(default=None, gt=0, lt=1e6)
+    premio: float = Field(default=0, ge=0, lt=1e6)
     vencimento: Optional[date] = None
     contraparte: Optional[str] = Field(default=None, max_length=120)
     observacao: Optional[str] = Field(default=None, max_length=300)
@@ -41,21 +45,22 @@ class PosicaoIn(PosicaoBase):
 
 
 class PosicaoCreate(PosicaoIn):
-    usina_id: str
+    usina_id: str = Field(pattern=UUID_PADRAO)
 
 
 class LotePosicoes(BaseModel):
-    usina_id: str
+    usina_id: str = Field(pattern=UUID_PADRAO)
     safra: str = Field(pattern=r"^\d{4}/\d{2}$")
     posicoes: list[PosicaoBase] = Field(max_length=LOTE_MAX)
 
 
 class PoliticaIn(BaseModel):
-    usina_id: str
+    model_config = ConfigDict(allow_inf_nan=False)
+    usina_id: str = Field(pattern=UUID_PADRAO)
     safra: str = Field(pattern=r"^\d{4}/\d{2}$")
     minimo_pct: Optional[float] = Field(default=None, ge=0, le=100)
     maximo_pct: Optional[float] = Field(default=None, ge=0, le=100)
-    producao_estimada_t: Optional[float] = Field(default=None, gt=0)
+    producao_estimada_t: Optional[float] = Field(default=None, gt=0, lt=1e13)
 
 
 # ── Cálculos puros ─────────────────────────────────────────────────────────────
@@ -176,12 +181,12 @@ def criar_lote(request: Request, body: LotePosicoes, user: Annotated[dict, Depen
 
 @router.get("/posicoes/resumo")
 @limiter.limit("30/minute")
-def resumo(request: Request, usina_id: str, safra: str, user: Annotated[dict, Depends(get_current_user)]):
+def resumo(request: Request, usina_id: Annotated[str, Query(pattern=UUID_PADRAO)], safra: str, user: Annotated[dict, Depends(get_current_user)]):
     supa = market_cache.supa_client()
     if not _membro(supa, user["id"], usina_id):
         raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)
     posicoes = (
-        supa.table("posicoes").select("*").eq("usina_id", usina_id).eq("safra", safra).execute()
+        supa.table("posicoes").select("*").eq("usina_id", usina_id).eq("safra", safra).order("created_at").execute()
     ).data
     pol = (
         supa.table("politica_hedge").select("*").eq("usina_id", usina_id).eq("safra", safra).execute()
@@ -200,7 +205,7 @@ def resumo(request: Request, usina_id: str, safra: str, user: Annotated[dict, De
 
 @router.put("/posicoes/{pos_id}")
 @limiter.limit("20/minute")
-def atualizar_posicao(request: Request, pos_id: str, body: PosicaoIn, user: Annotated[dict, Depends(get_current_user)]):
+def atualizar_posicao(request: Request, pos_id: Annotated[str, Path(pattern=UUID_PADRAO)], body: PosicaoIn, user: Annotated[dict, Depends(get_current_user)]):
     supa = market_cache.supa_client()
     atual = supa.table("posicoes").select("usina_id").eq("id", pos_id).execute().data
     if not atual or not _membro(supa, user["id"], atual[0]["usina_id"]):
@@ -212,7 +217,7 @@ def atualizar_posicao(request: Request, pos_id: str, body: PosicaoIn, user: Anno
 
 @router.delete("/posicoes/{pos_id}")
 @limiter.limit("20/minute")
-def apagar_posicao(request: Request, pos_id: str, user: Annotated[dict, Depends(get_current_user)]):
+def apagar_posicao(request: Request, pos_id: Annotated[str, Path(pattern=UUID_PADRAO)], user: Annotated[dict, Depends(get_current_user)]):
     supa = market_cache.supa_client()
     atual = supa.table("posicoes").select("usina_id").eq("id", pos_id).execute().data
     if not atual or not _membro(supa, user["id"], atual[0]["usina_id"]):
@@ -223,7 +228,7 @@ def apagar_posicao(request: Request, pos_id: str, user: Annotated[dict, Depends(
 
 @router.get("/politica-hedge")
 @limiter.limit("30/minute")
-def politica_get(request: Request, usina_id: str, safra: str, user: Annotated[dict, Depends(get_current_user)]):
+def politica_get(request: Request, usina_id: Annotated[str, Query(pattern=UUID_PADRAO)], safra: str, user: Annotated[dict, Depends(get_current_user)]):
     supa = market_cache.supa_client()
     if not _membro(supa, user["id"], usina_id):
         raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)

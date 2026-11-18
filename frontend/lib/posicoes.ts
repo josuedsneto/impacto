@@ -66,20 +66,23 @@ export function validarPosicao(d: PosicaoDados): string[] {
   const motivos: string[] = [];
   if (!SAFRA_RE.test(d.safra)) motivos.push("safra deve ser no formato 2026/27");
   if (!(d.instrumento in INSTRUMENTOS)) motivos.push("instrumento desconhecido");
-  if (!(d.volume > 0)) motivos.push("volume deve ser maior que zero");
-  if (!(d.preco_fixado > 0)) motivos.push("preço fixado deve ser maior que zero");
-  if (d.cambio_fixado !== null && !(d.cambio_fixado > 0)) motivos.push("câmbio fixado deve ser maior que zero");
-  if (!(d.premio >= 0)) motivos.push("prêmio não pode ser negativo");
+  // Mesmos limites de routers/posicoes.py. NaN cai em todas as comparações (não passa).
+  if (!(d.volume > 0 && d.volume < 1e13)) motivos.push("volume deve ser maior que zero e menor que 10 trilhões");
+  if (!(d.preco_fixado > 0 && d.preco_fixado < 1e6)) motivos.push("preço fixado deve ser maior que zero");
+  if (d.cambio_fixado !== null && !(d.cambio_fixado > 0 && d.cambio_fixado < 1e6)) motivos.push("câmbio fixado deve ser maior que zero");
+  if (!(d.premio >= 0 && d.premio < 1e6)) motivos.push("prêmio deve ser zero ou positivo");
+  if (d.contraparte && d.contraparte.length > 120) motivos.push("contraparte com mais de 120 caracteres");
+  if (d.observacao && d.observacao.length > 300) motivos.push("observação com mais de 300 caracteres");
   return motivos;
 }
 
 /** Número em formato pt-BR ("1.234,56") ou em ponto ("20.5"). Vazio → null; inválido → NaN. */
-export function parseNumero(s: string): number | null {
+export function parseNumero(s: string, milhar = false): number | null {
   const t = s.trim();
   if (!t) return null;
-  // "1.000" e "1.234.567" são milhar; "20.5" continua decimal.
-  const milhar = /^-?\d{1,3}(\.\d{3})+$/.test(t);
-  const n = Number(t.includes(",") || milhar ? t.replace(/\./g, "").replace(",", ".") : t);
+  // Sem milhar, "5.250" é decimal (5,25 no ponto). Com milhar (volume e produção), "1.000" é 1000.
+  const ehMilhar = milhar && /^-?\d{1,3}(\.\d{3})+$/.test(t);
+  const n = Number(t.includes(",") || ehMilhar ? t.replace(/\./g, "").replace(",", ".") : t);
   return Number.isFinite(n) ? n : NaN;
 }
 
@@ -88,8 +91,11 @@ function parseData(s: string): string | null | false {
   const t = s.trim();
   if (!t) return null;
   const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
-  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
-  return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : false;
+  const iso = br ? `${br[3]}-${br[2]}-${br[1]}` : t;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  // Data real: rejeita 31/02 e 2027-13-45, que o Date normalizaria em silêncio.
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso ? false : iso;
 }
 
 /** Uma linha de CSV com ";" como separador e aspas duplas (com "" para aspa interna). */
@@ -146,8 +152,15 @@ export interface ResultadoImportacao {
 /** Lê o CSV de posições. Tudo ou nada: se há erro, a tela não envia nada. */
 export function parseCsvPosicoes(texto: string, safraEsperada: string): ResultadoImportacao {
   const linhas = texto.replace(/^﻿/, "").split(/\r?\n/);
-  const hi = linhas.findIndex((l) => l.trim() !== "");
-  if (hi < 0) return { posicoes: [], erros: [], cabecalho: "O arquivo está vazio." };
+  // A linha de cabeçalho é a que tem Instrumento e Volume: assim o próprio CSV exportado (que traz
+  // um bloco de parâmetros antes da tabela) volta a ser importável.
+  const cabecalhoIdx = linhas.findIndex((l) => {
+    const c = linhaCsv(l).map(semAcento);
+    return c.some((n) => n.startsWith("instrumento")) && c.some((n) => n.startsWith("volume"));
+  });
+  const primeiraNaoVazia = linhas.findIndex((l) => l.trim() !== "");
+  if (primeiraNaoVazia < 0) return { posicoes: [], erros: [], cabecalho: "O arquivo está vazio." };
+  const hi = cabecalhoIdx >= 0 ? cabecalhoIdx : primeiraNaoVazia;
 
   const cols = linhaCsv(linhas[hi]).map(semAcento);
   const idx: Record<string, number> = {};
@@ -168,7 +181,7 @@ export function parseCsvPosicoes(texto: string, safraEsperada: string): Resultad
     const instrumento = instrumentoDe(g("instrumento"));
     const data = parseData(g("vencimento"));
     const texto_ = (k: string) => g(k) || null;
-    const volume = parseNumero(g("volume"));
+    const volume = parseNumero(g("volume"), true);
     const preco = parseNumero(g("preco"));
     const cambio = parseNumero(g("cambio"));
     const premio = parseNumero(g("premio"));

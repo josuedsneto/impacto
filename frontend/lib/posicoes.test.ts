@@ -9,7 +9,9 @@ describe("parseNumero", () => {
     expect(parseNumero("1.234,56")).toBe(1234.56);
     expect(parseNumero("20,5")).toBe(20.5);
     expect(parseNumero("20.5")).toBe(20.5);
-    expect(parseNumero("1.000")).toBe(1000);
+    // Preço com ponto é decimal; só volume/produção leem ponto como milhar.
+    expect(parseNumero("5.250")).toBe(5.25);
+    expect(parseNumero("1.000", true)).toBe(1000);
   });
   it("vazio é null e lixo é NaN", () => {
     expect(parseNumero("  ")).toBeNull();
@@ -28,8 +30,8 @@ describe("validarPosicao", () => {
     cambio_fixado: 5, premio: 0, vencimento: null, contraparte: null, observacao: null };
   it("aceita posição válida", () => expect(validarPosicao(ok)).toEqual([]));
   it("rejeita volume zero, NaN e instrumento inválido", () => {
-    expect(validarPosicao({ ...ok, volume: 0 })).toContain("volume deve ser maior que zero");
-    expect(validarPosicao({ ...ok, volume: NaN })).toContain("volume deve ser maior que zero");
+    expect(validarPosicao({ ...ok, volume: 0 })).toContain("volume deve ser maior que zero e menor que 10 trilhões");
+    expect(validarPosicao({ ...ok, volume: NaN })).toContain("volume deve ser maior que zero e menor que 10 trilhões");
     expect(validarPosicao({ ...ok, instrumento: "x" as never })).toContain("instrumento desconhecido");
   });
 });
@@ -48,7 +50,7 @@ describe("parseCsvPosicoes", () => {
   it("aponta o número da linha do arquivo com erro e não devolve nenhuma posição válida parcial", () => {
     const csv = `${CAB}\n${SAFRA};fixacao_acucar;1000;20;;;;;\n${SAFRA};opcao_acucar;0;15;;;;;`;
     const r = parseCsvPosicoes(csv, SAFRA);
-    expect(r.erros).toEqual([{ linha: 3, motivo: "volume deve ser maior que zero" }]);
+    expect(r.erros).toEqual([{ linha: 3, motivo: "volume deve ser maior que zero e menor que 10 trilhões" }]);
     expect(r.posicoes).toHaveLength(1);
   });
 
@@ -57,6 +59,25 @@ describe("parseCsvPosicoes", () => {
       .toContain("safra deve ser 2026/27");
     const sem = parseCsvPosicoes("Safra;Instrumento;Volume\n2026/27;fixacao_acucar;1", SAFRA);
     expect(sem.cabecalho).toContain("Preço fixado");
+  });
+
+  it("reimporta o CSV exportado (bloco de parâmetros antes da tabela)", () => {
+    const resumo = {
+      pct_fixado: 25, minimo_pct: 40, maximo_pct: 60, producao_estimada_t: 4000,
+      preco_medio_cents_lb: 20, preco_medio_rs_t: null, mtm_total_rs: 0, status: "abaixo", avisos: [],
+      sb_fechamento: 18, usdbrl_fechamento: 5, data_sb: "2026-11-17", data_usdbrl: "2026-11-17",
+      posicoes: [{ id: "p1", safra: SAFRA, instrumento: "fixacao_acucar" as const, volume: 1000, preco_fixado: 20,
+        cambio_fixado: 5, premio: 0, vencimento: "2027-03-15", contraparte: null, observacao: null, unidade: "t" as const, mtm_rs: 1 }],
+    };
+    const r = parseCsvPosicoes(gerarCsvPosicoes({ usina: "A", safra: SAFRA, resumo }), SAFRA);
+    expect(r.cabecalho).toBeUndefined();
+    expect(r.erros).toEqual([]);
+    expect(r.posicoes[0]).toMatchObject({ instrumento: "fixacao_acucar", volume: 1000, vencimento: "2027-03-15" });
+  });
+
+  it("rejeita data que não existe (31/02)", () => {
+    const r = parseCsvPosicoes(`${CAB}\n${SAFRA};fixacao_acucar;1;1;;;31/02/2027;;`, SAFRA);
+    expect(r.erros[0].motivo).toContain("vencimento");
   });
 
   it("recusa mais de 500 linhas", () => {

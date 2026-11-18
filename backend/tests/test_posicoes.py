@@ -7,8 +7,8 @@ import market_cache
 from conftest import dias_uteis
 from routers.posicoes import FATOR, calcular_mtm, resumo_safra
 
-USINA = "usina-1"
-ALHEIA = "usina-2"
+USINA = "11111111-1111-1111-1111-111111111111"
+ALHEIA = "22222222-2222-2222-2222-222222222222"
 
 
 def _pos(**kw):
@@ -126,11 +126,11 @@ def test_lote_insere_tudo_com_safra_do_topo(api, usinas):
 
 
 def test_editar_e_apagar_posicao_alheia_responde_404(api, usinas):
-    usinas.db["posicoes"] = {"p9": {"id": "p9", "usina_id": ALHEIA, "safra": "2026/27",
+    usinas.db["posicoes"] = {"99999999-9999-9999-9999-999999999999": {"id": "99999999-9999-9999-9999-999999999999", "usina_id": ALHEIA, "safra": "2026/27",
                                      "instrumento": "fixacao_acucar", "volume": 1, "preco_fixado": 1}}
-    assert api.put("/api/posicoes/p9", json={**_corpo(), "usina_id": USINA}).status_code == 404
-    assert api.delete("/api/posicoes/p9").status_code == 404
-    assert "p9" in usinas.db["posicoes"]
+    assert api.put("/api/posicoes/99999999-9999-9999-9999-999999999999", json={**_corpo(), "usina_id": USINA}).status_code == 404
+    assert api.delete("/api/posicoes/99999999-9999-9999-9999-999999999999").status_code == 404
+    assert "99999999-9999-9999-9999-999999999999" in usinas.db["posicoes"]
 
 
 def test_editar_e_apagar_posicao_propria(api, usinas):
@@ -185,6 +185,16 @@ def test_politica_upsert_substitui_e_valida_faixa(api, usinas):
     assert api.put(url, json={**base, "minimo_pct": 50, "maximo_pct": 70}).status_code == 200
     assert api.get(url, params={"usina_id": USINA, "safra": "2026/27"}).json()["minimo_pct"] == 50
     assert api.put(url, json={**base, "minimo_pct": 80, "maximo_pct": 20}).status_code == 422
+
+
+def test_id_que_nao_e_uuid_responde_422_e_nao_500(api, usinas):
+    assert api.get("/api/posicoes/resumo", params={"usina_id": "abc", "safra": "2026/27"}).status_code == 422
+    assert api.delete("/api/posicoes/abc").status_code == 422
+
+
+def test_volume_fora_do_limite_ou_infinito_responde_422(api, usinas):
+    assert api.post("/api/posicoes", json=_corpo(volume=1e20)).status_code == 422
+    assert api.post("/api/posicoes", content=b'{"usina_id":"usina-1"}', headers={"Content-Type": "application/json"}).status_code == 422
 
 
 def _por_preco(valor):

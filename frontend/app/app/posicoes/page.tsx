@@ -71,8 +71,17 @@ export default function PosicoesPage() {
       .catch((e) => setErro((e as Error).message));
   }, []);
 
+  // Trocar usina ou safra invalida o que estava na tela: importação, edição e resumo antigo.
+  useEffect(() => {
+    setImportacao(null);
+    setEditandoId(null);
+    setForm(FORM_VAZIO);
+    setResumo(null);
+  }, [usinaId, safra]);
+
   const carregar = useCallback(async () => {
-    if (!usinaId) return;
+    // Só busca com safra completa: evita uma requisição (e um 429) por tecla digitada.
+    if (!usinaId || !/^\d{4}\/\d{2}$/.test(safra)) return;
     setCarregando(true);
     setErro(null);
     try {
@@ -98,7 +107,7 @@ export default function PosicoesPage() {
   async function salvarPolitica() {
     const minimo = parseNumero(politica.minimo);
     const maximo = parseNumero(politica.maximo);
-    const producao = parseNumero(politica.producao);
+    const producao = parseNumero(politica.producao, true);
     if ((minimo !== null && Number.isNaN(minimo)) || (maximo !== null && Number.isNaN(maximo)) || (producao !== null && Number.isNaN(producao))) {
       toast.error("Use números nos campos da política.");
       return;
@@ -134,7 +143,7 @@ export default function PosicoesPage() {
     const dados: PosicaoDados = {
       safra,
       instrumento: form.instrumento,
-      volume: parseNumero(form.volume) ?? NaN,
+      volume: parseNumero(form.volume, true) ?? NaN,
       preco_fixado: parseNumero(form.preco) ?? NaN,
       cambio_fixado: parseNumero(form.cambio),
       premio: parseNumero(form.premio) ?? 0,
@@ -237,9 +246,9 @@ export default function PosicoesPage() {
       {erro && <ErrorState mensagem={erro} onRetry={carregar} />}
       {!erro && carregando && !resumo && <Skeleton className="h-40 w-full" />}
 
-      {resumo && (
+      {usinaId && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {resumo && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardHeader><CardTitle className="text-sm font-medium text-muted-foreground">% fixado da safra</CardTitle></CardHeader>
               <CardContent>
@@ -273,9 +282,9 @@ export default function PosicoesPage() {
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </div>}
 
-          {resumo.avisos.length > 0 && (
+          {resumo && resumo.avisos.length > 0 && (
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               {resumo.avisos.map((a) => <li key={a}>{a}</li>)}
             </ul>
@@ -317,7 +326,7 @@ export default function PosicoesPage() {
             </CardContent>
           </Card>
 
-          {resumo.posicoes.length === 0 ? (
+          {resumo && (resumo.posicoes.length === 0 ? (
             <EmptyState mensagem="Esta safra ainda não tem posições. Registre a primeira acima ou importe a planilha da carteira." />
           ) : (
             <div className="overflow-x-auto">
@@ -349,7 +358,7 @@ export default function PosicoesPage() {
                 </TableBody>
               </Table>
             </div>
-          )}
+          ))}
         </>
       )}
 
