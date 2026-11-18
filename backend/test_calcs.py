@@ -22,9 +22,14 @@ assert abs(mc - bs) / bs < 0.02, (mc, bs)
 mc_call_price(S=20, K=21, T=30, r=0.1, sigma=0.3, num_simulacoes=100_000)
 
 # Custom volatility is annual: 25% a.a. over 252 days → P5..P95 spread ≈ ±41%, not clipped to the bounds.
-r = run_simulation("SB=F", 20.0, dias_simulados=252, num_simulacoes=20_000, pct_bound=2.0, volatilidade_custom=0.25)
+r = run_simulation("SB=F", 20.0, dias_simulados=252, num_simulacoes=20_000, pct_bound=2.0, volatilidade_custom=0.25, seed=1)
 spread = np.log(r["p95"] / r["p5"]) / (2 * 1.645)
 assert abs(spread - 0.25) < 0.02, spread
 assert len(r["percentiles_series"]["p50"]) == 252
+
+# The reference band does not truncate paths: with a tight band and high vol, P95 leaves it.
+r = run_simulation("SB=F", 20.0, dias_simulados=252, num_simulacoes=20_000, pct_bound=0.05, volatilidade_custom=0.6, seed=2)
+assert r["p95"] > 20.0 * 1.05, r["p95"]
+assert r["pct_passou_limite"] > 0.5, r["pct_passou_limite"]
 
 print("ok")

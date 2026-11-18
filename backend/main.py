@@ -29,7 +29,7 @@ from auth import get_current_user, require_admin
 import market_cache
 from market_cache import get_prices, backfill_ticker, supa_client
 from analysis import compute_analysis, IndicatorConfig
-from simulation import run_simulation
+from simulation import run_simulation, DadosInsuficientesError
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from atr import calibrate_atr, predict_atr, get_sector_defaults
@@ -73,8 +73,8 @@ app.add_middleware(
 
 class SimulationRequest(BaseModel):
     ticker: str
-    preco_inicial: float
-    # Matches the frontend form limits; 1260 × 50k floats ≈ 500 MB peak.
+    preco_inicial: float = Field(gt=0, le=100_000)
+    # Simulated in day blocks (≤ 5M cells each), so peak memory does not grow with the product.
     dias_simulados: int = Field(default=252, ge=1, le=1260)
     num_simulacoes: int = Field(default=10_000, ge=1, le=50_000)
     pct_bound: float = Field(default=0.50, gt=0, le=2)
@@ -584,26 +584,31 @@ def create_simulation(
     SIM-01: Run MC simulation and persist results.
     Returns scalar metrics + percentiles_series for fan chart rendering.
     """
+    ticker = validate_ticker(body.ticker)
+
     # PARAM-01: fetch user's custom volatility for this ticker, if set
     client = supa_client()
     params_row = (
         client.table("user_parameters")
         .select("volatilidade_custom")
         .eq("user_id", user["id"])
-        .eq("ticker", body.ticker.strip().upper())
+        .eq("ticker", ticker)
         .limit(1)
         .execute()
     )
     volatilidade_custom = (params_row.data[0] if params_row.data else {}).get("volatilidade_custom")
 
-    result = run_simulation(
-        ticker=body.ticker.strip().upper(),
-        preco_inicial=body.preco_inicial,
-        dias_simulados=body.dias_simulados,
-        num_simulacoes=body.num_simulacoes,
-        pct_bound=body.pct_bound,
-        volatilidade_custom=volatilidade_custom,
-    )
+    try:
+        result = run_simulation(
+            ticker=ticker,
+            preco_inicial=body.preco_inicial,
+            dias_simulados=body.dias_simulados,
+            num_simulacoes=body.num_simulacoes,
+            pct_bound=body.pct_bound,
+            volatilidade_custom=volatilidade_custom,
+        )
+    except DadosInsuficientesError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     # Persist to simulations table with user_id (SIM-04: user isolation)
     client = supa_client()
@@ -614,6 +619,7 @@ def create_simulation(
         "dias_simulados": result["dias_simulados"],
         "num_simulacoes": result["num_simulacoes"],
         "pct_bound": result["pct_bound"],
+        "pct_passou_limite": result["pct_passou_limite"],
         "p5": result["p5"],
         "p20": result["p20"],
         "p25": result["p25"],
@@ -789,6 +795,7 @@ def upsert_params(
     user: Annotated[dict, Depends(get_current_user)],
 ):
     """PARAM-02: Upsert per-ticker simulation params for the authenticated user."""
+    ticker = validate_ticker(ticker)
     update_dict: dict = {}
     if body.volatilidade_custom is not None:
         update_dict["volatilidade_custom"] = body.volatilidade_custom
