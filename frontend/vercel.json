@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/aquecer-cache", "schedule": "0 6 * * 1-5" }
+  ]
+}
