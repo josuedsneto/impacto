@@ -11,6 +11,7 @@ const NAV_SECTIONS = [
       { href: "/app/fixacoes", label: "Mercado e sinais" },
       { href: "/app/market", label: "Preços diários" },
       { href: "/app/metas", label: "Metas" },
+      { href: "/app/posicoes", label: "Posições da safra" },
       { href: "/app/options", label: "Opções" },
     ],
   },

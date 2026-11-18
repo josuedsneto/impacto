@@ -1968,3 +1968,7 @@ def simular_cenarios(
         "percentis": percentis,
         "distribuicao": distribuicao,
     }
+
+# ── Posições da safra (routers/posicoes.py) ──
+from routers import posicoes as _posicoes  # noqa: E402
+app.include_router(_posicoes.router)
