@@ -132,3 +132,8 @@ export function leituraAtr(r: { chuva: N; impureza: N; atr: N; min: N; max: N; p
     `${formatNumber(r.atr, 1)} kg/t (entre ${formatNumber(r.min, 1)} e ${formatNumber(r.max, 1)} em 90% dos casos).`;
   return falta(r.producao) ? frase : `${frase} Produção estimada: ${formatNumber(r.producao! / 1000, 0)} mil toneladas.`;
 }
+
+export function leituraRiscoConjunto(r: { prob: N; meta: number; p50: N }) {
+  if (falta(r.prob, r.p50)) return AUSENTE;
+  return `Há ${probabilidade(r.prob!)} de chance de a receita ficar abaixo de ${formatBRL(r.meta)}/t. A receita mediana é ${formatBRL(r.p50)}/t.`;
+}
