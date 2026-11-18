@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   const [variacaoMax, setVariacaoMax] = useState("50");
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
+  const controle = useRef<AbortController | null>(null);
 
   // Faixas aceitas pela API (backend/main.py SimulationRequest)
   const FAIXAS = {
@@ -77,11 +78,13 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       return;
     }
     setLoading(true);
+    controle.current = new AbortController();
 
     try {
       const data = await apiFetch<SimulationResult>("/api/simulations", {
         method: "POST",
         timeoutMs: 120_000,
+        signal: controle.current.signal,
         body: JSON.stringify({
           ticker: ticker.trim().toUpperCase(),
           preco_inicial: lerNumero(precoInicial),
@@ -94,10 +97,16 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
       onResult(data);
       toast.success("Simulação concluída e salva no histórico.");
     } catch (e) {
-      toast.error((e as Error).message);
+      // Cancelado pelo usuário: volta ao formulário sem erro.
+      if ((e as Error).name !== "AbortError") toast.error((e as Error).message);
     } finally {
       setLoading(false);
+      controle.current = null;
     }
+  }
+
+  function cancelar() {
+    controle.current?.abort();
   }
 
   const unidade = unidadeAtivo(ticker);
@@ -165,9 +174,20 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         />
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Simulando..." : "Simular"}
-      </Button>
+      {loading && (
+        <p className="text-sm text-muted-foreground" role="status">
+          Isso pode levar até 1 minuto.
+        </p>
+      )}
+      {loading ? (
+        <Button type="button" variant="outline" onClick={cancelar} className="w-full">
+          Cancelar
+        </Button>
+      ) : (
+        <Button type="submit" className="w-full">
+          Simular
+        </Button>
+      )}
     </form>
   );
 }
