@@ -13,20 +13,20 @@ export interface HistoricoItem {
   atr_max: number;
   producao_total: number | null;
   compartilhado: boolean;
-  user_id: string;
+  /** true quando a simulação é do usuário logado (a API não devolve user_id). */
+  minha: boolean;
   created_at: string;
 }
 
 interface AtrHistoricoProps {
   historico: HistoricoItem[];
   onToggleShare: (id: string, compartilhado: boolean) => void;
-  currentUserId: string;
 }
 
 const eixo = { fontSize: 11, fill: "var(--muted-foreground)" };
 const kg = (v: number) => `${formatNumber(v, 1)} kg/t`;
 
-export function AtrHistorico({ historico, onToggleShare, currentUserId }: AtrHistoricoProps) {
+export function AtrHistorico({ historico, onToggleShare }: AtrHistoricoProps) {
   // A API devolve do mais recente para o mais antigo; o gráfico corre no tempo.
   const serie = [...historico].reverse().map((h) => ({
     data: formatDate(h.created_at),
@@ -86,7 +86,7 @@ export function AtrHistorico({ historico, onToggleShare, currentUserId }: AtrHis
                   )}
                 </TableCell>
                 <TableCell>
-                  {item.user_id === currentUserId && (
+                  {item.minha && (
                     <button
                       onClick={() => onToggleShare(item.id, !item.compartilhado)}
                       className="rounded border border-input bg-background px-3 py-1 text-xs font-medium hover:bg-muted"

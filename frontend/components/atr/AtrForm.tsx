@@ -25,6 +25,11 @@ export interface AtrResult {
   atr_esperado: number;
   atr_max: number;
   producao_total: number | null;
+  /** "usina" quando calibrado com medições reais; "setor" quando usa coeficientes padrão. */
+  calibracao: "usina" | "setor";
+  meses_usados: number;
+  /** Texto do backend quando a calibração usou o setor (null caso contrário). */
+  aviso: string | null;
   /** Valores informados, para a frase de leitura (preenchido pelo formulário, não pela API). */
   entrada?: { chuva_mm: number; impureza_pct: number };
 }

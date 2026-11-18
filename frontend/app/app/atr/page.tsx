@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
-import { createClient } from "@/lib/supabase/client";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraAtr } from "@/lib/leitura";
@@ -16,11 +15,6 @@ import AtrForm, { Usina, AtrResult } from "@/components/atr/AtrForm";
 import { AtrMetrics } from "@/components/atr/AtrMetrics";
 import { AtrHistorico, HistoricoItem } from "@/components/atr/AtrHistorico";
 
-async function getCurrentUserId(): Promise<string | null> {
-  const { data } = await createClient().auth.getSession();
-  return data.session?.user.id ?? null;
-}
-
 export default function AtrPage() {
   const [usinas, setUsinas] = useState<Usina[]>([]);
   const [usinasLoading, setUsinasLoading] = useState(true);
@@ -32,18 +26,13 @@ export default function AtrPage() {
   const [historicoError, setHistoricoError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("simular");
   const [selectedUsinaId, setSelectedUsinaId] = useState<string>("");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
       setUsinasLoading(true);
       setUsinasError(null);
       try {
-        const [data, userId] = await Promise.all([
-          apiFetch<{ usinas: Usina[] }>("/api/atr/usinas"),
-          getCurrentUserId(),
-        ]);
-        setCurrentUserId(userId);
+        const data = await apiFetch<{ usinas: Usina[] }>("/api/atr/usinas");
         setUsinas(data.usinas);
       } catch (e) {
         setUsinasError((e as Error).message);
@@ -210,7 +199,7 @@ export default function AtrPage() {
             <EmptyState mensagem="Nenhuma simulação para esta usina ainda." />
           )}
           {!historicoLoading && historico.length > 0 && (
-            <AtrHistorico historico={historico} onToggleShare={handleToggleShare} currentUserId={currentUserId ?? ""} />
+            <AtrHistorico historico={historico} onToggleShare={handleToggleShare} />
           )}
         </TabsContent>
       </Tabs>
