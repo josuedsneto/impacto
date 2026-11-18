@@ -32,7 +32,7 @@ cd frontend && npm ci && npm run dev
 ## Testes e checagens
 
 ```bash
-cd backend && pytest tests && python test_calcs.py && python test_mensagens.py   # API, cálculos e mensagens em português
+cd backend && pip install pytest==9.1.1 httpx==0.27.2 && pytest tests && python test_calcs.py && python test_mensagens.py   # API, cálculos e mensagens em português
 cd frontend && npm test && npm run build && npm run lint
 ```
 
