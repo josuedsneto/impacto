@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { formatCents } from "@/lib/format";
 import { AcucarResult } from "./AcucarForm";
 
@@ -12,20 +13,23 @@ export function AcucarMetrics({ result }: { result: AcucarResult }) {
   const metricas = [
     { rotulo: "Açúcar previsto", valor: formatCents(result.sb_f_previsto) },
     { rotulo: "Faixa provável", valor: `${formatCents(Math.max(result.sb_f_min, 0))} a ${formatCents(result.sb_f_max)}`, menor: true },
-    { rotulo: "Erro médio em anos não vistos", valor: formatCents(result.rmse_loo) },
+    { rotulo: "Erro médio em anos não vistos", valor: formatCents(result.rmse_loo), ajuda: "Quanto o modelo errou, em média, ao prever anos que ficaram de fora do ajuste (¢/lb)." },
     {
       rotulo: "Erro do chute 'mesmo preço do ano anterior'",
       valor: anoAnterior == null ? "—" : formatCents(anoAnterior),
     },
-    { rotulo: "Acerto fora da amostra (R²)", valor: r2, menor: true },
+    { rotulo: "Acerto fora da amostra (R²)", valor: r2, menor: true, ajuda: "Quanto do movimento do preço o modelo explicou em anos que não viu. Abaixo de zero, erra mais que a média." },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-      {metricas.map(({ rotulo, valor, menor }) => (
+      {metricas.map(({ rotulo, valor, menor, ajuda }) => (
         <Card key={rotulo}>
           <CardContent className="pt-6">
-            <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+            <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+              {rotulo}
+              {ajuda && <FieldTooltip text={ajuda} />}
+            </p>
             <p className={menor ? "text-lg font-bold tabular-nums" : "text-2xl font-bold tabular-nums"}>{valor}</p>
           </CardContent>
         </Card>

@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { toast } from "sonner";
-import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
+import { CampoNumero, errosDaApi, errosDosCampos } from "@/components/ui/campo-numero";
 import { lerNumero } from "@/lib/numero";
 
 export interface AcucarDefaults {
@@ -60,6 +60,7 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
   );
   const [modelType, setModelType] = useState<string>("ridge");
   const [loading, setLoading] = useState(false);
+  const [erros, setErros] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!defaults) return;
@@ -76,8 +77,10 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!CAMPOS.every((c) => campoValido(valores[c.chave], FAIXA))) {
-      toast.error("Preencha todos os campos com números antes de calcular.");
+    const novosErros = errosDosCampos(CAMPOS, valores, FAIXA);
+    setErros(novosErros);
+    if (Object.keys(novosErros).length) {
+      toast.error("Revise os campos destacados.");
       return;
     }
     setLoading(true);
@@ -94,7 +97,12 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
       onResult(data);
       toast.success("Previsão calculada e salva no histórico.");
     } catch (e) {
-      toast.error((e as Error).message);
+      if (e instanceof ApiError && e.campos) {
+        setErros(errosDaApi(e.campos, CAMPOS));
+        toast.error("Revise os campos destacados.");
+      } else {
+        toast.error((e as Error).message);
+      }
     } finally {
       setLoading(false);
     }
@@ -111,7 +119,11 @@ export default function AcucarForm({ defaults, onResult }: AcucarFormProps) {
             unidade={c.unidade}
             ajuda={c.ajuda}
             valor={valores[c.chave]}
-            onChange={(t) => setValores((prev) => ({ ...prev, [c.chave]: t }))}
+            onChange={(t) => {
+              setValores((prev) => ({ ...prev, [c.chave]: t }));
+              setErros((prev) => ({ ...prev, [c.chave]: "" }));
+            }}
+            erro={erros[c.chave]}
             {...FAIXA}
             placeholder={c.placeholder}
             disabled={loading}

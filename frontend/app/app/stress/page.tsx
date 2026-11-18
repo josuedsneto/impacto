@@ -11,13 +11,7 @@ import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TickerSelect } from "@/components/market/TickerSelect";
 import {
   Table,
   TableBody,
@@ -110,18 +104,7 @@ export default function StressPage() {
         }
       />
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Ativo:</span>
-        <Select value={ticker} onValueChange={setTicker}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="SB=F">{nomeAtivo("SB=F")}</SelectItem>
-            <SelectItem value="USDBRL=X">{nomeAtivo("USDBRL=X")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <TickerSelect value={ticker} onChange={setTicker} />
 
       {loading && (
         <div className="space-y-2">

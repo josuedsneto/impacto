@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { FieldTooltip } from "@/components/ui/field-tooltip";
 import { formatFX, formatNumber } from "@/lib/format";
 import { DolarResult } from "./DolarForm";
 
@@ -16,9 +17,10 @@ export function DolarMetrics({ result }: { result: DolarResult }) {
   const metricas = [
     { rotulo: "Dólar no cenário", valor: formatFX(result.taxa_prevista) },
     { rotulo: "Dólar hoje", valor: formatFX(result.taxa_atual) },
-    { rotulo: "Acerto fora da amostra (R²)", valor: r2 },
+    { rotulo: "Acerto fora da amostra (R²)", valor: r2, ajuda: "Quanto do movimento do dólar o modelo explicou em meses que não viu. Abaixo de zero, erra mais que supor o câmbio parado." },
     {
       rotulo: "Erro médio fora da amostra",
+      ajuda: "Quanto o modelo errou, em média, em meses fora do ajuste (R$/US$).",
       valor: result.rmse_fora_amostra == null ? "—" : formatFX(result.rmse_fora_amostra),
     },
   ];
@@ -36,10 +38,13 @@ export function DolarMetrics({ result }: { result: DolarResult }) {
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-        {metricas.map(({ rotulo, valor }) => (
+        {metricas.map(({ rotulo, valor, ajuda }) => (
           <Card key={rotulo}>
             <CardContent className="pt-6">
-              <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+              <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                {rotulo}
+                {ajuda && <FieldTooltip text={ajuda} />}
+              </p>
               <p className="text-2xl font-bold tabular-nums">{valor}</p>
             </CardContent>
           </Card>

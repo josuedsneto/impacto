@@ -113,7 +113,7 @@ export default function SimulationPage() {
   return (
     <div>
       <PageHeader
-        titulo="Monte Carlo"
+        titulo="Simulação de preços (Monte Carlo)"
         descricao="Milhares de cenários de preço futuro a partir da volatilidade histórica do ativo."
         acoes={
           <BotaoExportar

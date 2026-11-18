@@ -145,7 +145,7 @@ export default function JumpDiffusionPage() {
             <CampoNumero
               id="jd-sigma"
               rotulo="Volatilidade diária"
-              unidade="%"
+              unidade="% ao dia"
               ajuda="Quanto o preço oscila em um dia normal. Em branco, usa a volatilidade dos últimos 3 anos."
               valor={sigma}
               onChange={setSigma}
@@ -173,7 +173,7 @@ export default function JumpDiffusionPage() {
               id="jd-mu-jump"
               rotulo="Tamanho médio do salto"
               unidade="%"
-              ajuda="Variação típica do preço em cada choque. -2 significa uma queda de 2%."
+              ajuda="Variação típica do preço em cada choque. Use -2 para uma queda de 2%, ou 2 para uma alta de 2%."
               valor={muJump}
               onChange={setMuJump}
               {...FAIXAS.muJump}

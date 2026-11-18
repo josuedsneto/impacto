@@ -142,7 +142,7 @@ export default function BreakevenPage() {
   return (
     <div>
       <PageHeader
-        titulo="Breakeven do açúcar"
+        titulo="Preço de equilíbrio do açúcar (R$/saca)"
         descricao="Converte o preço de NY e o câmbio em R$/saca, com dados ao vivo ou valores informados por você."
         acoes={
           <BotaoExportar

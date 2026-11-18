@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/feedback";
@@ -28,6 +28,9 @@ interface MetasResult {
   dolares: number[];
 }
 
+const CHAVE_META = "metas.ultimaMeta";
+const META_PADRAO = 2600;
+
 // Escala divergente: verde acima da meta, vermelho abaixo; mais forte além de ±200 R$/t.
 function cellClass(v: number): string {
   if (v >= 200) return "bg-positive/25 text-positive font-bold";
@@ -37,14 +40,25 @@ function cellClass(v: number): string {
 }
 
 export default function MetasPage() {
-  const [meta, setMeta] = useState(2600);
+  // Meta padrão: a última usada neste navegador (o backend não guarda meta); sem ela, R$ 2.600/t.
+  const [meta, setMeta] = useState(META_PADRAO);
+  const [origemMeta, setOrigemMeta] = useState<"padrao" | "ultima">("padrao");
   const [result, setResult] = useState<MetasResult | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const salva = Number(localStorage.getItem(CHAVE_META));
+    if (Number.isFinite(salva) && salva > 0) {
+      setMeta(salva);
+      setOrigemMeta("ultima");
+    }
+  }, []);
 
   async function handleCalc() {
     setLoading(true);
     try {
       setResult(await apiFetch<MetasResult>(`/api/metas?meta=${meta}`));
+      localStorage.setItem(CHAVE_META, String(meta));
     } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
@@ -84,10 +98,16 @@ export default function MetasPage() {
         <CardHeader><CardTitle className="text-sm font-medium">Meta (R$/t)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Meta: <span className="font-bold tabular-nums">{formatBRL(meta)}/t</span></Label>
+            <Label>
+              Meta: <span className="font-bold tabular-nums">{formatBRL(meta)}/t</span>
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {origemMeta === "ultima" ? "· última meta usada neste navegador" : "· valor padrão"}
+              </span>
+            </Label>
           </div>
+          {/* A faixa cobre a meta salva mesmo que esteja fora de 2.400–2.800. */}
           <Slider
-            min={2400} max={2800} step={10}
+            min={Math.min(2400, meta)} max={Math.max(2800, meta)} step={10}
             value={[meta]}
             onValueChange={([v]) => setMeta(v)}
             thumbLabel="Meta de preço (R$/t)"

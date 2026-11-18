@@ -12,9 +12,26 @@ export const MSG_TIMEOUT = "O servidor demorou demais para responder. Tente nova
 export const MSG_VALIDACAO = "Algum campo está fora do intervalo permitido.";
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  /** Erro por campo (422 do Pydantic): nome do campo na API → "Valor inválido.". */
+  campos?: Record<string, string>;
+  constructor(message: string, public status: number, campos?: Record<string, string>) {
     super(message);
+    this.campos = campos;
   }
+}
+
+/** Campos apontados pelo 422 do FastAPI: detail = [{ loc: ["body", "campo"], msg }]. */
+export function camposDeErro(body: unknown): Record<string, string> | undefined {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  if (!Array.isArray(detail)) return undefined;
+  const campos: Record<string, string> = {};
+  for (const item of detail) {
+    const loc = (item as { loc?: unknown }).loc;
+    if (!Array.isArray(loc)) continue;
+    const nome = loc.filter((p) => typeof p === "string").at(-1);
+    if (typeof nome === "string") campos[nome] = "Valor inválido.";
+  }
+  return Object.keys(campos).length ? campos : undefined;
 }
 
 /** Mensagem para o usuário a partir do corpo de erro da API. */
@@ -61,11 +78,16 @@ async function requisitar(path: string, init: RequestInit, timeoutMs: number) {
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // Cancelamento do chamador (init.signal) e tempo limite valem juntos.
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   try {
-    return await fetch(`${API_URL}${path}`, { ...init, headers, signal: AbortSignal.timeout(timeoutMs) });
-  } catch (e) {
-    // AbortSignal.timeout lança TimeoutError: não é falta de conexão (FD-08).
-    if (e instanceof DOMException && e.name === "TimeoutError") throw new ApiError(MSG_TIMEOUT, 0);
+    return await fetch(`${API_URL}${path}`, { ...init, headers, signal });
+  } catch {
+    // Cancelado pelo chamador: não é erro de rede, o chamador decide o que mostrar.
+    if (init.signal?.aborted) throw new DOMException("Cancelado pelo usuário", "AbortError");
+    // Estourou o tempo limite: não é falta de conexão (FD-08).
+    if (timeout.aborted) throw new ApiError(MSG_TIMEOUT, 0);
     throw new ApiError(MSG_REDE, 0);
   }
 }
@@ -91,6 +113,8 @@ export async function apiFetch<T = unknown>(
   }
 
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(mensagemDeErro(body), res.status);
+  // Cancelado depois que os cabeçalhos chegaram: não devolve corpo vazio como sucesso.
+  if (rest.signal?.aborted) throw new DOMException("Cancelado pelo usuário", "AbortError");
+  if (!res.ok) throw new ApiError(mensagemDeErro(body), res.status, camposDeErro(body));
   return body as T;
 }

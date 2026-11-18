@@ -19,7 +19,7 @@ const FERRAMENTAS: string[] = [
     "app/app/jump-diffusion/page.tsx",
     "app/app/risco/page.tsx",
     "app/app/risco-conjunto/page.tsx",
-    "app/app/cenarios/page.tsx",
+    "app/app/breakeven-safra/page.tsx",
     "app/app/metas/page.tsx",
     "app/app/breakeven/page.tsx",
     "app/app/regressao-dolar/page.tsx",

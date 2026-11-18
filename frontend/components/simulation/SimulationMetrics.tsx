@@ -7,9 +7,9 @@ import { SimulationResult } from "./SimulationForm";
 export default function SimulationMetrics({ result }: { result: SimulationResult }) {
   const fmt = (v: number) => formatPreco(result.ticker, v);
   const metricas = [
-    { rotulo: "P5 (pessimista)", valor: result.p5 },
-    { rotulo: "P50 (mediana)", valor: result.p50, destaque: true },
-    { rotulo: "P95 (otimista)", valor: result.p95 },
+    { rotulo: "Cenário ruim (5% das chances)", valor: result.p5 },
+    { rotulo: "Cenário central", valor: result.p50, destaque: true },
+    { rotulo: "Cenário bom", valor: result.p95 },
   ];
 
   return (

@@ -200,8 +200,8 @@ export default function ArimaPage() {
   return (
     <div>
       <PageHeader
-        titulo="Previsão de preço (ARIMA)"
-        descricao="Projeção estatística do preço para os próximos dias, com intervalo de 95% de confiança."
+        titulo="Projeção de preço"
+        descricao="Projeção do preço para os próximos dias com o modelo estatístico ARIMA, com intervalo de 95% de confiança."
       />
 
       <Tabs value={tab} onValueChange={setTab}>

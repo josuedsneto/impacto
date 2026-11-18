@@ -7,15 +7,12 @@ import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatDate, formatPercent } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraVolatilidade } from "@/lib/leitura";
-import { ATIVOS, nomeAtivo } from "@/lib/ativos";
+import { nomeAtivo } from "@/lib/ativos";
+import { TickerSelect } from "@/components/market/TickerSelect";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { FieldTooltip } from "@/components/ui/field-tooltip";
 import {
   LineChart,
   Line,
@@ -179,20 +176,8 @@ function VolPanel({ ticker }: { ticker: string }) {
   );
 }
 
-const QUICK_TICKERS = [
-  { label: ATIVOS["SB=F"].nome, value: "SB=F" },
-  { label: ATIVOS["USDBRL=X"].nome, value: "USDBRL=X" },
-];
-
 export default function VolatilityPage() {
-  const [input, setInput] = useState("SB=F");
   const [ticker, setTicker] = useState("SB=F");
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const t = input.trim().toUpperCase();
-    if (t) setTicker(t);
-  }
 
   return (
     <div className="space-y-6">
@@ -202,31 +187,7 @@ export default function VolatilityPage() {
         descricao="Quanto o preço oscilou de fato em 30 dias, 90 dias e 1 ano, em base anual."
       />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
-        <Label htmlFor="vol-ticker">Ativo (código Yahoo)</Label>
-        <FieldTooltip text="Escolha um dos atalhos ou digite o código do ativo no Yahoo Finance, ex.: PETR4.SA." />
-        <div className="flex gap-2">
-          <Input
-            id="vol-ticker"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="SB=F"
-          />
-          <Button type="submit">Calcular</Button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {QUICK_TICKERS.map(({ label, value }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => { setInput(value); setTicker(value); }}
-              className="text-xs px-2 py-1 rounded border border-input hover:bg-accent transition-colors"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </form>
+      <TickerSelect value={ticker} onChange={setTicker} />
 
       <VolPanel ticker={ticker} />
     </div>
