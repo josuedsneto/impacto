@@ -125,15 +125,20 @@ export default function MetasPage() {
                   {result.acucares.map((a, i) => (
                     <tr key={a}>
                       <td className="px-2 py-1 font-medium text-muted-foreground">{formatNumber(a, 2)}</td>
-                      {result.heatmap[i].map((v, j) => (
+                      {result.heatmap[i].map((v, j) => {
+                        // HARD-05: o centro do mapa é o preço de hoje (último fechamento)
+                        const atual = i === Math.floor(result.acucares.length / 2) && j === Math.floor(result.dolares.length / 2);
+                        return (
                         <td
                           key={j}
-                          className={`min-w-[72px] px-2 py-1 text-center tabular-nums ${cellClass(v)}`}
+                          aria-current={atual ? "true" : undefined}
+                          className={`min-w-[72px] px-2 py-1 text-center tabular-nums ${cellClass(v)} ${atual ? "font-bold ring-2 ring-ring" : ""}`}
                         >
                           {v > 0 ? "+" : ""}
                           {formatNumber(v, 0)}
                         </td>
-                      ))}
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

@@ -214,6 +214,14 @@ def get_prices(ticker: str, start: date, end: date) -> list[dict]:
             return linhas
 
 
+def serie_fechamentos(ticker: str, inicio: date, fim: Optional[date] = None) -> pd.Series:
+    """Fechamentos diários do cache (índice de datas, sem valores nulos). Vazia se não houver dados."""
+    linhas = [r for r in get_prices(ticker, inicio, fim or date.today()) if r["close"] is not None]
+    if not linhas:
+        return pd.Series(dtype=float)
+    return pd.Series([float(r["close"]) for r in linhas], index=pd.to_datetime([r["date"] for r in linhas]))
+
+
 def backfill_ticker(ticker: str, default_start: date = date(2013, 1, 1)) -> dict:
     """
     Backfill all available yfinance history for a ticker.
