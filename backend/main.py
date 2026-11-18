@@ -136,45 +136,17 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
     Falls back to None values if the BCB API is unavailable.
     """
     import asyncio
-    from bcb import Expectativas
+    from focus import fetch_indicator
 
     current_year = str(date.today().year)
-    today = date.today()
-    week_ago = today - timedelta(days=9)  # buffer for weekends
 
     indicators = ["IPCA", "Câmbio", "Selic", "PIB Total"]
     result = {}
 
-    def fetch_indicator(name: str) -> dict:
-        try:
-            expec = Expectativas()
-            ep = expec.get_endpoint("ExpectativasMercadoAnuais")
-            data = (
-                ep.query()
-                .filter(ep.Indicador == name)
-                .filter(ep.DataReferencia == current_year)
-                .filter(ep.baseCalculo == 0)
-                .filter(ep.Data >= str(week_ago))
-                .filter(ep.Data <= str(today))
-                .collect()
-            )
-            if data.empty:
-                return {"value": None, "delta": None}
-            data = data.sort_values("Data")
-            latest = float(data.iloc[-1]["Mediana"])
-            if len(data) >= 2:
-                prior = float(data.iloc[0]["Mediana"])
-                delta = round(latest - prior, 4)
-            else:
-                delta = None
-            return {"value": round(latest, 4), "delta": delta}
-        except Exception:
-            return {"value": None, "delta": None}
-
     # Run all indicator fetches in a thread pool to avoid blocking the event loop
     loop = asyncio.get_event_loop()
     tasks = [
-        loop.run_in_executor(None, fetch_indicator, name)
+        loop.run_in_executor(None, fetch_indicator, name, current_year)
         for name in indicators
     ]
     values = await asyncio.gather(*tasks)
@@ -1566,7 +1538,8 @@ def get_metas(
     ]
 
     acucares = [round(24 - 0.5 * i, 2) for i in range(11)]
-    dolares = [round(4.8 + 0.05 * i, 2) for i in range(10)]
+    spot = round(fx_map[max(fx_map)] / 0.05) * 0.05  # eixo do dólar centrado no câmbio de hoje
+    dolares = [round(spot + 0.05 * (i - 5), 2) for i in range(11)]
     heatmap = [[round(FATOR * a * d - meta, 2) for d in dolares] for a in acucares]
 
     return {
@@ -1780,3 +1753,7 @@ def simular_cenarios(
         "percentis": percentis,
         "distribuicao": distribuicao,
     }
+
+# Previsão do câmbio (faixa de possibilidades): routers/cambio.py
+from routers.cambio import router as cambio_router
+app.include_router(cambio_router)
