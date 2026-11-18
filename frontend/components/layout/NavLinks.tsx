@@ -31,6 +31,7 @@ const NAV_SECTIONS = [
       { href: "/app/stress", label: "Teste de estresse" },
       { href: "/app/risco", label: "Risco do EBITDA" },
       { href: "/app/cenarios", label: "Breakeven da safra" },
+      { href: "/app/alertas", label: "Alertas" },
     ],
   },
   {
