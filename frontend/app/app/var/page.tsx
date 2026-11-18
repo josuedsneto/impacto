@@ -12,6 +12,7 @@ import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
 import { useReabrirAnalise } from "@/lib/reabrir-analise";
 import { toast } from "sonner";
+
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,22 +51,12 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function VarPanel({ ticker }: { ticker: string }) {
-  const [confidence, setConfidence] = useState("0.95");
+function VarPanel({ ticker, confiancaInicial }: { ticker: string; confiancaInicial?: string }) {
+  const [confidence, setConfidence] = useState(confiancaInicial ?? "0.95");
   const [result, setResult] = useState<VarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ANA-05: VaR não tem botão de calcular; ao reabrir, a confiança muda e o efeito abaixo recalcula.
-  useReabrirAnalise("var", (p) => {
-    if (p.ticker !== ticker) {
-      toast.error("Esta análise é de outro ativo.");
-      return;
-    }
-    // Os níveis aceitos são os valores do Select; casa pelo número, sem formatar texto.
-    const nivel = ["0.90", "0.95", "0.99"].find((v) => Math.abs(Number(v) - Number(p.confianca)) < 1e-9);
-    if (nivel) setConfidence(nivel);
-  });
 
   const fetchVar = useCallback(
     async (conf: string) => {
@@ -196,8 +187,28 @@ function VarPanel({ ticker }: { ticker: string }) {
   );
 }
 
+const ATIVOS_VAR = ["SB=F", "USDBRL=X"];
+const NIVEIS_VAR = ["0.90", "0.95", "0.99"];
+
 export default function VarPage() {
   const [tab, setTab] = useState("acucar");
+  const [reabertura, setReabertura] = useState<{ ticker: string; confianca: string; versao: number } | null>(null);
+
+  // ANA-05: a página escolhe a aba pelo ativo salvo e remonta o painel com a confiança salva.
+  useReabrirAnalise("var", (p) => {
+    const ticker = String(p.ticker);
+    if (!ATIVOS_VAR.includes(ticker)) {
+      toast.error("Esta análise usa um ativo que não está mais no VaR.");
+      return;
+    }
+    // Níveis aceitos são os valores do Select; casa pelo número, sem formatar texto.
+    const nivel = NIVEIS_VAR.find((v) => Math.abs(Number(v) - Number(p.confianca)) < 1e-9) ?? "0.95";
+    setTab(ticker === "SB=F" ? "acucar" : "dolar");
+    setReabertura({ ticker, confianca: nivel, versao: Date.now() });
+  });
+
+  const reabertoEm = (ticker: string) => (reabertura?.ticker === ticker ? reabertura : undefined);
+
   return (
     <div>
       <PageHeader
@@ -212,11 +223,19 @@ export default function VarPage() {
         </TabsList>
 
         <TabsContent value="acucar">
-          <VarPanel ticker="SB=F" />
+          <VarPanel
+            key={reabertoEm("SB=F")?.versao ?? "padrao"}
+            ticker="SB=F"
+            confiancaInicial={reabertoEm("SB=F")?.confianca}
+          />
         </TabsContent>
 
         <TabsContent value="dolar">
-          <VarPanel ticker="USDBRL=X" />
+          <VarPanel
+            key={reabertoEm("USDBRL=X")?.versao ?? "padrao"}
+            ticker="USDBRL=X"
+            confiancaInicial={reabertoEm("USDBRL=X")?.confianca}
+          />
         </TabsContent>
       </Tabs>
     </div>

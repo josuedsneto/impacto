@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   Analise,
+  dataLocalDe,
   idReabertura,
   leituraDe,
   montarComparacao,
@@ -89,5 +90,12 @@ describe("idReabertura (ANA-05)", () => {
   it("sem parâmetro devolve null", () => {
     expect(idReabertura("")).toBeNull();
     expect(idReabertura("?outro=1")).toBeNull();
+  });
+});
+
+describe("dataLocalDe", () => {
+  it("usa o dia local, não o UTC (22h locais do dia 18 ficam no dia 18)", () => {
+    const instante = new Date(2026, 10, 18, 22, 0).toISOString();
+    expect(dataLocalDe(instante)).toBe("2026-11-18");
   });
 });

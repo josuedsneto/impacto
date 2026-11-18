@@ -27,32 +27,36 @@ def _tamanho(obj) -> int:
     return len(json.dumps(obj, ensure_ascii=False, default=str).encode("utf-8"))
 
 
+def _titulo_limpo(v: str) -> str:
+    # Checa o tamanho depois do strip: espaços nas pontas não contam.
+    v = v.strip()
+    if not v:
+        raise ValueError("Dê um título para a análise.")
+    if len(v) > 120:
+        raise ValueError("O título pode ter até 120 caracteres.")
+    return v
+
+
 class AnaliseCreate(BaseModel):
     ferramenta: Ferramenta
-    titulo: str = Field(min_length=1, max_length=120)
+    titulo: str
     parametros: dict
     resultado_resumo: dict
     data_referencia: date
 
     @field_validator("titulo")
     @classmethod
-    def _titulo_limpo(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("Dê um título para a análise.")
-        return v
+    def _checa_titulo(cls, v: str) -> str:
+        return _titulo_limpo(v)
 
 
 class AnaliseRename(BaseModel):
-    titulo: str = Field(min_length=1, max_length=120)
+    titulo: str
 
     @field_validator("titulo")
     @classmethod
-    def _titulo_limpo(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("Dê um título para a análise.")
-        return v
+    def _checa_titulo(cls, v: str) -> str:
+        return _titulo_limpo(v)
 
 
 def _valida_tamanhos(parametros: dict, resumo: dict) -> dict:

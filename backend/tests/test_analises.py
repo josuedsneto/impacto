@@ -169,3 +169,9 @@ def test_renomear_e_excluir_a_propria(cliente):
     assert cliente.patch(f"/api/analises/{id_}", json={"titulo": "Novo"}).json()["titulo"] == "Novo"
     assert cliente.delete(f"/api/analises/{id_}").json() == {"ok": True}
     assert cliente.get(f"/api/analises/{id_}").status_code == 404
+
+
+def test_espacos_nas_pontas_nao_contam_no_limite_de_120(cliente):
+    r = cliente.post("/api/analises", json=_corpo(titulo="  " + "x" * 120 + "  "))
+    assert r.status_code == 201
+    assert len(r.json()["titulo"]) == 120

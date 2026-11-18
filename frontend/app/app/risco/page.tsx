@@ -45,6 +45,14 @@ const LABELS: Record<string, string> = {
 
 const COLUNAS = { media: "média", p15: "cenário baixo", p85: "cenário alto" } as const;
 
+/** Premissas em texto legível (rótulo da variável + coluna), como no CSV. */
+const premissasDe = (inputs: Record<string, VariavelInput>): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(inputs).flatMap(([k, v]) =>
+      (["media", "p15", "p85"] as const).map((c) => [`${LABELS[k]}: ${COLUNAS[c]}`, v[c]] as const),
+    ),
+  );
+
 const valido = (v: VariavelInput) =>
   [v.media, v.p15, v.p85].every((t) => (lerNumero(t) ?? -1) >= 0) && lerNumero(v.p15)! <= lerNumero(v.p85)!;
 
@@ -116,6 +124,7 @@ function PercentilChart({ data, cor, label }: { data: DistResult; cor: string; l
 export default function RiscoPage() {
   const [inputs, setInputs] = useState<Record<string, VariavelInput>>({ ...DEFAULTS });
   const [result, setResult] = useState<RiscoResult | null>(null);
+  const [premissasCalc, setPremissasCalc] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   // ANA-05: reabrir preenche as faixas salvas; o cálculo continua pelo botão.
@@ -134,12 +143,6 @@ export default function RiscoPage() {
     );
   });
 
-  // Premissas em texto legível (rótulo da variável + coluna), como o CSV.
-  const parametrosSalvos = Object.fromEntries(
-    Object.entries(inputs).flatMap(([k, v]) =>
-      (["media", "p15", "p85"] as const).map((c) => [`${LABELS[k]}: ${COLUNAS[c]}`, v[c]] as const),
-    ),
-  );
   const ebitdaP10 = result?.ebitda.percentis.find((p) => p.p === 10)?.v ?? null;
   const resumoSalvo = result
     ? {
@@ -167,6 +170,8 @@ export default function RiscoPage() {
         body: JSON.stringify({ ...numeros, num_simulacoes: 10000 }),
       });
       setResult(data);
+      // Snapshot das premissas usadas neste cálculo: editar as faixas depois não muda o que foi salvo.
+      setPremissasCalc(premissasDe(inputs));
     } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }
@@ -246,7 +251,7 @@ export default function RiscoPage() {
             {leituraRisco({ media: result.ebitda.media, p10: result.ebitda.percentis.find((p) => p.p === 10)?.v })}
           </Leitura>
           <div className="flex justify-end">
-            <BotaoSalvarAnalise ferramenta="risco" parametros={parametrosSalvos} resultado={resumoSalvo} />
+            <BotaoSalvarAnalise ferramenta="risco" parametros={premissasCalc} resultado={resumoSalvo} />
           </div>
         </>
       )}

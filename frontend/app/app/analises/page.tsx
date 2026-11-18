@@ -16,6 +16,7 @@ import {
   Ferramenta,
   FERRAMENTAS,
   TITULO_MAX,
+  dataLocalDe,
   leituraDe,
   montarComparacao,
   motivoNaoMarcar,
@@ -34,7 +35,9 @@ const ROTA: Record<Ferramenta, string> = {
   opcoes: "/app/options",
 };
 
-const dataCurta = (iso: string) => formatDate(iso.slice(0, 10));
+// data_referencia já é só data; created_at é instante e precisa do fuso local.
+const dataDeReferencia = (dia: string) => formatDate(dia);
+const dataSalva = (instante: string) => formatDate(dataLocalDe(instante));
 
 /** ANA-07: área de impressão. Fica oculta na tela e, na impressão, é a única coisa visível. */
 function Relatorio({ analises }: { analises: Analise[] }) {
@@ -56,8 +59,8 @@ function Relatorio({ analises }: { analises: Analise[] }) {
         <section key={a.id} className="mt-6 break-inside-avoid">
           <h2 className="text-lg font-semibold">{a.titulo}</h2>
           <p className="text-sm">
-            {FERRAMENTAS[a.ferramenta]} · Data de referência: {dataCurta(a.data_referencia)} · Salva em{" "}
-            {dataCurta(a.created_at)}
+            {FERRAMENTAS[a.ferramenta]} · Data de referência: {dataDeReferencia(a.data_referencia)} · Salva em{" "}
+            {dataSalva(a.created_at)}
           </p>
           <h3 className="mt-3 font-semibold">Premissas</h3>
           <ul className="text-sm">
@@ -321,8 +324,8 @@ export default function AnalisesPage() {
                         )}
                       </td>
                       <td className="py-2 pr-4">{FERRAMENTAS[a.ferramenta]}</td>
-                      <td className="py-2 pr-4 tabular-nums">{dataCurta(a.data_referencia)}</td>
-                      <td className="py-2 pr-4 tabular-nums">{dataCurta(a.created_at)}</td>
+                      <td className="py-2 pr-4 tabular-nums">{dataDeReferencia(a.data_referencia)}</td>
+                      <td className="py-2 pr-4 tabular-nums">{dataSalva(a.created_at)}</td>
                       <td className="py-2 pr-4">
                         <div className="flex flex-wrap gap-3">
                           <Link href={`${ROTA[a.ferramenta]}?reabrir=${a.id}`} className="text-primary underline">

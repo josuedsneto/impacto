@@ -113,6 +113,13 @@ export function leituraDe(a: Analise): string {
   return typeof l === "string" ? l : "";
 }
 
+/** Data local (AAAA-MM-DD) de um instante ISO. Cortar a string daria o dia em UTC (errado após 21h no Brasil). */
+export function dataLocalDe(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /** Id da análise a reabrir, vindo de `?reabrir=<id>`. */
 export function idReabertura(search: string): string | null {
   return new URLSearchParams(search).get("reabrir");
