@@ -3,57 +3,12 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/dashboard/UserMenu";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { formatCents, formatFX, formatPercent } from "@/lib/format";
-import { statusMercado } from "@/lib/mercado";
+import { getFocus, getPrecos, getStatusMercado } from "@/lib/dados-servidor";
+import { formatCents, formatFX, formatPercent, rotuloMercado } from "@/lib/format";
+import type { PriceRow } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-async function fetchPrices(ticker: string, token: string) {
-  const end = new Date().toISOString().slice(0, 10);
-  const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  try {
-    const res = await fetch(
-      `${BACKEND_URL}/api/market/prices?ticker=${encodeURIComponent(ticker)}&start=${start}&end=${end}`,
-      { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.rows ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchFocus(token: string) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/focus`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-async function fetchMarketStatus(token: string): Promise<{ open: boolean; state: string }> {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/market/status?ticker=SB%3DF`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { open: false, state: "UNKNOWN" };
-    return res.json();
-  } catch {
-    return { open: false, state: "UNKNOWN" };
-  }
-}
-
-function getTickerStats(rows: { close: number | null }[]) {
+function getTickerStats(rows: PriceRow[]) {
   const valid = rows.filter((r) => r.close !== null) as { close: number }[];
   const latest = valid.at(-1);
   const prev = valid.at(-2);
@@ -73,16 +28,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? "";
 
-  const [sugarRows, fxRows, focusData, marketStatus] = await Promise.all([
-    fetchPrices("SB=F", token),
-    fetchPrices("USDBRL=X", token),
-    fetchFocus(token),
-    fetchMarketStatus(token),
+  const [sugar, fx, focus, status] = await Promise.all([
+    getPrecos("SB=F", token),
+    getPrecos("USDBRL=X", token),
+    getFocus(token),
+    getStatusMercado(token),
   ]);
 
-  const sugarStats = getTickerStats(sugarRows);
-  const fxStats = getTickerStats(fxRows);
+  const sugarStats = getTickerStats(sugar.ok ? sugar.dados : []);
+  const fxStats = getTickerStats(fx.ok ? fx.dados : []);
+  const focusData = focus.ok ? focus.dados : null;
   const initials = (user.email ?? "?").split("@")[0].slice(0, 2).toUpperCase();
+
+  // Falha de consulta vira "Status indisponível" (FD-05); só REGULAR conta como aberto.
+  const estadoMercado = status.ok ? status.dados.state : null;
+  const rotulo = rotuloMercado(estadoMercado);
+  const aberto = estadoMercado === "REGULAR";
+  const indisponivel = rotulo === "Status indisponível";
 
   // Variações chegam em pontos percentuais (1.2 = 1,2%); format.ts recebe fração.
   const pct = (v: number | null | undefined) => (v == null ? null : v / 100);
@@ -102,11 +64,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold",
-                statusMercado(marketStatus.state).classeChip
+                indisponivel ? "bg-muted text-muted-foreground" : aberto ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"
               )}
             >
-              <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusMercado(marketStatus.state).classePonto)} />
-              {statusMercado(marketStatus.state).rotulo}
+              <span
+                aria-hidden
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full",
+                  indisponivel ? "bg-muted-foreground" : aberto ? "animate-pulse bg-positive" : "bg-negative"
+                )}
+              />
+              {rotulo}
             </div>
             <UserMenu email={user.email!} initials={initials} role={user.app_metadata?.role} />
           </div>

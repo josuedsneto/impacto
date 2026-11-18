@@ -2,12 +2,8 @@
 
 import { useMemo } from "react";
 import { formatCents, formatFX, formatPercent } from "@/lib/format";
+import type { PriceRow } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
-
-interface PriceRow {
-  date: string;
-  close: number | null;
-}
 
 interface PriceCardProps {
   label: string;

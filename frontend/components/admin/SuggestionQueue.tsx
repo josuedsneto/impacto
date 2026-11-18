@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -101,7 +102,7 @@ export function SuggestionQueue() {
                     <td className="py-3 pr-4">{s.nome || "—"}</td>
                     <td className="py-3 pr-4">{s.tipo}</td>
                     <td className="py-3 pr-4 text-muted-foreground">
-                      {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                      {formatDate(s.created_at)}
                     </td>
                     <td className="py-3">
                       <div className="flex items-start gap-2">

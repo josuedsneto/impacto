@@ -5,68 +5,21 @@ import { NewsFeed } from "@/components/dashboard/NewsFeed";
 import { FocusWidget } from "@/components/dashboard/FocusWidget";
 import { AccountSummary } from "@/components/dashboard/AccountSummary";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ErrorState } from "@/components/ui/feedback";
+import { getFocus, getPrecos, getSimulacoes } from "@/lib/dados-servidor";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+// ── Resumo das simulações ──────────────────────────────────────────────────────
 
-// ── Data fetchers ──────────────────────────────────────────────────────────────
-
-async function fetchPrices(ticker: string, token: string) {
-  const end = new Date().toISOString().slice(0, 10);
-  const start = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  try {
-    const res = await fetch(
-      `${BACKEND_URL}/api/market/prices?ticker=${encodeURIComponent(ticker)}&start=${start}&end=${end}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.rows ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchFocus(token: string) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/focus`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-async function fetchAccountSummary(token: string) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/simulations`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 0 },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return { lastSim: null, simCountMonth: 0 };
-    const data = await res.json();
-    const all = data.simulations ?? [];
-    const lastSim = all[0] ?? null;
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const simCountMonth = all.filter(
-      (s: { created_at: string }) => new Date(s.created_at) >= startOfMonth
-    ).length;
-    return { lastSim, simCountMonth };
-  } catch {
-    return { lastSim: null, simCountMonth: 0 };
-  }
+async function resumoSimulacoes(token: string) {
+  const carga = await getSimulacoes(token);
+  if (!carga.ok) return { lastSim: null, simCountMonth: 0 };
+  const all = carga.dados.simulations ?? [];
+  const lastSim = all[0] ?? null;
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const simCountMonth = all.filter((s) => new Date(s.created_at) >= startOfMonth).length;
+  return { lastSim, simCountMonth };
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -80,11 +33,11 @@ export default async function DashboardPage() {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? "";
 
-  const [sugarRows, fxRows, focusData, summary] = await Promise.all([
-    fetchPrices("SB=F", token),
-    fetchPrices("USDBRL=X", token),
-    fetchFocus(token),
-    fetchAccountSummary(token),
+  const [sugar, fx, focus, summary] = await Promise.all([
+    getPrecos("SB=F", token),
+    getPrecos("USDBRL=X", token),
+    getFocus(token),
+    resumoSimulacoes(token),
   ]);
 
   return (
@@ -99,8 +52,16 @@ export default async function DashboardPage() {
           Preços
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugarRows} cor="var(--chart-2)" />
-          <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fxRows} cor="var(--chart-1)" />
+          {sugar.ok ? (
+            <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugar.dados} cor="var(--chart-2)" />
+          ) : (
+            <ErrorState mensagem="Não foi possível carregar a cotação do açúcar." />
+          )}
+          {fx.ok ? (
+            <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fx.dados} cor="var(--chart-1)" />
+          ) : (
+            <ErrorState mensagem="Não foi possível carregar a cotação do dólar." />
+          )}
         </div>
       </section>
 
@@ -110,7 +71,7 @@ export default async function DashboardPage() {
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <NewsFeed />
-          <FocusWidget data={focusData} />
+          <FocusWidget data={focus.ok ? focus.dados : null} />
           <AccountSummary lastSim={summary.lastSim} simCountMonth={summary.simCountMonth} />
         </div>
       </section>

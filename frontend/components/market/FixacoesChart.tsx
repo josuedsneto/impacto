@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
+import type { Data, Layout } from "plotly.js";
 import { useTheme } from "@/components/ThemeProvider";
 
 // react-plotly.js requires dynamic import (no SSR) — Plotly uses window
@@ -79,8 +80,8 @@ export function FixacoesChart({
     const SMA_COLORS = [c3, c4, c5];
     const EMA_COLORS = [c1, c2];
     const INDICATOR_COLORS: Record<string, string> = { bollinger: c4, rsi: c5, macd: c1, stoch: c3, cci: c2 };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const t: any[] = [];
+    // Séries do Plotly são montadas com nulos e campos opcionais; o tipo do Plotly é aplicado só em <Plot>.
+    const t: Record<string, unknown>[] = [];
 
     // ── Price trace ──────────────────────────────────────────────────────
     if (chartType === "candlestick") {
@@ -259,8 +260,7 @@ export function FixacoesChart({
 
   // Reference line shapes for oscillator panels
   const shapes = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const s: any[] = [];
+    const s: Record<string, unknown>[] = [];
     oscillators.forEach((ind, i) => {
       const row = i + 2;
       const yref = `y${row}`;
@@ -285,8 +285,7 @@ export function FixacoesChart({
   const oscHeight = oscillators.length > 0 ? 0.45 / oscillators.length : 0;
 
   const layout = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const l: any = {
+    const l: Record<string, unknown> = {
       height: 320 + oscillators.length * 200,
       margin: { t: 20, b: 40, l: 60, r: 20 },
       paper_bgcolor: "transparent",
@@ -342,8 +341,8 @@ export function FixacoesChart({
 
   return (
     <Plot
-      data={traces}
-      layout={layout}
+      data={traces as unknown as Data[]}
+      layout={layout as unknown as Partial<Layout>}
       config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
       style={{ width: "100%" }}
       useResizeHandler

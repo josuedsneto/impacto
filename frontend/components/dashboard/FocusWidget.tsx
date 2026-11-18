@@ -1,18 +1,6 @@
 import { formatFX, formatNumber, formatPercent } from "@/lib/format";
+import type { FocusData } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
-
-interface FocusEntry {
-  value: number | null;
-  delta: number | null;
-}
-
-interface FocusData {
-  ipca: FocusEntry;
-  cambio: FocusEntry;
-  selic: FocusEntry;
-  pib: FocusEntry;
-  ano_referencia: string;
-}
 
 const ROWS = [
   { key: "ipca" as const, label: "IPCA", tipo: "pct" },

@@ -12,6 +12,8 @@ const RAIZ = join(__dirname, "..");
 const REGRAS: { nome: string; re: RegExp; exceto?: string; so?: RegExp }[] = [
   { nome: "cor literal", re: /(?<![&\w])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|\b(?:rgba?|hsla?|oklch)\(/ },
   { nome: "toFixed", re: /\.toFixed\(/ },
+  // Datas e números em pt-BR passam por lib/format.ts (FD-09), que é o único que usa Intl.
+  { nome: "toLocale*String/Intl direto", re: /toLocale\w*String\(|\bIntl\./, exceto: "lib/format.ts" },
   // Cores fixas do Tailwind (bg-blue-600, text-gray-700, bg-white) não mudam com o tema.
   // Fundo escurecido com opacidade (bg-black/50) é permitido.
   {
@@ -26,7 +28,7 @@ function arquivosTsx(dir: string): string[] {
   return readdirSync(dir).flatMap((nome) => {
     const caminho = join(dir, nome);
     if (statSync(caminho).isDirectory()) return arquivosTsx(caminho);
-    return caminho.endsWith(".tsx") ? [caminho] : [];
+    return caminho.endsWith(".tsx") || caminho.endsWith(".ts") ? [caminho] : [];
   });
 }
 

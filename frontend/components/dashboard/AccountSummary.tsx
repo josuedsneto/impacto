@@ -1,18 +1,8 @@
 import Link from "next/link";
+import type { SimulationRow } from "@/lib/types/api";
+import { formatDataHora } from "@/lib/format";
 import { EmptyState } from "@/components/ui/feedback";
 import { formatPreco } from "@/lib/format";
-
-interface SimulationRow {
-  id: string;
-  ticker: string;
-  label: string | null;
-  preco_inicial: number;
-  dias_simulados: number;
-  p5: number;
-  p50: number;
-  p95: number;
-  created_at: string;
-}
 
 interface AccountSummaryProps {
   lastSim: SimulationRow | null;
@@ -26,12 +16,7 @@ export function AccountSummary({ lastSim, simCountMonth }: AccountSummaryProps) 
         {
           label: "Última simulação",
           value: `${lastSim.ticker} · ${fmt(lastSim.p50)}`,
-          sub: new Date(lastSim.created_at).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          sub: formatDataHora(lastSim.created_at),
         },
         {
           label: "Faixa de 90% (P5 a P95)",

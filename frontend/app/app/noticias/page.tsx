@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { formatDataHora, formatHora } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -29,7 +30,7 @@ export default function NoticiasPage() {
       setNews(data.items);
       const now = new Date();
       setLastUpdate(
-        now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+        formatHora(now)
       );
     } catch (e) {
       setError((e as Error).message);
@@ -82,12 +83,7 @@ export default function NoticiasPage() {
                   <span aria-hidden>·</span>
                   <span>
                     {item.published
-                      ? new Date(item.published).toLocaleString("pt-BR", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? formatDataHora(item.published)
                       : ""}
                   </span>
                 </div>
