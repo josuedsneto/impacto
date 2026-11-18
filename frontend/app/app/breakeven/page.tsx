@@ -5,18 +5,18 @@ import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatBRL, formatCents, formatDate, formatFX, formatNumber } from "@/lib/format";
-import { toast } from "sonner";
 import { CampoNumero } from "@/components/ui/campo-numero";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraBreakeven } from "@/lib/leitura";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { lerNumero } from "@/lib/numero";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldTooltip } from "@/components/ui/field-tooltip";
 
@@ -95,7 +95,6 @@ export default function BreakevenPage() {
   const [dolar, setDolar] = useState("");
   const [fator, setFator] = useState("1,12045");
   const [manualLabel, setManualLabel] = useState("");
-  const [saving, setSaving] = useState(false);
 
   // History tab
   const [history, setHistory] = useState<BreakevenSim[]>([]);
@@ -103,6 +102,15 @@ export default function BreakevenPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+
+  // ANA-05: reabrir uma análise salva preenche a aba Manual.
+  useReabrirAnalise("breakeven", (p) => {
+    setAcucar(String(p.acucar_cents_lb ?? "").replace(".", ","));
+    setDolar(String(p.dolar_brl ?? "").replace(".", ","));
+    setFator(String(p.fator ?? "").replace(".", ","));
+    setManualLabel(typeof p.nome === "string" ? p.nome : "");
+    setTab("manual");
+  });
 
   useEffect(() => {
     async function fetchLive() {
@@ -130,25 +138,6 @@ export default function BreakevenPage() {
   const manualBreakeven =
     manualAcucar !== null && manualDolar !== null && manualFator !== null
       ? manualAcucar * manualFator * manualDolar : null;
-
-  async function handleSave() {
-    if (manualBreakeven === null) { toast.error("Preencha açúcar, câmbio e fator com valores maiores que zero."); return; }
-    setSaving(true);
-    try {
-      const data = await apiFetch<BreakevenSim>("/api/breakeven/save", {
-        method: "POST",
-        body: JSON.stringify({
-          preco_acucar_cents_lb: manualAcucar,
-          preco_dolar_brl: manualDolar,
-          fator_conversao: manualFator,
-          label: manualLabel.trim() || null,
-        }),
-      });
-      toast.success("Simulação salva no histórico.");
-      setHistory((prev) => [data, ...prev]);
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setSaving(false); }
-  }
 
   async function handleTabHistory() {
     if (historyLoaded) return;
@@ -291,9 +280,18 @@ export default function BreakevenPage() {
             </div>
           </div>
 
-          <Button onClick={handleSave} disabled={saving || manualBreakeven === null} className="w-full">
-            {saving ? "Salvando..." : "Salvar simulação"}
-          </Button>
+          <BotaoSalvarAnalise
+            ferramenta="breakeven"
+            parametros={{ acucar_cents_lb: manualAcucar, dolar_brl: manualDolar, fator: manualFator, nome: manualLabel.trim() || null }}
+            resultado={
+              manualAcucar !== null && manualDolar !== null && manualFator !== null && manualBreakeven !== null
+                ? {
+                    breakeven_brl_saca: manualBreakeven,
+                    leitura: leituraBreakeven({ acucar: manualAcucar, dolar: manualDolar, breakeven: manualBreakeven }),
+                  }
+                : null
+            }
+          />
           </div>
 
           {manualBreakeven !== null ? (

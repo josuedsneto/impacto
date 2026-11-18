@@ -43,6 +43,7 @@ const NAV_SECTIONS = [
       { href: "/app/focus", label: "Boletim Focus" },
       { href: "/app/regressao-acucar", label: "Modelo do açúcar" },
       { href: "/app/atr", label: "ATR da usina" },
+      { href: "/app/analises", label: "Minhas análises" },
     ],
   },
   {

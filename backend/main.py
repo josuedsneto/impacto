@@ -234,6 +234,9 @@ class AtrShareBody(BaseModel):
     compartilhado: bool
 
 
+app.include_router(analises_router)
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}

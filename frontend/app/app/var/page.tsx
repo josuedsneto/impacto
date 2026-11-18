@@ -9,6 +9,10 @@ import { Leitura } from "@/components/ui/leitura";
 import { leituraVaR } from "@/lib/leitura";
 import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
+import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
+import { toast } from "sonner";
+
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,11 +51,12 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function VarPanel({ ticker }: { ticker: string }) {
-  const [confidence, setConfidence] = useState("0.95");
+function VarPanel({ ticker, confiancaInicial }: { ticker: string; confiancaInicial?: string }) {
+  const [confidence, setConfidence] = useState(confiancaInicial ?? "0.95");
   const [result, setResult] = useState<VarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const fetchVar = useCallback(
     async (conf: string) => {
@@ -80,6 +85,23 @@ function VarPanel({ ticker }: { ticker: string }) {
   const confLabel = formatPercent(parseFloat(confidence), 0);
   // A API devolve o VaR como retorno negativo; na tela mostramos a perda como valor positivo.
   const perda = (v: number) => Math.abs(v);
+  const resumoSalvo =
+    result && !loading && !error
+      ? {
+          ultimo_preco: result.last_price,
+          perda_historica_valor: perda(result.var_historico_abs),
+          perda_historica_pct: perda(result.var_historico_pct),
+          perda_parametrica_valor: perda(result.var_parametrico_abs),
+          perda_parametrica_pct: perda(result.var_parametrico_pct),
+          leitura: leituraVaR({
+            ticker,
+            confianca: result.confidence,
+            horizonte: 1,
+            perda: perda(result.var_historico_abs),
+            perdaPct: perda(result.var_historico_pct),
+          }),
+        }
+      : null;
 
   return (
     <div className="space-y-4 mt-4">
@@ -95,7 +117,12 @@ function VarPanel({ ticker }: { ticker: string }) {
             <SelectItem value="0.99">99%</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <BotaoSalvarAnalise
+            ferramenta="var"
+            parametros={{ ticker, confianca: Number(confidence) }}
+            resultado={resumoSalvo}
+          />
           <BotaoExportar
             arquivo={nomeArquivo("Perda maxima VaR", ticker)}
             montar={
@@ -160,8 +187,28 @@ function VarPanel({ ticker }: { ticker: string }) {
   );
 }
 
+const ATIVOS_VAR = ["SB=F", "USDBRL=X"];
+const NIVEIS_VAR = ["0.90", "0.95", "0.99"];
+
 export default function VarPage() {
   const [tab, setTab] = useState("acucar");
+  const [reabertura, setReabertura] = useState<{ ticker: string; confianca: string; versao: number } | null>(null);
+
+  // ANA-05: a página escolhe a aba pelo ativo salvo e remonta o painel com a confiança salva.
+  useReabrirAnalise("var", (p) => {
+    const ticker = String(p.ticker);
+    if (!ATIVOS_VAR.includes(ticker)) {
+      toast.error("Esta análise usa um ativo que não está mais no VaR.");
+      return;
+    }
+    // Níveis aceitos são os valores do Select; casa pelo número, sem formatar texto.
+    const nivel = NIVEIS_VAR.find((v) => Math.abs(Number(v) - Number(p.confianca)) < 1e-9) ?? "0.95";
+    setTab(ticker === "SB=F" ? "acucar" : "dolar");
+    setReabertura({ ticker, confianca: nivel, versao: Date.now() });
+  });
+
+  const reabertoEm = (ticker: string) => (reabertura?.ticker === ticker ? reabertura : undefined);
+
   return (
     <div>
       <PageHeader
@@ -176,11 +223,19 @@ export default function VarPage() {
         </TabsList>
 
         <TabsContent value="acucar">
-          <VarPanel ticker="SB=F" />
+          <VarPanel
+            key={reabertoEm("SB=F")?.versao ?? "padrao"}
+            ticker="SB=F"
+            confiancaInicial={reabertoEm("SB=F")?.confianca}
+          />
         </TabsContent>
 
         <TabsContent value="dolar">
-          <VarPanel ticker="USDBRL=X" />
+          <VarPanel
+            key={reabertoEm("USDBRL=X")?.versao ?? "padrao"}
+            ticker="USDBRL=X"
+            confiancaInicial={reabertoEm("USDBRL=X")?.confianca}
+          />
         </TabsContent>
       </Tabs>
     </div>
