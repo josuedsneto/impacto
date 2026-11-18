@@ -4,6 +4,7 @@ import { UserMenu } from "@/components/dashboard/UserMenu";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { formatCents, formatFX, formatPercent } from "@/lib/format";
+import { statusMercado } from "@/lib/mercado";
 import { cn } from "@/lib/utils";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -45,10 +46,10 @@ async function fetchMarketStatus(token: string): Promise<{ open: boolean; state:
       next: { revalidate: 60 },
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return { open: false, state: "CLOSED" };
+    if (!res.ok) return { open: false, state: "UNKNOWN" };
     return res.json();
   } catch {
-    return { open: false, state: "CLOSED" };
+    return { open: false, state: "UNKNOWN" };
   }
 }
 
@@ -101,14 +102,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold",
-                marketStatus.open ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative"
+                statusMercado(marketStatus.state).classeChip
               )}
             >
-              <span
-                aria-hidden
-                className={cn("size-1.5 shrink-0 rounded-full", marketStatus.open ? "animate-pulse bg-positive" : "bg-negative")}
-              />
-              {marketStatus.open ? "Mercado aberto" : "Mercado fechado"}
+              <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusMercado(marketStatus.state).classePonto)} />
+              {statusMercado(marketStatus.state).rotulo}
             </div>
             <UserMenu email={user.email!} initials={initials} role={user.app_metadata?.role} />
           </div>

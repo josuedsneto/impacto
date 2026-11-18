@@ -1,4 +1,5 @@
 // Nome e unidade de cada ativo, para a tela nunca mostrar só o código do Yahoo (LING-05).
+// Espelho: backend/routers/jobs.py (TICKERS_AQUECIMENTO). Mantenha as duas listas iguais.
 
 export interface Ativo {
   nome: string;

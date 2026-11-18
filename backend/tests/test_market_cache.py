@@ -90,9 +90,52 @@ def test_periodo_que_comeca_no_fim_de_semana_nao_volta_ao_yahoo(supa, yahoo):
 
 
 def test_resposta_vazia_nao_marca_cobertura(supa, yahoo, caplog):
-    """CACHE-04 AC1: resposta vazia é tratada como falha (o yfinance devolve vazio quando bloqueado)."""
+    """CACHE-04 AC1: resposta vazia não marca cobertura (o yfinance devolve vazio quando bloqueado)."""
     yahoo.vazio = True
     with caplog.at_level(logging.WARNING, logger="market_cache"):
         assert market_cache.get_prices("SB=F", date(2021, 1, 4), date(2021, 1, 29)) == []
     assert ("SB=F",) not in supa.db.get("market_coverage", {})
     assert any("Yahoo sem dados para SB=F" in m for m in caplog.messages)
+
+
+def test_resposta_vazia_nao_busca_de_novo_dentro_do_ttl(supa, yahoo):
+    """YAH-02: um intervalo vazio no Yahoo não volta ao Yahoo por 6 horas, e depois volta."""
+    yahoo.vazio = True
+    ini, fim = date(2021, 1, 4), date(2021, 1, 29)
+    market_cache.get_prices("SB=F", ini, fim)
+    chamadas = len(yahoo.chamadas)
+    market_cache.get_prices("SB=F", ini, fim)
+    assert len(yahoo.chamadas) == chamadas
+    # passado o TTL, busca de novo
+    market_cache._negativos[("SB=F", ini)] -= market_cache.TTL_NEGATIVO + 1
+    market_cache.get_prices("SB=F", ini, fim)
+    assert len(yahoo.chamadas) == chamadas + 1
+
+
+def test_negativo_com_fim_recente_nao_gera_outra_chave(supa, yahoo):
+    """YAH-02: sem cobertura e com fim recente, a rebusca corta o fim da lacuna; o negativo continua valendo."""
+    yahoo.vazio = True
+    ini = HOJE - timedelta(days=400)
+    market_cache.get_prices("SB=F", ini, HOJE)
+    chamadas = len(yahoo.chamadas)
+    market_cache.get_prices("SB=F", ini, HOJE)
+    assert len(yahoo.chamadas) == chamadas
+
+
+def test_yf_download_nao_recebe_sessao_requests(monkeypatch):
+    """YAH-01: yfinance 0.2.66 rejeita requests.Session; a chamada usa o padrão da biblioteca."""
+    import pandas as pd
+
+    capturadas = {}
+
+    def falso_download(ticker, **kwargs):
+        capturadas.update(kwargs)
+        return pd.DataFrame()
+
+    monkeypatch.setattr(market_cache.yf, "download", falso_download)
+    assert market_cache._fetch_from_yfinance("SB=F", date(2021, 1, 4), date(2021, 1, 5)).empty
+    assert "session" not in capturadas
+    assert not hasattr(market_cache, "_yf_session")
+    import main
+
+    assert not hasattr(main, "_yf_session")

@@ -7,15 +7,17 @@ import os
 import re
 import time as _time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
+from datetime import date, datetime, time as Hora, timedelta, timezone
 from typing import Annotated, Literal, Optional
 from uuid import UUID
 
 import requests
-import yfinance as yf
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
@@ -34,11 +36,6 @@ from postgrest.exceptions import APIError
 configurar_logs()
 logger = logging.getLogger(__name__)
 
-# Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
-_yf_session = requests.Session()
-_yf_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-})
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -153,6 +150,8 @@ app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 # Por dentro do CORS: o erro 500 também sai com cabeçalhos CORS (HARD-02, HARD-10)
 app.add_middleware(RequestIdMiddleware)
+from routers import jobs as jobs_router  # noqa: E402
+app.include_router(jobs_router.router)
 
 # CORS — origins configured via env var; defaults to localhost for local dev
 cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -169,9 +168,7 @@ app.add_middleware(
 from routers.risco_conjunto import router as risco_conjunto_router  # noqa: E402
 app.include_router(risco_conjunto_router)
 from routers.alertas import router as alertas_router  # noqa: E402
-from routers.jobs import router as jobs_router  # noqa: E402
 app.include_router(alertas_router)
-app.include_router(jobs_router)
 
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
@@ -242,8 +239,17 @@ app.include_router(analises_router)
 
 
 @app.get("/api/health")
-def health():
-    return {"status": "ok"}
+@limiter.limit("30/minute")
+def health(request: Request, deep: bool = False):
+    """Sem deep: só diz que o processo responde. Com deep=1: também consulta o Supabase."""
+    if not deep:
+        return {"status": "ok"}
+    try:
+        supa_client().table("market_coverage").select("ticker").limit(1).execute()
+    except Exception:
+        logger.exception("Health profundo: Supabase não respondeu")
+        return JSONResponse(status_code=503, content={"status": "degradado", "supabase": "erro"})
+    return {"status": "ok", "supabase": "ok"}
 
 
 @app.get("/api/focus")
@@ -286,7 +292,8 @@ def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]
             else:
                 delta = None
             return {"value": round(latest, 4), "delta": delta}
-        except Exception:
+        except Exception as exc:
+            logger.warning("BCB Focus falhou para %s: %s", name, exc)
             return {"value": None, "delta": None}
 
     with ThreadPoolExecutor(max_workers=len(indicators)) as pool:
@@ -511,6 +518,20 @@ def market_analysis(
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
 
+# ICE Sugar No. 11: seg–sex, 03:30 às 13:00 (Nova York). Sem feriados (ponytail: calendário fixo).
+PREGAO_TZ = ZoneInfo("America/New_York")
+PREGAO_ABERTURA = Hora(3, 30)
+PREGAO_FECHAMENTO = Hora(13, 0)
+
+
+def estado_pregao(agora: datetime) -> str:
+    """REGULAR dentro do pregão do açúcar nº 11, CLOSED fora dele. Intervalo [abertura, fechamento)."""
+    local = agora.astimezone(PREGAO_TZ)
+    if local.weekday() >= 5:
+        return "CLOSED"
+    return "REGULAR" if PREGAO_ABERTURA <= local.time() < PREGAO_FECHAMENTO else "CLOSED"
+
+
 @app.get("/api/market/status")
 @limiter.limit("30/minute")
 def market_status(
@@ -518,13 +539,13 @@ def market_status(
     ticker: str = "SB=F",
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
-    """Return current market state for a ticker (REGULAR, PRE, POST, CLOSED)."""
+    """Estado do pregão (REGULAR ou CLOSED); UNKNOWN se não der para calcular. Não consulta o Yahoo."""
     ticker = validate_ticker(ticker)
     try:
-        t = yf.Ticker(ticker, session=_yf_session)
-        state = getattr(t.fast_info, "market_state", None) or "CLOSED"
+        state = estado_pregao(datetime.now(timezone.utc))
     except Exception:
-        state = "CLOSED"
+        logger.exception("Falha ao calcular o estado do pregão")
+        state = "UNKNOWN"
     return {"ticker": ticker, "state": state, "open": state == "REGULAR"}
 
 
@@ -1623,9 +1644,13 @@ def get_news(
     if now - _news_cache["ts"] < _NEWS_TTL and _news_cache["items"]:
         return {"items": _news_cache["items"], "cached": True}
 
-    url = "https://news.google.com/rss/search?q=açúcar+NY+futuros+dólar+real&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+    url = "https://news.google.com/rss/search?" + urlencode(
+        {"q": "açúcar NY futuros dólar real", "hl": "pt-BR", "gl": "BR", "ceid": "BR:pt-419"}
+    )
     try:
-        feed = feedparser.parse(url)
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        feed = feedparser.parse(resp.content)
         items = []
         for entry in feed.entries[:10]:
             published = entry.get("published", "")
