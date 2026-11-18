@@ -33,6 +33,7 @@ from simulation import run_simulation
 from options import compute_payoff, bs_call_price, mc_call_price
 from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
 from atr import calibrate_atr, predict_atr, get_sector_defaults
+from postgrest.exceptions import APIError
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -868,6 +869,36 @@ def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_
     return {"usinas": [{"id": r["usinas"]["id"], "nome": r["usinas"]["nome"]} for r in rows]}
 
 
+def _medicoes_para_calibracao(supa, usina_id: str) -> list[dict]:
+    """Medições reais da usina (atr_medicoes). Tabela ainda não criada (atr-dados-reais) = sem medições."""
+    try:
+        rows = (
+            supa.table("atr_medicoes")
+            .select("mes_ref, atr_kg_t, impureza_vegetal_pct, impureza_mineral_pct, precipitacao_mm")
+            .eq("usina_id", usina_id)
+            .order("mes_ref", desc=True)
+            .limit(120)
+            .execute()
+        ).data
+    except APIError as exc:
+        if exc.code in ("PGRST205", "42P01"):
+            logger.warning("atr_medicoes ausente; calibração usa coeficientes do setor")
+            return []
+        raise
+    return [
+        {
+            "chuva_mm": r["precipitacao_mm"],
+            "impureza_pct": (
+                None
+                if r["impureza_vegetal_pct"] is None or r["impureza_mineral_pct"] is None
+                else r["impureza_vegetal_pct"] + r["impureza_mineral_pct"]
+            ),
+            "atr_real": r["atr_kg_t"],
+        }
+        for r in rows
+    ]
+
+
 @app.post("/api/atr/simulate")
 @limiter.limit("20/minute")
 async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
@@ -878,19 +909,11 @@ async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[
     assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).eq("usina_id", body.usina_id).execute()
     if not assoc.data:
         raise HTTPException(status_code=403, detail="Usuário não associado a esta usina.")
-    # Buscar simulações anteriores da usina como proxy para calibração
-    hist_rows = (
-        supa.table("atr_simulacoes")
-        .select("chuva_mm, impureza_pct, atr_esperado")
-        .eq("usina_id", body.usina_id)
-        .order("created_at", desc=True)
-        .limit(100)
-        .execute()
-    ).data
-    history = [{"chuva_mm": r["chuva_mm"], "impureza_pct": r["impureza_pct"], "atr_real": r["atr_esperado"]} for r in hist_rows]
+    history = _medicoes_para_calibracao(supa, body.usina_id)
     loop = asyncio.get_running_loop()
     params = await loop.run_in_executor(None, calibrate_atr, history)
     result = await loop.run_in_executor(None, lambda: predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem))
+    result.update({"calibracao": params["calibracao"], "meses_usados": params["meses_usados"], "aviso": params["aviso"]})
     # Persistir
     supa.table("atr_simulacoes").insert({
         "user_id": user["id"],
@@ -916,16 +939,18 @@ def atr_historico(request: Request, usina_id: str, user: Annotated[dict, Depends
     user_usina_ids = {r["usina_id"] for r in user_assoc}
     if usina_id not in user_usina_ids:
         raise HTTPException(status_code=403, detail="Não autorizado para esta usina.")
-    # Buscar todas as simulações da usina via service_role; filtrar por regra de negócio
+    uid = str(UUID(str(user["id"])))
+    # Filtro na query (antes do limit): próprias ou compartilhadas. user_id não sai na resposta.
     rows = (
         supa.table("atr_simulacoes")
         .select("id, user_id, chuva_mm, impureza_pct, atr_min, atr_esperado, atr_max, producao_total, compartilhado, created_at")
         .eq("usina_id", usina_id)
+        .or_(f"user_id.eq.{uid},compartilhado.is.true")
         .order("created_at", desc=True)
         .limit(200)
         .execute()
     ).data
-    visible = [r for r in rows if r["user_id"] == user["id"] or r["compartilhado"]]
+    visible = [{**{k: v for k, v in r.items() if k != "user_id"}, "minha": r["user_id"] == uid} for r in rows]
     return {"historico": visible}
 
 
