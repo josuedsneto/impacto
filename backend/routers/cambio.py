@@ -12,13 +12,13 @@ from typing import Annotated
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 import cambio
 import taxas
 from auth import get_current_user
 from focus import fetch_indicator
-from main import limiter  # o limiter fica em main.py; o include_router vem depois dele
+from limiter import limiter
 from market_cache import get_prices
 
 router = APIRouter()
@@ -32,7 +32,7 @@ MAX_NIVEIS = 10
 AVISO = "Faixa de possibilidades, não previsão. Use junto com outras análises."
 APROXIMACAO = (
     "Usa a Selic meta, não a taxa do DI, e o juro americano, não o cupom cambial. "
-    "É uma aproximação, não o preço de mercado."
+    "É uma aproximação, não o preço de mercado. Dias úteis contados sem feriados."
 )
 
 
@@ -55,10 +55,12 @@ def _niveis_do_texto(texto: str | None, spot: float) -> list[float]:
 @limiter.limit("10/minute")
 def cambio_previsao(
     request: Request,
-    horizonte: Annotated[int, Query(ge=1, le=HORIZONTE_MAX)] = 63,
+    horizonte: int = 63,
     niveis: str | None = None,
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    if not 1 <= horizonte <= HORIZONTE_MAX:
+        raise HTTPException(status_code=400, detail=f"O horizonte precisa estar entre 1 e {HORIZONTE_MAX} dias úteis.")
     hoje = date.today()
     linhas = [r for r in get_prices(TICKER, hoje - timedelta(days=1200), hoje) if r["close"] is not None]
     if len(linhas) < MIN_FECHAMENTOS:

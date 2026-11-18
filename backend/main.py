@@ -52,7 +52,7 @@ app = FastAPI(
     redoc_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/redoc",
 )
 
-limiter = Limiter(key_func=get_remote_address)
+from limiter import limiter  # módulo próprio: routers/cambio.py importa sem ciclo
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -1521,7 +1521,7 @@ def get_metas(
     sugar_rows = get_prices("SB=F", start, end)
     fx_rows = get_prices("USDBRL=X", start, end)
 
-    if len(sugar_rows) < 10 or len(fx_rows) < 10:
+    if len(sugar_rows) < 10 or len(fx_rows) < 10 or not any(r["close"] for r in fx_rows):
         raise HTTPException(status_code=503, detail="Dados insuficientes.")
 
     sugar_map = {r["date"]: r["close"] for r in sugar_rows if r["close"]}

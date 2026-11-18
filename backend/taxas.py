@@ -26,9 +26,9 @@ def _selic_bloco(inicio: date, fim: date) -> list[dict]:
     )
     try:
         dados = requests.get(url, timeout=TIMEOUT).json()
-    except (requests.RequestException, ValueError):
+        return dados if isinstance(dados, list) else []  # erro da API vem como objeto, não lista
+    except Exception:
         return []
-    return dados if isinstance(dados, list) else []  # erro da API vem como objeto, não lista
 
 
 def selic_serie(inicio: date, fim: date) -> pd.Series:
@@ -42,8 +42,11 @@ def selic_serie(inicio: date, fim: date) -> pd.Series:
         cursor = date(bloco_fim.year + 1, 1, 1)
     if not dados:
         return pd.Series(dtype=float)
-    datas = pd.to_datetime([d["data"] for d in dados], dayfirst=True)
-    valores = [float(str(d["valor"]).replace(",", ".")) for d in dados]
+    try:
+        datas = pd.to_datetime([d["data"] for d in dados], dayfirst=True)
+        valores = [float(str(d["valor"]).replace(",", ".")) for d in dados]
+    except (KeyError, TypeError, ValueError):  # formato mudou: sem Selic, não derruba o endpoint
+        return pd.Series(dtype=float)
     return pd.Series(valores, index=datas).sort_index()
 
 
@@ -53,11 +56,11 @@ def fed_funds_serie(inicio: date, fim: date) -> pd.Series:
         resp = requests.get(_FRED_DFF_CSV, timeout=TIMEOUT)
         resp.raise_for_status()
         df = pd.read_csv(io.StringIO(resp.text), na_values=["."])
-    except (requests.RequestException, ValueError):
+        df.columns = ["data", "valor"]
+        df["data"] = pd.to_datetime(df["data"])
+        df = df.dropna().set_index("data")["valor"].astype(float)
+    except Exception:  # rede, HTML no lugar do CSV ou layout novo: sem Fed funds, não derruba o endpoint
         return pd.Series(dtype=float)
-    df.columns = ["data", "valor"]
-    df["data"] = pd.to_datetime(df["data"])
-    df = df.dropna().set_index("data")["valor"].astype(float)
     return df[(df.index >= pd.Timestamp(inicio)) & (df.index <= pd.Timestamp(fim))]
 
 
