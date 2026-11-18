@@ -14,7 +14,7 @@ from market_cache import supa_client
 from limiter import limiter
 router = APIRouter()
 
-Ferramenta = Literal["var", "breakeven", "risco", "opcoes"]
+Ferramenta = Literal["var", "breakeven", "risco", "opcoes", "hedge_cambial"]
 MAX_PARAMETROS = 4 * 1024
 MAX_RESUMO = 8 * 1024
 MAX_LEITURA = 500
