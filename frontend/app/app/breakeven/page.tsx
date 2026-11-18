@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { formatBRL, formatCents, formatDate, formatFX, formatNumber } from "@/lib/format";
@@ -85,10 +86,11 @@ export default function BreakevenPage() {
   const [tab, setTab] = useState("live");
 
   // Live tab
-  const [live, setLive] = useState<BreakevenResult | null>(null);
-  const [liveFator, setLiveFator] = useState("");
-  const [liveLoading, setLiveLoading] = useState(true);
-  const [liveError, setLiveError] = useState<string | null>(null);
+  const { dados: live, carregando: liveLoading, erro: liveError, recarregar: recarregarLive } =
+    useApi<BreakevenResult>("/api/breakeven");
+  // Fator editado pelo usuário; enquanto não edita, mostra o da API.
+  const [fatorEditado, setFatorEditado] = useState<string | null>(null);
+  const liveFator = fatorEditado ?? (live ? String(live.fator_conversao).replace(".", ",") : "");
 
   // Manual tab
   const [acucar, setAcucar] = useState("");
@@ -102,19 +104,6 @@ export default function BreakevenPage() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [tentativa, setTentativa] = useState(0);
-
-  useEffect(() => {
-    async function fetchLive() {
-      try {
-        const data = await apiFetch<BreakevenResult>("/api/breakeven");
-        setLive(data);
-        setLiveFator(String(data.fator_conversao).replace(".", ","));
-      } catch (e) { setLiveError((e as Error).message); }
-      finally { setLiveLoading(false); }
-    }
-    fetchLive();
-  }, [tentativa]);
 
   const positivo = (t: string) => {
     const v = lerNumero(t);
@@ -214,9 +203,8 @@ export default function BreakevenPage() {
             <ErrorState
               mensagem={liveError}
               onRetry={() => {
-                setLiveError(null);
-                setLiveLoading(true);
-                setTentativa((t) => t + 1);
+                setFatorEditado(null);
+                recarregarLive();
               }}
             />
           )}
@@ -227,7 +215,7 @@ export default function BreakevenPage() {
                 rotulo="Fator ¢/lb → R$/saca"
                 ajuda="Converte o preço em centavos de dólar por libra para reais por saca. Mude para testar outro fator."
                 valor={liveFator}
-                onChange={setLiveFator}
+                onChange={setFatorEditado}
                 min={0.0001}
                 max={100}
                 className="max-w-xs"
