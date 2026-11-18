@@ -20,6 +20,8 @@ REVOKE ALL ON TABLE
   public.admin_config
 FROM anon;
 
+-- Vale só para tabelas criadas pelo role que roda a migration (postgres). Tabelas
+-- criadas por supabase_admin (dashboard) não são cobertas; sequences e functions também não.
 -- Tabelas criadas no futuro por este mesmo role também nascem sem grant para anon.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon;
 
