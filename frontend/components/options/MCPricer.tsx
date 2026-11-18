@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { Leitura } from "@/components/ui/leitura";
 import { CAMPOS_OPCAO_PADRAO, CamposOpcao, paraApi, type CamposOpcaoValor } from "./CamposOpcao";
-
-const FAIXA_CENARIOS = { min: 100, max: 100_000 };
+import { LIMITE_CENARIOS_OPCOES } from "@/lib/simulacao";
 
 /** Preço da call por simulação de Monte Carlo (botão Calcular). */
 export default function MCPricer() {
@@ -22,7 +21,7 @@ export default function MCPricer() {
 
   async function handleCalculate() {
     const params = paraApi(campos);
-    if (!params || !campoValido(cenarios, FAIXA_CENARIOS)) {
+    if (!params || !campoValido(cenarios, LIMITE_CENARIOS_OPCOES)) {
       toast.error("Corrija os campos destacados antes de calcular.");
       return;
     }
@@ -49,7 +48,7 @@ export default function MCPricer() {
         ajuda="Mais cenários aproximam o resultado do Black-Scholes, mas demoram mais."
         valor={cenarios}
         onChange={setCenarios}
-        {...FAIXA_CENARIOS}
+        {...LIMITE_CENARIOS_OPCOES}
         disabled={loading}
       />
 

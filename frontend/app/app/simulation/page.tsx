@@ -98,7 +98,8 @@ export default function SimulationPage() {
         [`Preço de partida${u ? ` (${u})` : ""}`, r.preco_inicial],
         ["Prazo (dias úteis)", r.dias_simulados],
         ["Cenários", r.num_simulacoes],
-        ["Variação máxima (%)", r.pct_bound * 100],
+        ["Limite de referência (%)", r.pct_bound * 100],
+        ["Cenários fora do limite (%)", r.pct_passou_limite === null ? null : r.pct_passou_limite * 100],
       ],
       tabelas: [
         {
