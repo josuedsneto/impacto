@@ -8,6 +8,7 @@ if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined") {
 
 export const MSG_GENERICA = "Não foi possível concluir a operação. Tente novamente.";
 export const MSG_REDE = "Sem conexão com o servidor. Verifique sua internet e tente novamente.";
+export const MSG_TIMEOUT = "O servidor demorou demais para responder. Tente novamente.";
 export const MSG_VALIDACAO = "Algum campo está fora do intervalo permitido.";
 
 export class ApiError extends Error {
@@ -62,7 +63,9 @@ async function requisitar(path: string, init: RequestInit, timeoutMs: number) {
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   try {
     return await fetch(`${API_URL}${path}`, { ...init, headers, signal: AbortSignal.timeout(timeoutMs) });
-  } catch {
+  } catch (e) {
+    // AbortSignal.timeout lança TimeoutError: não é falta de conexão (FD-08).
+    if (e instanceof DOMException && e.name === "TimeoutError") throw new ApiError(MSG_TIMEOUT, 0);
     throw new ApiError(MSG_REDE, 0);
   }
 }

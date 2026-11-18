@@ -70,11 +70,11 @@ describe("apiFetch", () => {
     );
   });
 
-  it("traduz tempo limite estourado (API-02)", async () => {
+  it("traduz tempo limite estourado com mensagem própria (FD-08)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")));
     const { apiFetch } = await carregar();
     await expect(apiFetch("/api/x", { timeoutMs: 10 })).rejects.toThrow(
-      "Sem conexão com o servidor. Verifique sua internet e tente novamente.",
+      "O servidor demorou demais para responder. Tente novamente.",
     );
   });
 
