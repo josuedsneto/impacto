@@ -15,6 +15,5 @@ ssh-key-2026-03-23.key.pub
 # Build artifacts
 __pycache__/
 node_modules/
-frontend/devnull
 .venv/
 .pytest_cache/
