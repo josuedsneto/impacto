@@ -6,12 +6,14 @@ import { formatNumber } from "@/lib/format";
 interface PayoffChartProps {
   prices: number[];
   payoff: number[];
+  /** Unidade do preço e do resultado, mostrada nos eixos e no tooltip. */
+  unidade: string;
 }
 
 const eixo = { fontSize: 11, fill: "var(--muted-foreground)" };
 
 /** Resultado da estratégia no vencimento para cada preço do ativo. */
-export default function PayoffChart({ prices, payoff }: PayoffChartProps) {
+export default function PayoffChart({ prices, payoff, unidade }: PayoffChartProps) {
   const data = prices.map((preco, i) => ({ preco, payoff: payoff[i] }));
 
   return (
@@ -26,13 +28,13 @@ export default function PayoffChart({ prices, payoff }: PayoffChartProps) {
             tick={eixo}
             tickLine={false}
             tickFormatter={(v: number) => formatNumber(v, 2)}
-            label={{ value: "Preço do ativo no vencimento", position: "insideBottom", offset: -16, fontSize: 11, fill: "var(--muted-foreground)" }}
+            label={{ value: `Preço do futuro no vencimento (${unidade})`, position: "insideBottom", offset: -16, fontSize: 11, fill: "var(--muted-foreground)" }}
           />
-          <YAxis tick={eixo} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => formatNumber(v, 2)} />
+          <YAxis tick={eixo} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => formatNumber(v, 2)} label={{ value: `Resultado (${unidade})`, angle: -90, position: "insideLeft", offset: 10, fontSize: 11, fill: "var(--muted-foreground)" }} />
           <Tooltip
             contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-            labelFormatter={(v: number) => `Preço ${formatNumber(v, 2)}`}
-            formatter={(v: number) => [formatNumber(v, 4), "Resultado"]}
+            labelFormatter={(v: number) => `Preço ${formatNumber(v, 2)} ${unidade}`}
+            formatter={(v: number) => [`${formatNumber(v, 4)} ${unidade}`, "Resultado"]}
           />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="4 2" />
           <Line type="monotone" dataKey="payoff" stroke="var(--chart-1)" strokeWidth={2} dot={false} isAnimationActive={false} />

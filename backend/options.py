@@ -1,15 +1,29 @@
 """
 options.py — Options pricing functions for Impacto API.
 
-Design decision (OPT-03):
-Risk-neutral drift (r - 0.5*sigma^2) is used instead of historical mu because
-derivatives must be priced under the risk-neutral measure. Historical drift is
-irrelevant to no-arbitrage pricing. Only the risk-free rate r and volatility
-sigma enter the pricing formula — the market's actual expected return does not.
+Opções de açúcar são sobre o futuro (SB=F, ICE), então o preço é Black-76:
+usa o preço do futuro F e desconta o preço inteiro por e^{-rT}. Não há carrego
+no futuro, por isso o Monte Carlo tem drift zero em F.
+
+gk_price (Garman-Kohlhagen) fica pronta para opções de câmbio (hedge futuro).
 """
 
 import numpy as np
 from scipy.stats import norm
+
+_NOMES_POSITIVOS = {
+    "F": "O preço do futuro",
+    "S": "O preço do ativo",
+    "K": "O strike",
+    "T": "O prazo até o vencimento",
+    "sigma": "A volatilidade",
+}
+
+
+def _validar_positivos(**valores: float) -> None:
+    for nome, valor in valores.items():
+        if valor <= 0:
+            raise ValueError(f"{_NOMES_POSITIVOS[nome]} precisa ser maior que zero (recebido: {valor}).")
 
 
 def compute_payoff(legs: list[dict], price_range: list[float] | None = None) -> dict:
@@ -50,6 +64,9 @@ def compute_payoff(legs: list[dict], price_range: list[float] | None = None) -> 
         position = leg["position"].lower()
         quantity = int(leg.get("quantity", 1))
 
+        if position not in ("long", "short"):
+            raise ValueError(f"Posição inválida: {position!r}. Use 'long' ou 'short'.")
+
         S = prices
         if leg_type == "call":
             intrinsic = np.maximum(S - strike, 0.0)
@@ -74,79 +91,104 @@ def compute_payoff(legs: list[dict], price_range: list[float] | None = None) -> 
     }
 
 
-def bs_call_price(S: float, K: float, T: float, r: float, sigma: float) -> float:
+def black76_price(F: float, K: float, T: float, r: float, sigma: float, tipo: str = "call") -> float:
     """
-    OPT-02: Black-Scholes European call price.
+    OPT-02: Black-76 European option on a futures price.
 
     Args:
-        S:     Current underlying price
+        F:     Futures price (forward) today
         K:     Strike price
         T:     Time to expiry in years
         r:     Risk-free rate (annualized, continuous compounding)
-        sigma: Volatility (annualized)
+        sigma: Volatility of the futures price (annualized)
+        tipo:  "call" | "put"
 
     Returns:
-        float: European call price
+        float: Option price, discounted by e^{-rT}
 
     Raises:
-        ValueError: If any parameter is non-positive (S, K, T, sigma).
+        ValueError: If F, K, T or sigma is non-positive, or tipo is unknown.
     """
-    if S <= 0:
-        raise ValueError(f"O preço do ativo precisa ser maior que zero (recebido: {S}).")
-    if K <= 0:
-        raise ValueError(f"O strike precisa ser maior que zero (recebido: {K}).")
-    if T <= 0:
-        raise ValueError(f"O prazo até o vencimento precisa ser maior que zero (recebido: {T}).")
-    if sigma <= 0:
-        raise ValueError(f"A volatilidade precisa ser maior que zero (recebido: {sigma}).")
+    _validar_positivos(F=F, K=K, T=T, sigma=sigma)
+    if tipo not in ("call", "put"):
+        raise ValueError(f"Tipo de opção inválido: {tipo!r}. Use 'call' ou 'put'.")
 
-    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
+    sq = sigma * np.sqrt(T)
+    d1 = (np.log(F / K) + 0.5 * sigma ** 2 * T) / sq
+    d2 = d1 - sq
+    df = np.exp(-r * T)
 
-    price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    if tipo == "call":
+        price = df * (F * norm.cdf(d1) - K * norm.cdf(d2))
+    else:
+        price = df * (K * norm.cdf(-d2) - F * norm.cdf(-d1))
     return float(price)
 
 
-def mc_call_price(
-    S: float,
+def mc_black76_price(
+    F: float,
     K: float,
     T: float,
     r: float,
     sigma: float,
     num_simulacoes: int = 10_000,
+    seed: int | None = None,
 ) -> float:
     """
-    OPT-03: Risk-neutral MC European call pricer.
+    OPT-03: Monte Carlo European call on a futures price (Black-76 model).
 
-    Uses drift = r - 0.5*sigma^2 (risk-neutral measure), NOT historical mu.
-    Samples S_T directly from the exact GBM terminal distribution.
+    No futuro o drift é zero: F_T = F * exp(-sigma^2 T / 2 + sigma sqrt(T) Z).
+    Amostra F_T direto da distribuição terminal exata do GBM.
 
     Args:
-        S:             Current underlying price
-        K:             Strike price
-        T:             Time to expiry in years
-        r:             Risk-free rate (annualized)
-        sigma:         Volatility (annualized)
-        num_simulacoes: Number of simulation paths
+        seed: Semente opcional; mesma semente, mesmo resultado.
 
     Returns:
         float: Discounted expected payoff (European call price)
     """
-    if S <= 0:
-        raise ValueError(f"O preço do ativo precisa ser maior que zero (recebido: {S}).")
-    if K <= 0:
-        raise ValueError(f"O strike precisa ser maior que zero (recebido: {K}).")
-    if T <= 0:
-        raise ValueError(f"O prazo até o vencimento precisa ser maior que zero (recebido: {T}).")
-    if sigma <= 0:
-        raise ValueError(f"A volatilidade precisa ser maior que zero (recebido: {sigma}).")
+    _validar_positivos(F=F, K=K, T=T, sigma=sigma)
 
-    # European payoff depends only on S_T, and GBM has an exact terminal
-    # distribution — no need to simulate (steps × sims) intermediate prices.
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed)
     z = rng.standard_normal(num_simulacoes)
-    ST = S * np.exp((r - 0.5 * sigma ** 2) * T + sigma * np.sqrt(T) * z)
+    FT = F * np.exp(-0.5 * sigma ** 2 * T + sigma * np.sqrt(T) * z)
 
-    payoff = np.maximum(ST - K, 0.0)
-    price = np.exp(-r * T) * float(np.mean(payoff))
-    return price
+    payoff = np.maximum(FT - K, 0.0)
+    return float(np.exp(-r * T) * np.mean(payoff))
+
+
+def gk_price(
+    S: float,
+    K: float,
+    T: float,
+    r_dom: float,
+    r_for: float,
+    sigma: float,
+    tipo: str = "call",
+) -> float:
+    """
+    OPT-04: Garman-Kohlhagen price for a European FX option.
+
+    Args:
+        S:     Spot FX rate (domestic per unit of foreign currency)
+        r_dom: Domestic risk-free rate (annualized, continuous)
+        r_for: Foreign risk-free rate (annualized, continuous)
+        sigma: Volatility of the FX rate (annualized)
+
+    Raises:
+        ValueError: If S, K, T or sigma is non-positive, or tipo is unknown.
+    """
+    _validar_positivos(S=S, K=K, T=T, sigma=sigma)
+    if tipo not in ("call", "put"):
+        raise ValueError(f"Tipo de opção inválido: {tipo!r}. Use 'call' ou 'put'.")
+
+    sq = sigma * np.sqrt(T)
+    d1 = (np.log(S / K) + (r_dom - r_for + 0.5 * sigma ** 2) * T) / sq
+    d2 = d1 - sq
+    df_for = np.exp(-r_for * T)
+    df_dom = np.exp(-r_dom * T)
+
+    if tipo == "call":
+        price = S * df_for * norm.cdf(d1) - K * df_dom * norm.cdf(d2)
+    else:
+        price = K * df_dom * norm.cdf(-d2) - S * df_for * norm.cdf(-d1)
+    return float(price)

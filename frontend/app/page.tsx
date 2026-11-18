@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Sugarcane — Análise de risco para o mercado sucroenergético',
-  description: 'Simulações Monte Carlo, precificação de opções Black-Scholes, análise cambial e gestão de risco para usinas e traders de açúcar.',
+  description: 'Simulações Monte Carlo, precificação de opções sobre futuro (Black-76), análise cambial e gestão de risco para usinas e traders de açúcar.',
 }
 
 const STATS = [
@@ -76,7 +76,7 @@ export default async function HomePage() {
             Análise de risco para o<br />mercado de açúcar
           </h1>
           <p className="mb-8 max-w-[420px] text-sm leading-relaxed text-muted-foreground">
-            Simulações Monte Carlo, precificação de opções Black-Scholes, análise cambial e gestão de risco — tudo em um só lugar para usinas e traders.
+            Simulações Monte Carlo, precificação de opções sobre futuro (Black-76), análise cambial e gestão de risco — tudo em um só lugar para usinas e traders.
           </p>
           <div>
             <Link

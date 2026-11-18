@@ -64,14 +64,14 @@ export default function OptionsPage() {
     <div>
       <PageHeader
         titulo="Opções"
-        descricao="Monte estratégias com opções e veja o resultado no vencimento, ou calcule o preço justo de uma call."
+        descricao="Monte estratégias com opções sobre o futuro de açúcar e veja o resultado no vencimento, ou calcule o preço justo de uma call."
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="payoff">Estratégia</TabsTrigger>
-          <TabsTrigger value="black-scholes">Black-Scholes</TabsTrigger>
-          <TabsTrigger value="mc-pricer">Monte Carlo</TabsTrigger>
+          <TabsTrigger value="preco-justo">Preço justo (fórmula)</TabsTrigger>
+          <TabsTrigger value="mc-pricer">Simulação (Monte Carlo)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payoff" className="space-y-6 mt-6">
@@ -95,21 +95,22 @@ export default function OptionsPage() {
             <PayoffChart
               prices={payoffResult.prices}
               payoff={payoffResult.payoff}
+              unidade="¢/lb"
             />
           )}
         </TabsContent>
 
-        <TabsContent value="black-scholes" className="mt-6 space-y-4">
+        <TabsContent value="preco-justo" className="mt-6 space-y-4">
           <BSPricer />
           <p className="mt-4 text-sm text-muted-foreground">
-            O preço é recalculado a cada mudança nos campos.
+            Fórmula de Black-76 para opção sobre futuro. O preço é recalculado a cada mudança nos campos.
           </p>
         </TabsContent>
 
         <TabsContent value="mc-pricer" className="mt-6 space-y-4">
           <MCPricer />
           <p className="mt-4 text-sm text-muted-foreground">
-            Simula milhares de preços no vencimento; o resultado converge para o Black-Scholes.
+            Simula milhares de preços do futuro no vencimento; o resultado converge para a fórmula da outra aba.
           </p>
         </TabsContent>
       </Tabs>
