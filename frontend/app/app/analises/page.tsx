@@ -33,6 +33,7 @@ const ROTA: Record<Ferramenta, string> = {
   breakeven: "/app/breakeven",
   risco: "/app/risco",
   opcoes: "/app/options",
+  hedge_cambial: "/app/hedge-cambial",
 };
 
 // data_referencia já é só data; created_at é instante e precisa do fuso local.

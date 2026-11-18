@@ -28,6 +28,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/app/posicoes", label: "Posições da safra" },
       { href: "/app/risco-conjunto", label: "Receita em R$ (açúcar × dólar)" },
+      { href: "/app/hedge-cambial", label: "Hedge cambial" },
       { href: "/app/var", label: "Perda máxima (VaR)" },
       { href: "/app/volatilidade", label: "Volatilidade" },
       { href: "/app/stress", label: "Teste de estresse" },
