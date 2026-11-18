@@ -11,6 +11,7 @@ export function AcucarHistoricoChart({ result }: { result: AcucarResult }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold">Açúcar NY: real e previsto por ano (¢/lb)</h3>
+      <div role="img" aria-label="Gráficos da regressão do açúcar: valores observados e ajustados.">
       <ResponsiveContainer width="100%" height={360}>
         <LineChart data={result.historico} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -33,6 +34,7 @@ export function AcucarHistoricoChart({ result }: { result: AcucarResult }) {
           />
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

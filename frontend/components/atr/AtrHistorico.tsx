@@ -38,6 +38,7 @@ export function AtrHistorico({ historico, onToggleShare, currentUserId }: AtrHis
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold">Tendência do ATR (kg/t de cana)</h3>
+        <div role="img" aria-label="Histórico mensal do ATR (açúcar total recuperável, kg/t de cana) por lançamento.">
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={serie} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
             <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -55,6 +56,7 @@ export function AtrHistorico({ historico, onToggleShare, currentUserId }: AtrHis
             <Line dataKey="esperado" name="ATR esperado" stroke="var(--chart-3)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card">

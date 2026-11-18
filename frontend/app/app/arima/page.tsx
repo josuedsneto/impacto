@@ -44,11 +44,13 @@ interface ArimaResponse {
   ticker: string;
   steps: number;
   series: ArimaPoint[];
+  ultimo_dado?: string;
 }
 
 function ArimaPanel({ ticker }: { ticker: string }) {
   const [steps, setSteps] = useState("30");
   const [data, setData] = useState<ArimaPoint[] | null>(null);
+  const [ultimoDado, setUltimoDado] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -65,6 +67,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
         );
         // Faixa de confiança como intervalo [inferior, superior] para a área do gráfico
         setData(json.series.map((p) => ({ ...p, ic: p.ci_lower != null ? [p.ci_lower, p.ci_upper!] : undefined })));
+        setUltimoDado(json.ultimo_dado ?? null);
         setLoaded(true);
       } catch (e) {
         setError((e as Error).message);
@@ -90,7 +93,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium">Dias de previsão:</span>
         <Select value={steps} onValueChange={handleStepsChange}>
-          <SelectTrigger className="w-28">
+          <SelectTrigger className="w-28" aria-label="Dias de previsão">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -137,8 +140,12 @@ function ArimaPanel({ ticker }: { ticker: string }) {
           </>
         );
       })()}
+      {!loading && !error && data && ultimoDado && (
+        <p className="text-xs text-muted-foreground">Fechamento de {formatDate(ultimoDado)}</p>
+      )}
       {!loading && !error && data && (
         <div className="rounded-xl border border-border bg-card p-4">
+          <div role="img" aria-label="Previsão ARIMA: histórico do preço e previsão para os próximos dias, com faixa de confiança.">
           <ResponsiveContainer width="100%" height={360}>
             <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -181,6 +188,7 @@ function ArimaPanel({ ticker }: { ticker: string }) {
               />
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>

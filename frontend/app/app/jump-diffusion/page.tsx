@@ -121,13 +121,14 @@ export default function JumpDiffusionPage() {
         <CardContent className="pt-6 space-y-4">
           {/* Ticker */}
           <div className="space-y-1">
-            <Label>Ativo</Label>
-            <div className="flex gap-2">
+            <Label id="jd-ativo">Ativo</Label>
+            <div className="flex gap-2" role="group" aria-labelledby="jd-ativo">
               {TICKERS.map(({ label, value }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setTicker(value)}
+                  aria-pressed={ticker === value}
                   className={`px-3 py-1.5 rounded border text-sm transition-colors ${
                     ticker === value
                       ? "bg-primary text-primary-foreground border-primary"
@@ -213,6 +214,7 @@ export default function JumpDiffusionPage() {
               <span>Volatilidade diária usada: {formatPercent(result.sigma, 3)}</span>
               <span>Tendência diária: {formatPercent(result.mu, 4)}</span>
             </div>
+            <div role="img" aria-label="Trajetórias simuladas do preço com saltos (jump diffusion) e a faixa dos cenários.">
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={result.prices} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -226,6 +228,7 @@ export default function JumpDiffusionPage() {
                 <Line type="monotone" dataKey="price" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
         </div>

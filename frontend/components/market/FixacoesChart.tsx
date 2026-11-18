@@ -341,12 +341,14 @@ export function FixacoesChart({
   }
 
   return (
-    <Plot
-      data={traces}
-      layout={layout}
-      config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
-      style={{ width: "100%" }}
-      useResizeHandler
-    />
+    <div role="img" aria-label="Gráfico de candles ou linha do preço no período escolhido.">
+      <Plot
+        data={traces}
+        layout={layout}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
+        style={{ width: "100%" }}
+        useResizeHandler
+      />
+    </div>
   );
 }

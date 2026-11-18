@@ -52,10 +52,11 @@ function VariavelRow({ name, value, onChange }: {
   onChange: (v: VariavelInput) => void;
 }) {
   return (
-    <tr className="border-b">
-      <td className="py-2 pr-4 text-sm font-medium whitespace-nowrap">{LABELS[name]}</td>
+    <tr className="border-b max-sm:mb-3 max-sm:block max-sm:rounded-lg max-sm:border max-sm:p-3">
+      <td className="py-2 pr-4 text-sm font-medium whitespace-nowrap max-sm:block max-sm:pb-2">{LABELS[name]}</td>
       {(["media", "p15", "p85"] as const).map((field) => (
-        <td key={field} className="py-1 px-1">
+        <td key={field} className="py-1 px-1 max-sm:block max-sm:px-0">
+          <span className="block text-xs text-muted-foreground sm:hidden">{COLUNAS[field]}</span>
           <Input
             type="text"
             inputMode="decimal"
@@ -81,6 +82,7 @@ function PercentilChart({ data, cor, label }: { data: DistResult; cor: string; l
         <p className="mb-3 text-xl font-bold tabular-nums">
           {formatCompactBRL(data.media)} <span className="text-sm font-normal text-muted-foreground">média</span>
         </p>
+        <div role="img" aria-label={`Distribuição de ${label}, média de ${formatCompactBRL(data.media)}.`}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data.percentis} margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
             <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -106,6 +108,7 @@ function PercentilChart({ data, cor, label }: { data: DistResult; cor: string; l
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
@@ -181,8 +184,8 @@ export default function RiscoPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="text-sm w-full">
-            <thead>
+          <table className="text-sm w-full max-sm:block">
+            <thead className="max-sm:sr-only">
               <tr className="border-b">
                 <th className="py-2 pr-4 text-left font-medium text-muted-foreground">Variável</th>
                 <th className="py-2 px-1 text-center font-medium text-muted-foreground">Média</th>
@@ -190,7 +193,7 @@ export default function RiscoPage() {
                 <th className="py-2 px-1 text-center font-medium text-muted-foreground">Cenário alto (P85)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="max-sm:block">
               {Object.keys(DEFAULTS).map((key) => (
                 <VariavelRow
                   key={key}

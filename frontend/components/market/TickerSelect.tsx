@@ -46,7 +46,7 @@ export function TickerSelect({ value, onChange, disabled }: TickerSelectProps) {
     <div className="space-y-2">
       <Label>Ativo</Label>
       <Select value={selectValue} onValueChange={handleSelectChange} disabled={disabled}>
-        <SelectTrigger className="w-full sm:w-64">
+        <SelectTrigger className="w-full sm:w-64" aria-label="Ativo">
           <SelectValue placeholder="Selecione um ativo" />
         </SelectTrigger>
         <SelectContent>
