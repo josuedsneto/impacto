@@ -5,15 +5,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, ValidationError
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 import alertas
 import market_cache
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/alertas", tags=["alertas"])
-limiter = Limiter(key_func=get_remote_address)  # DEC-10: instância própria, sem importar main
+from limiter import limiter
 
 
 class RegraIn(BaseModel):

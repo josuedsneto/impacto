@@ -6,14 +6,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from auth import get_current_user
 from market_cache import supa_client
 
 # ponytail: limiter próprio (main.py importaria este módulo, então não dá para importar dele).
-limiter = Limiter(key_func=get_remote_address)
+from limiter import limiter
 router = APIRouter()
 
 Ferramenta = Literal["var", "breakeven", "risco", "opcoes"]

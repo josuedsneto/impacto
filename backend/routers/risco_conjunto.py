@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from auth import get_current_user
-from main import limiter  # main.py define o limiter antes de incluir este router
+from limiter import limiter
 from risco_conjunto import JANELA_MAX, JANELA_MIN, JANELA_PADRAO, HistoricoInsuficiente, buscar_e_calcular
 
 router = APIRouter()

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 import market_cache
 from auth import get_current_user
-from main import limiter  # main define o limiter antes de incluir este router
+from limiter import limiter
 from market_cache import get_prices
 
 router = APIRouter(prefix="/api")
