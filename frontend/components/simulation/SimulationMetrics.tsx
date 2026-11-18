@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPreco } from "@/lib/format";
+import { formatPercent, formatPreco } from "@/lib/format";
 import { nomeAtivo } from "@/lib/ativos";
 import { SimulationResult } from "./SimulationForm";
 
@@ -29,8 +29,14 @@ export default function SimulationMetrics({ result }: { result: SimulationResult
         ))}
       </div>
 
-      <div className="border-t border-border pt-2 text-sm text-muted-foreground">
-        Preço inicial: {fmt(result.preco_inicial)}
+      <div className="space-y-1 border-t border-border pt-2 text-sm text-muted-foreground">
+        <p>Preço inicial: {fmt(result.preco_inicial)}</p>
+        {result.pct_passou_limite !== null && (
+          <p>
+            {formatPercent(result.pct_passou_limite, 1)} dos cenários saíram da faixa de ±
+            {formatPercent(result.pct_bound, 0)} em algum dia do prazo.
+          </p>
+        )}
       </div>
     </div>
   );

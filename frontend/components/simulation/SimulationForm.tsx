@@ -11,6 +11,8 @@ import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { TickerSelect } from "@/components/market/TickerSelect";
 import { unidadeAtivo } from "@/lib/ativos";
 import { fracaoParaPercentual, lerNumero } from "@/lib/numero";
+import { formatDate, formatPreco } from "@/lib/format";
+import { LIMITE_CENARIOS_SIMULACAO } from "@/lib/simulacao";
 
 export interface SimulationResult {
   id: string;
@@ -19,6 +21,7 @@ export interface SimulationResult {
   dias_simulados: number;
   num_simulacoes: number;
   pct_bound: number;
+  pct_passou_limite: number | null;
   label: string | null;
   p5: number;
   p20: number;
@@ -46,9 +49,52 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
   const FAIXAS = {
     preco: { min: 0.0001, max: 100_000 },
     dias: { min: 1, max: 1260 },
-    cenarios: { min: 100, max: 50_000 },
+    cenarios: LIMITE_CENARIOS_SIMULACAO,
     variacao: { min: 1, max: 200 },
   };
+
+  // Último fechamento do ativo, para preencher o preço de partida.
+  const [ultimoFechamento, setUltimoFechamento] = useState<{ preco: number; data: string } | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarUltimoFechamento() {
+      // Data local (não UTC): depois das 21h em Brasília, UTC já é o dia seguinte.
+      const iso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const params = new URLSearchParams({
+        ticker,
+        start: iso(new Date(Date.now() - 10 * 86_400_000)),
+        end: iso(new Date()),
+      });
+      try {
+        const data = await apiFetch<{ rows: { date: string; close: number | null }[] }>(
+          `/api/market/prices?${params}`
+        );
+        const ultimo = [...data.rows]
+          .reverse()
+          .find((r) => r.close !== null && Number.isFinite(r.close));
+        if (cancelado) return;
+        if (ultimo && ultimo.close !== null) {
+          setUltimoFechamento({ preco: ultimo.close, data: ultimo.date });
+          // yfinance traz floats com artefato (19.459999…); arredonda antes de preencher.
+          setPrecoInicial(String(Number(ultimo.close.toFixed(4))).replace(".", ","));
+        } else {
+          setUltimoFechamento(null);
+          setPrecoInicial("");
+        }
+      } catch {
+        if (!cancelado) {
+          setUltimoFechamento(null);
+          setPrecoInicial("");
+        }
+      }
+    }
+    carregarUltimoFechamento();
+    return () => {
+      cancelado = true;
+    };
+  }, [ticker]);
 
   useEffect(() => {
     async function loadParams() {
@@ -117,6 +163,11 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
         placeholder="ex.: 19,50"
         disabled={loading}
       />
+      <p className="-mt-2 text-xs text-muted-foreground">
+        {ultimoFechamento
+          ? `Último fechamento: ${formatPreco(ticker, ultimoFechamento.preco)} em ${formatDate(ultimoFechamento.data)}`
+          : "Sem fechamento recente para este ativo."}
+      </p>
 
       <CampoNumero
         id="dias_simulados"
@@ -142,9 +193,9 @@ export default function SimulationForm({ onResult }: SimulationFormProps) {
 
       <CampoNumero
         id="variacao_max"
-        rotulo="Variação máxima do preço"
+        rotulo="Limite de referência"
         unidade="%"
-        ajuda="O preço simulado fica limitado a esta variação, para cima ou para baixo, em relação ao preço de partida."
+        ajuda="Não corta os cenários. Mostramos quantos deles saem desta faixa, para cima ou para baixo, em algum dia do prazo."
         valor={variacaoMax}
         onChange={setVariacaoMax}
         {...FAIXAS.variacao}
