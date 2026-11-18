@@ -1,22 +1,37 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import json
 import logging
 import os
 import re
+import time as _time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, timedelta
+from typing import Annotated, Literal, Optional
 from uuid import UUID
 
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Annotated, Literal, Optional
-from datetime import date, timedelta
 import requests
 import yfinance as yf
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, field_validator, model_validator
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from auth import get_current_user, require_admin
+import market_cache
+from market_cache import get_prices, backfill_ticker, supa_client, serie_fechamentos
+from analysis import compute_analysis, IndicatorConfig
+from simulation import run_simulation
+from options import compute_payoff, bs_call_price, mc_call_price
+from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
+from atr import calibrate_atr, predict_atr
+from observabilidade import RequestIdMiddleware, configurar_logs
+from postgrest.exceptions import APIError
+
+configurar_logs()
 logger = logging.getLogger(__name__)
 
 # Oracle Cloud IPs are blocked by Yahoo Finance — use a browser User-Agent session.
@@ -24,15 +39,6 @@ _yf_session = requests.Session()
 _yf_session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 })
-from pydantic import BaseModel, Field
-from auth import get_current_user, require_admin
-import market_cache
-from market_cache import get_prices, backfill_ticker, supa_client
-from analysis import compute_analysis, IndicatorConfig
-from simulation import run_simulation
-from options import compute_payoff, bs_call_price, mc_call_price
-from regression import run_dolar_regression, get_dolar_defaults, run_acucar_regression, get_acucar_defaults
-from atr import calibrate_atr, predict_atr, get_sector_defaults
 
 # ── Ticker validation ─────────────────────────────────────────────────────────
 ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
@@ -45,6 +51,93 @@ def validate_ticker(ticker: str) -> str:
     return t
 
 
+# Constantes de negócio lidas de admin_config. Conjunto fechado: só estas chaves são numéricas.
+CONSTANTES_NEGOCIO: dict[str, tuple[float, str]] = {
+    "breakeven_fator_conversao": (1.12045, "Fator de conversão cents/lb → R$/saca (0,022046 × 50,802). Usado no Breakeven."),
+    "fator_conversao_mtm": (22.928048, "Fator de conversão do valor de mercado (cents/lb → R$/t): 22,0462 × 1,04. Usado em Metas, Risco e Cenários."),
+    "risco_custo_fixo_1": (109212811.0, "Custo fixo 1 do Risco (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
+    "risco_custo_fixo_2": (32947347.0, "Custo fixo 2 do Risco (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_1": (88704735.0, "Custo fixo 1 de Cenários (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_2": (43732035.0, "Custo fixo 2 de Cenários (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
+    "cenarios_custo_fixo_3": (20286465.0, "Custo fixo 3 de Cenários (R$): terceira parcela da fórmula de custo. Confirmar a rubrica."),
+}
+
+
+def _valor_numerico(texto) -> float:
+    """Aceita dígitos com no máximo um separador decimal (ponto ou vírgula). Precisa ser > 0."""
+    t = str(texto).strip()
+    if not re.fullmatch(r"[0-9]+([.,][0-9]+)?", t):
+        raise ValueError(t)
+    valor = float(t.replace(",", "."))
+    if valor <= 0:
+        raise ValueError(t)
+    return valor
+
+
+def _ler_constantes(*chaves: str) -> dict[str, float]:
+    """Lê as constantes de admin_config. Ausente, ilegível ou erro de rede → valor do código + aviso no log."""
+    try:
+        linhas = supa_client().table("admin_config").select("key,value").execute().data or []
+        brutos = {r["key"]: r["value"] for r in linhas}
+    except Exception as exc:
+        logger.warning("Não foi possível ler admin_config (%s); usando valores do código.", exc)
+        brutos = {}
+    valores = {}
+    for chave in chaves:
+        padrao = CONSTANTES_NEGOCIO[chave][0]
+        if chave not in brutos:
+            logger.warning("Constante %s ausente em admin_config; usando %s.", chave, padrao)
+            valores[chave] = padrao
+            continue
+        try:
+            valores[chave] = _valor_numerico(brutos[chave])
+        except ValueError:
+            logger.warning("Valor inválido em admin_config para %s; usando %s.", chave, padrao)
+            valores[chave] = padrao
+    return valores
+
+
+def _num(valor: float) -> str:
+    return f"{valor:g}".replace(".", ",")
+
+
+def _faixa(nome: str, valor: float, minimo: float, maximo: float) -> None:
+    """HARD-01/06: 422 com mensagem em português quando o valor sai da faixa."""
+    if not (minimo <= valor <= maximo):
+        raise HTTPException(status_code=422, detail=f"{nome} deve estar entre {_num(minimo)} e {_num(maximo)}.")
+
+
+def _validar_periodo(start: date, end: date) -> None:
+    if end < start:
+        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
+    if (end - start).days > MAX_DIAS_PERIODO:
+        raise HTTPException(status_code=422, detail="O período não pode passar de 25 anos.")
+
+
+def _validar_paginacao(limit: int, offset: int) -> None:
+    _faixa("O limite", limit, 1, 200)
+    _faixa("O deslocamento (offset)", offset, 0, 100_000)
+
+
+def _lista_periodos(nome: str, texto: str) -> list[int]:
+    """Lista '20,50' → [20, 50]. Até 5 períodos, cada um de 2 a 250 (HARD-01)."""
+    valores = []
+    for parte in (p.strip() for p in texto.split(",")):
+        if not parte:
+            continue
+        if not parte.isdigit() or len(parte) > 6:
+            raise HTTPException(status_code=422, detail=f"Os períodos de {nome} devem ser números inteiros (ex.: 20,50).")
+        valores.append(int(parte))
+    if len(valores) > 5:
+        raise HTTPException(status_code=422, detail=f"Use no máximo 5 médias {nome}.")
+    for v in valores:
+        _faixa(f"Cada média {nome}", v, 2, 250)
+    return valores
+
+
+MAX_DIAS_PERIODO = 25 * 365
+
+
 app = FastAPI(
     title="Impacto API",
     version="2.0.0",
@@ -55,6 +148,8 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+# Por dentro do CORS: o erro 500 também sai com cabeçalhos CORS (HARD-02, HARD-10)
+app.add_middleware(RequestIdMiddleware)
 
 # CORS — origins configured via env var; defaults to localhost for local dev
 cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -70,6 +165,17 @@ app.add_middleware(
 
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────
+
+OpcaoCenario = Literal["Moagem", "Câmbio", "NY", "Preço Etanol"]
+
+MAX_JSON_BYTES = 64_000  # teto para JSON livre (inputs/results do Risco)
+
+
+def _limitar_json(valor: dict) -> dict:
+    if len(json.dumps(valor, ensure_ascii=False, default=str)) > MAX_JSON_BYTES:
+        raise ValueError(f"Os dados enviados passam de {MAX_JSON_BYTES // 1000} KB.")
+    return valor
+
 
 class SimulationRequest(BaseModel):
     ticker: str
@@ -129,13 +235,12 @@ def health():
 
 @app.get("/api/focus")
 @limiter.limit("20/minute")
-async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """
     Returns latest BCB Focus report medians for IPCA, Câmbio, Selic, PIB Total
     for the current calendar year, plus the delta vs the reading from ~7 days ago.
     Falls back to None values if the BCB API is unavailable.
     """
-    import asyncio
     from bcb import Expectativas
 
     current_year = str(date.today().year)
@@ -171,13 +276,8 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
         except Exception:
             return {"value": None, "delta": None}
 
-    # Run all indicator fetches in a thread pool to avoid blocking the event loop
-    loop = asyncio.get_event_loop()
-    tasks = [
-        loop.run_in_executor(None, fetch_indicator, name)
-        for name in indicators
-    ]
-    values = await asyncio.gather(*tasks)
+    with ThreadPoolExecutor(max_workers=len(indicators)) as pool:
+        values = list(pool.map(fetch_indicator, indicators))
 
     key_map = {"IPCA": "ipca", "Câmbio": "cambio", "Selic": "selic", "PIB Total": "pib"}
     for name, val in zip(indicators, values):
@@ -189,17 +289,14 @@ async def get_focus(request: Request, user: Annotated[dict, Depends(get_current_
 
 @app.get("/api/regression/dolar/defaults")
 @limiter.limit("20/minute")
-async def dolar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def dolar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns latest BCB + FRED values to pre-fill the frontend inputs."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    defaults = await loop.run_in_executor(None, get_dolar_defaults)
-    return defaults
+    return get_dolar_defaults()
 
 
 @app.post("/api/regression/dolar/run")
 @limiter.limit("10/minute")
-async def dolar_run(
+def dolar_run(
     request: Request,
     body: DolarRegressionRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -208,10 +305,8 @@ async def dolar_run(
     Trains OLS on BCB+FRED history, predicts taxa_dolar for user inputs,
     persists run to regression_runs, returns regression metrics.
     """
-    import asyncio
-    loop = asyncio.get_event_loop()
     try:
-        resultado = await loop.run_in_executor(None, run_dolar_regression, body.model_dump())
+        resultado = run_dolar_regression(body.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
@@ -232,17 +327,14 @@ async def dolar_run(
 
 @app.get("/api/regression/acucar/defaults")
 @limiter.limit("20/minute")
-async def acucar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
+def acucar_defaults(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns latest yfinance prices + USDA defaults to pre-fill sugar regression inputs."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    defaults = await loop.run_in_executor(None, get_acucar_defaults)
-    return defaults
+    return get_acucar_defaults()
 
 
 @app.post("/api/regression/acucar/run")
 @limiter.limit("10/minute")
-async def acucar_run(
+def acucar_run(
     request: Request,
     body: AcucarRunRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -251,13 +343,9 @@ async def acucar_run(
     Trains Ridge or XGBoost on annual yfinance+USDA data, predicts SB=F price,
     persists run to regression_runs, returns prediction with uncertainty range.
     """
-    import asyncio
-    loop = asyncio.get_event_loop()
     inputs = body.model_dump(exclude={"model"})
     try:
-        resultado = await loop.run_in_executor(
-            None, lambda: run_acucar_regression(inputs, model_type=body.model)
-        )
+        resultado = run_acucar_regression(inputs, model_type=body.model)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -302,7 +390,8 @@ def regression_runs_list(
 
 
 @app.get("/api/me")
-def me(user: Annotated[dict, Depends(get_current_user)]):
+@limiter.limit("60/minute")
+def me(request: Request, user: Annotated[dict, Depends(get_current_user)]):
     """Returns current user info — verifies JWT is accepted for normal users."""
     return {"id": user["id"], "email": user["email"], "role": user["role"]}
 
@@ -324,8 +413,7 @@ def market_prices(
     MKT-02: only uncached dates are fetched from yfinance.
     """
     ticker = validate_ticker(ticker)
-    if end < start:
-        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
+    _validar_periodo(start, end)
     rows = get_prices(ticker, start, end)
     return {"ticker": ticker, "start": start.isoformat(), "end": end.isoformat(), "rows": rows}
 
@@ -358,12 +446,21 @@ def market_analysis(
     import pandas as pd
 
     ticker = validate_ticker(ticker)
-    if end < start:
-        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
+    _validar_periodo(start, end)
+
+    for nome, valor in [
+        ("O período do RSI", rsi_period), ("A janela do Bollinger", bb_window),
+        ("O MACD rápido", macd_fast), ("O MACD lento", macd_slow), ("O sinal do MACD", macd_signal),
+        ("O %K do estocástico", stoch_k), ("O %D do estocástico", stoch_d), ("O período do CCI", cci_period),
+    ]:
+        _faixa(nome, valor, 2, 250)
+    _faixa("O desvio do Bollinger", bb_std, 0.5, 5)
+    if macd_fast >= macd_slow:
+        raise HTTPException(status_code=422, detail="O MACD rápido deve ser menor que o lento.")
 
     selected = [i.strip().lower() for i in indicators.split(",") if i.strip()]
-    sma_list = [int(p.strip()) for p in sma_periods.split(",") if p.strip().isdigit()]
-    ema_list = [int(p.strip()) for p in ema_periods.split(",") if p.strip().isdigit()]
+    sma_list = _lista_periodos("SMA", sma_periods)
+    ema_list = _lista_periodos("EMA", ema_periods)
 
     cfg = IndicatorConfig(
         indicators=selected,
@@ -393,11 +490,9 @@ def market_analysis(
 
     enriched, signals = compute_analysis(df, cfg)
 
-    import json as _json
-
     enriched = enriched.reset_index()
     enriched["date"] = enriched["date"].dt.strftime("%Y-%m-%d")
-    rows = _json.loads(enriched.to_json(orient="records"))
+    rows = json.loads(enriched.to_json(orient="records"))
 
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
@@ -479,13 +574,16 @@ def suggest_ticker(
 
 
 @app.get("/api/admin/suggestions")
+@limiter.limit("20/minute")
 def admin_list_suggestions(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """ADM-01: Return ticker suggestions. Optionally filter by status=pending|approved|rejected."""
+    _validar_paginacao(limit, offset)
     client = supa_client()
     query = client.table("tickers_catalog").select(
         "id,ticker,nome,tipo,status,backfill_status,review_note,adicionado_por,created_at"
@@ -503,7 +601,9 @@ class SuggestionReviewRequest(BaseModel):
 
 
 @app.patch("/api/admin/suggestions/{suggestion_id}")
+@limiter.limit("20/minute")
 def admin_review_suggestion(
+    request: Request,
     suggestion_id: UUID,
     body: SuggestionReviewRequest,
     user: Annotated[dict, Depends(require_admin)],
@@ -550,7 +650,9 @@ def admin_review_suggestion(
 
 
 @app.post("/api/admin/market/backfill/{ticker}")
+@limiter.limit("5/minute")
 def admin_backfill(
+    request: Request,
     ticker: str,
     user: Annotated[dict, Depends(require_admin)],
 ):
@@ -642,6 +744,7 @@ def list_simulations(
     SIM-02/SIM-04: List all simulations for the authenticated user only.
     Returns id, ticker, label, p50, created_at (no percentiles_series to keep payload small).
     """
+    _validar_paginacao(limit, offset)
     client = supa_client()
     result = (
         client.table("simulations")
@@ -689,7 +792,7 @@ class OptionLeg(BaseModel):
 
 
 class PayoffRequest(BaseModel):
-    legs: list[OptionLeg]
+    legs: list[OptionLeg] = Field(min_length=1, max_length=50)
 
 
 class BSPriceRequest(BaseModel):
@@ -710,7 +813,9 @@ class MCPriceRequest(BaseModel):
 
 
 @app.post("/api/options/payoff")
+@limiter.limit("30/minute")
 def options_payoff(
+    request: Request,
     body: PayoffRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -721,7 +826,9 @@ def options_payoff(
 
 
 @app.post("/api/options/bs-price")
+@limiter.limit("60/minute")
 def options_bs_price(
+    request: Request,
     body: BSPriceRequest,
     user: Annotated[dict, Depends(get_current_user)],
 ):
@@ -814,12 +921,14 @@ def upsert_params(
 # ── Admin Config ───────────────────────────────────────────────────────────────
 
 class AdminConfigUpdateRequest(BaseModel):
-    value: str
-    description: str | None = None
+    value: str = Field(max_length=2000)
+    description: str | None = Field(default=None, max_length=500)
 
 
 @app.get("/api/admin/config")
+@limiter.limit("20/minute")
 def admin_get_config(
+    request: Request,
     user: Annotated[dict, Depends(require_admin)],
 ):
     """Return all admin_config rows ordered by key."""
@@ -834,22 +943,34 @@ def admin_get_config(
 
 
 @app.put("/api/admin/config/{key}")
+@limiter.limit("20/minute")
 def admin_update_config(
+    request: Request,
     key: str,
     body: AdminConfigUpdateRequest,
     user: Annotated[dict, Depends(require_admin)],
 ):
-    """Upsert a key/value pair in admin_config."""
+    """Upsert a key/value pair in admin_config. Constantes de negócio precisam ser numéricas (HARD-04)."""
+    if not re.fullmatch(r"[a-z0-9_]{1,64}", key):
+        raise HTTPException(status_code=422, detail="Chave inválida: use letras minúsculas, números e '_' (até 64 caracteres).")
+    valor = body.value
+    if key in CONSTANTES_NEGOCIO:
+        try:
+            _valor_numerico(body.value)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"O valor de {key} precisa ser numérico.")
+        # Grava o texto normalizado (ponto decimal, sem notação científica) para a leitura bater
+        valor = body.value.strip().replace(",", ".")
     client = supa_client()
     payload = {
         "key": key,
-        "value": body.value,
+        "value": valor,
         "updated_at": date.today().isoformat(),
     }
     if body.description is not None:
         payload["description"] = body.description
     client.table("admin_config").upsert(payload, on_conflict="key").execute()
-    return {"key": key, "value": body.value, "saved": True}
+    return {"key": key, "value": valor, "saved": True}
 
 
 # ── ATR (Açúcar Total Recuperável) ────────────────────────────────────────────
@@ -870,9 +991,8 @@ def atr_usinas_list(request: Request, user: Annotated[dict, Depends(get_current_
 
 @app.post("/api/atr/simulate")
 @limiter.limit("20/minute")
-async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
+def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[dict, Depends(get_current_user)]):
     """ATR-03: Simula ATR com IC 90% e persiste no Supabase."""
-    import asyncio
     supa = supa_client()
     # Verificar que usuário pertence à usina
     assoc = supa.table("user_usinas").select("usina_id").eq("user_id", user["id"]).eq("usina_id", body.usina_id).execute()
@@ -888,9 +1008,8 @@ async def atr_simulate(request: Request, body: AtrSimulateBody, user: Annotated[
         .execute()
     ).data
     history = [{"chuva_mm": r["chuva_mm"], "impureza_pct": r["impureza_pct"], "atr_real": r["atr_esperado"]} for r in hist_rows]
-    loop = asyncio.get_running_loop()
-    params = await loop.run_in_executor(None, calibrate_atr, history)
-    result = await loop.run_in_executor(None, lambda: predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem))
+    params = calibrate_atr(history)
+    result = predict_atr(body.chuva_mm, body.impureza_pct, params, body.volume_moagem)
     # Persistir
     supa.table("atr_simulacoes").insert({
         "user_id": user["id"],
@@ -958,8 +1077,10 @@ def admin_usinas_create(request: Request, body: AtrUsinaCreateBody, _: Annotated
     supa = supa_client()
     try:
         row = supa.table("usinas").insert({"nome": body.nome}).execute().data[0]
-    except Exception:
-        raise HTTPException(status_code=409, detail="Usina com este nome já existe.")
+    except APIError as exc:
+        if exc.code == "23505":
+            raise HTTPException(status_code=409, detail="Usina com este nome já existe.")
+        raise
     return {"id": row["id"], "nome": row["nome"]}
 
 
@@ -979,8 +1100,10 @@ def admin_usinas_add_user(request: Request, usina_id: str, user_id_target: str, 
     supa = supa_client()
     try:
         supa.table("user_usinas").insert({"usina_id": usina_id, "user_id": user_id_target}).execute()
-    except Exception:
-        raise HTTPException(status_code=409, detail="Associação já existe.")
+    except APIError as exc:
+        if exc.code == "23505":
+            raise HTTPException(status_code=409, detail="Associação já existe.")
+        raise
     return {"ok": True}
 
 
@@ -993,12 +1116,28 @@ def admin_usinas_remove_user(request: Request, usina_id: str, user_id_target: st
     return {"ok": True}
 
 
+TAMANHO_PAGINA_USUARIOS = 1000
+MAX_PAGINAS_USUARIOS = 50
+
+
+def _todos_usuarios(supa) -> list:
+    """HARD-03: percorre todas as páginas do Supabase Auth, ordenadas por e-mail."""
+    usuarios: list = []
+    for pagina in range(1, MAX_PAGINAS_USUARIOS + 1):
+        lote = supa.auth.admin.list_users(page=pagina, per_page=TAMANHO_PAGINA_USUARIOS)
+        if not lote:  # não confia no tamanho da página: o servidor pode limitar per_page
+            break
+        usuarios.extend(lote)
+    else:
+        logger.warning("Lista de usuários cortada em %d páginas.", MAX_PAGINAS_USUARIOS)
+    return sorted(usuarios, key=lambda u: u.email or "")
+
+
 @app.get("/api/admin/usuarios")
 @limiter.limit("10/minute")
 def admin_usuarios_list(request: Request, _: Annotated[dict, Depends(require_admin)]):
     """Admin: lista todos os usuários cadastrados no Supabase Auth."""
-    supa = supa_client()
-    users = supa.auth.admin.list_users()
+    users = _todos_usuarios(supa_client())
     return {"usuarios": [{"id": u.id, "email": u.email} for u in users]}
 
 
@@ -1021,19 +1160,13 @@ def fechamentos(ticker: str, inicio: date, fim: date | None = None):
     Série de fechamentos (pandas, índice de datas) e a data do último dado, lidas pelo cache.
     503 com mensagem em português quando não há nenhum preço (Yahoo fora e cache vazio).
     """
-    import pandas as pd
-
-    linhas = [r for r in get_prices(ticker, inicio, fim or date.today()) if r["close"] is not None]
-    if not linhas:
+    serie = serie_fechamentos(ticker, inicio, fim)
+    if serie.empty:
         raise HTTPException(
             status_code=503,
             detail=f"Não foi possível obter os preços de {ticker} agora. Tente novamente em alguns minutos.",
         )
-    serie = pd.Series(
-        [float(r["close"]) for r in linhas],
-        index=pd.to_datetime([r["date"] for r in linhas]),
-    )
-    return serie, linhas[-1]["date"]
+    return serie, serie.index[-1].strftime("%Y-%m-%d")
 
 
 # ── VaR ────────────────────────────────────────────────────────────────────────
@@ -1058,10 +1191,8 @@ def get_var(
     import numpy as np
 
     ticker = validate_ticker(ticker)
-    if not (0 < confidence < 1):
-        raise HTTPException(status_code=400, detail="O nível de confiança precisa estar entre 0 e 1.")
-    if horizon < 1:
-        raise HTTPException(status_code=400, detail="O horizonte precisa ser de pelo menos 1 dia.")
+    _faixa("O nível de confiança", confidence, 0.5, 0.999)
+    _faixa("O horizonte (dias úteis)", horizon, 1, 252)
 
     serie, ultimo_dado = fechamentos(ticker, date.today() - timedelta(days=365))
     if len(serie) < 10:
@@ -1108,22 +1239,13 @@ def get_breakeven(
 
     fator_conversao is stored in admin_config and defaults to 1.12045 if not found.
     """
-    # Fetch conversion factor from admin_config
-    client = supa_client()
-    config_row = (
-        client.table("admin_config")
-        .select("value")
-        .eq("key", "breakeven_fator_conversao")
-        .limit(1)
-        .execute()
-    )
-    fator_conversao = float((config_row.data[0] if config_row.data else {}).get("value", "1.12045"))
+    fator_conversao = _ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"]
 
-    # Fetch latest prices from Supabase cache
+    # Latest prices from the cache; fechamentos nulos não contam
     today = date.today()
     start = today - timedelta(days=7)
-    sugar_rows = get_prices("SB=F", start, today)
-    usd_rows = get_prices("USDBRL=X", start, today)
+    sugar_rows = [r for r in get_prices("SB=F", start, today) if r["close"] is not None]
+    usd_rows = [r for r in get_prices("USDBRL=X", start, today) if r["close"] is not None]
 
     if not sugar_rows or not usd_rows:
         raise HTTPException(status_code=503, detail="Não foi possível obter os preços atuais de açúcar e dólar. Tente novamente em alguns minutos.")
@@ -1178,6 +1300,7 @@ def list_breakeven_history(
     offset: int = 0,
 ):
     """List saved breakeven simulations for the authenticated user."""
+    _validar_paginacao(limit, offset)
     client = supa_client()
     result = (
         client.table("breakeven_simulations")
@@ -1199,6 +1322,11 @@ class RiscoSaveRequest(BaseModel):
     ebitda_media: float
     results: dict
     label: str | None = None
+
+    @field_validator("inputs", "results")
+    @classmethod
+    def _tamanho_json(cls, valor: dict) -> dict:
+        return _limitar_json(valor)
 
 
 @app.post("/api/risco/save", status_code=201)
@@ -1228,6 +1356,7 @@ def list_risco_history(
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
+    _validar_paginacao(limit, 0)
     client = supa_client()
     result = (
         client.table("risco_simulations")
@@ -1243,7 +1372,7 @@ def list_risco_history(
 # ── Cenários history ───────────────────────────────────────────────────────────
 
 class CenariosSaveRequest(BaseModel):
-    opcao: str
+    opcao: OpcaoCenario
     ny: float | None = None
     moagem: float | None = None
     cambio: float | None = None
@@ -1278,6 +1407,7 @@ def list_cenarios_history(
     user: Annotated[dict, Depends(get_current_user)],
     limit: int = 50,
 ):
+    _validar_paginacao(limit, 0)
     client = supa_client()
     result = (
         client.table("cenarios_simulations")
@@ -1427,8 +1557,6 @@ def get_stress(
 
 # ── News ───────────────────────────────────────────────────────────────────────
 
-import time as _time
-
 _news_cache: dict = {"ts": 0.0, "items": []}
 _NEWS_TTL = 1800  # 30 minutes
 
@@ -1542,32 +1670,42 @@ def get_metas(
     user: Annotated[dict, Depends(get_current_user)] = None,
 ):
     """MTM history and heatmap data for sugar price targets."""
-    FATOR = 22.0462 * 1.04
+    fator = _ler_constantes("fator_conversao_mtm")["fator_conversao_mtm"]
     end = date.today()
     start = date(2013, 1, 1)
 
-    sugar_rows = get_prices("SB=F", start, end)
-    fx_rows = get_prices("USDBRL=X", start, end)
+    # Fechamentos nulos não contam
+    sugar_rows = [r for r in get_prices("SB=F", start, end) if r["close"] is not None]
+    fx_rows = [r for r in get_prices("USDBRL=X", start, end) if r["close"] is not None]
 
     if len(sugar_rows) < 10 or len(fx_rows) < 10:
         raise HTTPException(status_code=503, detail="Dados insuficientes.")
 
-    sugar_map = {r["date"]: r["close"] for r in sugar_rows if r["close"]}
-    fx_map = {r["date"]: r["close"] for r in fx_rows if r["close"]}
+    # HARD-05: o mapa é centrado no último fechamento de cada preço
+    limite = (end - timedelta(days=7)).isoformat()
+    if str(sugar_rows[-1]["date"])[:10] < limite or str(fx_rows[-1]["date"])[:10] < limite:
+        raise HTTPException(status_code=503, detail="Sem preços recentes para montar o mapa de metas.")
+    spot_acucar = float(sugar_rows[-1]["close"])
+    spot_dolar = float(fx_rows[-1]["close"])
+
+    sugar_map = {r["date"]: r["close"] for r in sugar_rows}
+    fx_map = {r["date"]: r["close"] for r in fx_rows}
     common_dates = sorted(set(sugar_map) & set(fx_map))
 
     mtm_series = [
         {
             "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
-            "mtm": round(FATOR * sugar_map[d] * fx_map[d], 2),
+            "mtm": round(fator * sugar_map[d] * fx_map[d], 2),
             "meta": meta,
         }
         for d in common_dates
     ]
 
-    acucares = [round(24 - 0.5 * i, 2) for i in range(11)]
-    dolares = [round(4.8 + 0.05 * i, 2) for i in range(10)]
-    heatmap = [[round(FATOR * a * d - meta, 2) for d in dolares] for a in acucares]
+    # Açúcar: ±25% em passos de 5% (linhas, do maior para o menor).
+    # Dólar: ±10% em passos de 2% (colunas, crescente). Centro = índice 5 nos dois eixos.
+    acucares = [round(spot_acucar * (1 + 0.05 * k), 2) for k in range(5, -6, -1)]
+    dolares = [round(spot_dolar * (1 + 0.02 * k), 2) for k in range(-5, 6)]
+    heatmap = [[round(fator * a * d - meta, 2) for d in dolares] for a in acucares]
 
     return {
         "meta": meta,
@@ -1582,7 +1720,7 @@ def get_metas(
 
 class JumpDiffusionRequest(BaseModel):
     ticker: str = "SB=F"
-    sigma: float | None = None
+    sigma: float | None = Field(default=None, gt=0, le=1)  # diária
     lambda_jumps: float = Field(default=0.1, ge=0, le=5)
     mu_jump: float = Field(default=-0.02, ge=-1, le=1)
     sigma_jump: float = Field(default=0.05, ge=0, le=1)
@@ -1603,33 +1741,35 @@ def jump_diffusion(
     start = end - timedelta(days=3 * 365)
     rows = get_prices(ticker, start, end)
 
-    if len(rows) < 20:
+    closes = np.array([r["close"] for r in rows if r["close"]], dtype=float)
+    if len(rows) < 20 or len(closes) < 2:
         raise HTTPException(status_code=400, detail="Dados históricos insuficientes.")
 
-    closes = np.array([r["close"] for r in rows if r["close"]], dtype=float)
     log_returns = np.diff(np.log(closes))
     mu = float(np.mean(log_returns))
     sigma = float(body.sigma) if body.sigma is not None else float(np.std(log_returns, ddof=1))
     s0 = float(closes[-1])
 
-    # mu/sigma are daily (estimated from daily closes), so each step is one
-    # trading day; lambda_jumps is per year (UI tooltip), hence /252.
-    dt = 1.0
+    # mu e sigma são diários (log-retornos de fechamentos diários): cada passo é um pregão.
+    # lambda_jumps é anual (tooltip), por isso /252.
+    # mu já é o drift em log da série: não se subtrai σ²/2 de novo. Como mu traz os saltos
+    # históricos, tira-se a média dos saltos por passo (λ_d·μ_salto) para não contar duas vezes.
+    lam_d = body.lambda_jumps / 252
     rng = np.random.default_rng()
-    prices = [s0]
-    for _ in range(body.steps):
-        n_jumps = int(rng.poisson(body.lambda_jumps / 252))
-        jump_mag = float(np.sum(rng.normal(body.mu_jump, body.sigma_jump, n_jumps))) if n_jumps > 0 else 0.0
-        diffusion = (mu - 0.5 * sigma ** 2) * dt + sigma * float(rng.normal()) * (dt ** 0.5)
-        prices.append(prices[-1] * float(np.exp(diffusion + jump_mag)))
+    n = body.steps
+    n_saltos = rng.poisson(lam_d, n)
+    # Soma de N saltos N(m, s²) i.i.d. ~ N(N·m, N·s²): exato em distribuição, sem loop
+    saltos = n_saltos * body.mu_jump + np.sqrt(n_saltos) * body.sigma_jump * rng.standard_normal(n)
+    incrementos = (mu - lam_d * body.mu_jump) + sigma * rng.standard_normal(n) + saltos
+    precos = s0 * np.exp(np.concatenate(([0.0], np.cumsum(incrementos))))
 
     return {
         "ticker": ticker,
         "s0": round(s0, 4),
         "sigma": round(sigma, 6),
         "mu": round(mu, 6),
-        "prices": [{"step": i, "price": round(p, 4)} for i, p in enumerate(prices)],
-        "mean": round(float(np.mean(prices)), 4),
+        "prices": [{"step": i, "price": round(float(p), 4)} for i, p in enumerate(precos)],
+        "mean": round(float(np.mean(precos)), 4),
     }
 
 
@@ -1652,6 +1792,12 @@ class RiscoRequest(BaseModel):
     num_simulacoes: int = Field(default=10000, ge=1000, le=50000)
 
 
+ROTULOS_RISCO = {
+    "moagem": "Moagem", "atr": "ATR", "vhp_total": "VHP total", "ny": "NY",
+    "cambio": "Câmbio", "preco_cbios": "Preço do CBIO", "preco_etanol": "Preço do etanol",
+}
+
+
 @app.post("/api/risco")
 @limiter.limit("10/minute")
 def simular_risco(
@@ -1663,6 +1809,12 @@ def simular_risco(
     import numpy as np
     from scipy.stats import norm as _norm
 
+    for nome, v in [(k, getattr(body, k)) for k in ROTULOS_RISCO]:
+        if not (v.p15 < v.media < v.p85):
+            raise HTTPException(status_code=422, detail=f"{ROTULOS_RISCO[nome]}: é preciso P15 < média < P85.")
+
+    cfg = _ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1", "risco_custo_fixo_2")
+
     def _std(v: VariavelRisco) -> float:
         return (v.p85 - v.p15) / (2 * _norm.ppf(0.85))
 
@@ -1672,17 +1824,16 @@ def simular_risco(
     def _s(v: VariavelRisco) -> np.ndarray:
         return rng.normal(v.media, _std(v), n)
 
-    moagem = _s(body.moagem)
-    atr = _s(body.atr)
+    # NY não pode ser negativo (trunca em zero). Moagem e ATR não entram: na fórmula de custo
+    # moagem × ATR × atr_mtm = 0,6 × (faturamento − CBIO), então se cancelam.
+    ny = np.maximum(_s(body.ny), 0.0)
     vhp = _s(body.vhp_total)
-    ny = _s(body.ny)
     cambio = _s(body.cambio)
     cbios = _s(body.preco_cbios)
     etanol = _s(body.preco_etanol)
 
-    fat = ((ny - 0.19) * 22.0462 * 1.04 * cambio) * vhp + 17283303 + etanol * 35524 + 24479549 + cbios * 31616
-    atr_mtm = 0.6 * (fat - cbios) / (moagem * atr)
-    custo = 109212811 + 32947347 + atr_mtm * moagem * atr
+    fat = ((ny - 0.19) * cfg["fator_conversao_mtm"] * cambio) * vhp + 17283303 + etanol * 35524 + 24479549 + cbios * 31616
+    custo = cfg["risco_custo_fixo_1"] + cfg["risco_custo_fixo_2"] + 0.6 * (fat - cbios)
     ebitda = fat - custo + 7219092
 
     pcts = [1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 85, 90, 95, 99]
@@ -1703,7 +1854,7 @@ def simular_risco(
 # ── Cenários ──────────────────────────────────────────────────────────────────
 
 class CenariosRequest(BaseModel):
-    opcao: Literal["Moagem", "Câmbio", "NY", "Preço Etanol"]
+    opcao: OpcaoCenario
     ny: float = 20.0
     moagem: float = 1300000.0
     cambio: float = 5.25
@@ -1721,20 +1872,26 @@ def simular_cenarios(
     import numpy as np
     from scipy.stats import norm as _norm
 
+    cfg = _ler_constantes(
+        "fator_conversao_mtm", "cenarios_custo_fixo_1", "cenarios_custo_fixo_2", "cenarios_custo_fixo_3",
+    )
+    fator = cfg["fator_conversao_mtm"]
+    custo_fixo = cfg["cenarios_custo_fixo_1"] + cfg["cenarios_custo_fixo_2"] + cfg["cenarios_custo_fixo_3"]
+
     def _ebitda(moagem: float, cambio: float, preco_etanol: float, ny: float) -> float:
         vhp = (89.45 * 0.8346 * moagem) / 1000
         eth = (0.1654 * 80.18 * moagem + 327.19 * 60075) / 1000
         fat = (
-            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            (vhp - 4047) * (ny - 0.19) * fator * cambio
             + (eth - 1000) * (preco_etanol + 349.83) * 0.96
             + 3227430 + 22061958
             + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
         )
         custo = 0.6 * 0.93 * (
-            (vhp - 4047) * (ny - 0.19) * 22.0462 * 1.04 * cambio
+            (vhp - 4047) * (ny - 0.19) * fator * cambio
             + (eth - 1000) * (preco_etanol + 349.83) * 0.96
             + 12000 * (ny + 1) * 22.0462 * 0.75 * cambio
-        ) + 88704735 + 43732035 + 20286465
+        ) + custo_fixo
         return fat - custo
 
     from scipy.optimize import brentq
