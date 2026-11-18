@@ -4,18 +4,18 @@ import { CampoNumero, campoValido } from "@/components/ui/campo-numero";
 import { lerNumero } from "@/lib/numero";
 
 export interface CamposOpcaoValor {
-  S: string;
+  F: string;
   K: string;
   T: string;
   r: string;
   sigma: string;
 }
 
-export const CAMPOS_OPCAO_PADRAO: CamposOpcaoValor = { S: "20", K: "20", T: "1", r: "5", sigma: "20" };
+export const CAMPOS_OPCAO_PADRAO: CamposOpcaoValor = { F: "20", K: "20", T: "1", r: "5", sigma: "20" };
 
 // Faixas aceitas pela API (backend/main.py BSPriceRequest/MCPriceRequest); juros e volatilidade em %.
 const FAIXAS = {
-  S: { min: 0.0001, max: 100_000 },
+  F: { min: 0.0001, max: 100_000 },
   K: { min: 0.0001, max: 1_000_000 },
   T: { min: 0.01, max: 30 },
   r: { min: 0, max: 100 },
@@ -27,7 +27,7 @@ export function paraApi(v: CamposOpcaoValor) {
   const ok = (Object.keys(FAIXAS) as (keyof CamposOpcaoValor)[]).every((k) => campoValido(v[k], FAIXAS[k]));
   if (!ok) return null;
   return {
-    S: lerNumero(v.S)!,
+    F: lerNumero(v.F)!,
     K: lerNumero(v.K)!,
     T: lerNumero(v.T)!,
     r: lerNumero(v.r)! / 100,
@@ -50,17 +50,19 @@ export function CamposOpcao({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <CampoNumero
-        id={`${prefixo}-S`}
-        rotulo="Preço atual do ativo"
-        ajuda="Preço de hoje do ativo da opção (açúcar, dólar…)."
-        valor={valor.S}
-        onChange={set("S")}
-        {...FAIXAS.S}
+        id={`${prefixo}-F`}
+        rotulo="Preço do futuro"
+        unidade="¢/lb"
+        ajuda="Preço do contrato futuro de açúcar hoje (ICE). Opção sobre futuro usa esse preço, não o à vista."
+        valor={valor.F}
+        onChange={set("F")}
+        {...FAIXAS.F}
         disabled={disabled}
       />
       <CampoNumero
         id={`${prefixo}-K`}
         rotulo="Preço de exercício (strike)"
+        unidade="¢/lb"
         termo="strike"
         ajuda="Preço pelo qual a call dá o direito de comprar o ativo no vencimento."
         valor={valor.K}

@@ -3,8 +3,8 @@ import { CAMPOS_OPCAO_PADRAO, paraApi } from "./CamposOpcao";
 
 describe("paraApi (LING-02 AC3)", () => {
   it("converte juros e volatilidade de % para fração e aceita vírgula", () => {
-    expect(paraApi({ S: "21,5", K: "20", T: "0,25", r: "10,5", sigma: "25" })).toEqual({
-      S: 21.5,
+    expect(paraApi({ F: "21,5", K: "20", T: "0,25", r: "10,5", sigma: "25" })).toEqual({
+      F: 21.5,
       K: 20,
       T: 0.25,
       r: 0.105,

@@ -73,7 +73,7 @@ export function leituraPayoff(r: { precos: number[]; payoff: number[] }) {
 
 export function leituraCall(preco: N) {
   if (falta(preco)) return AUSENTE;
-  return `O preço justo desta call é ${formatNumber(preco, 4)} por unidade do ativo.`;
+  return `O preço justo desta call é ${formatNumber(preco, 4)} ¢/lb.`;
 }
 
 // ── Negócio ─────────────────────────────────────────────────────────────────

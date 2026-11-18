@@ -73,7 +73,7 @@ describe("frases de leitura de mercado (LING-03, LING-04)", () => {
   });
 
   it("Preço justo da call", () => {
-    expect(leituraCall(1.23456)).toBe("O preço justo desta call é 1,2346 por unidade do ativo.");
+    expect(leituraCall(1.23456)).toBe("O preço justo desta call é 1,2346 ¢/lb.");
   });
 
   it("valor ausente vira a frase padrão (edge case)", () => {

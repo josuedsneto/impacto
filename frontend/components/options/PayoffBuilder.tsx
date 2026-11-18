@@ -185,7 +185,7 @@ export default function PayoffBuilder({ onPayoffResult }: PayoffBuilderProps) {
       ))}
 
       <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={addLeg}>
+        <Button type="button" variant="outline" onClick={addLeg} disabled={legs.length >= 20}>
           Adicionar perna
         </Button>
         <Button type="button" onClick={handleCalculate} disabled={loading || legs.length === 0}>
