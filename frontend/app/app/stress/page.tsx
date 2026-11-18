@@ -48,6 +48,7 @@ function DrawdownBadge({ value }: { value: number }) {
 export default function StressPage() {
   const [ticker, setTicker] = useState("SB=F");
   const [scenarios, setScenarios] = useState<StressScenario[]>([]);
+  const [ultimoDado, setUltimoDado] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
@@ -60,6 +61,7 @@ export default function StressPage() {
         const params = new URLSearchParams({ ticker });
         const data = await apiFetch<{ cenarios: StressScenario[]; ultimo_dado: string }>(`/api/stress?${params}`);
         setScenarios(data.cenarios);
+        setUltimoDado(data.ultimo_dado ?? null);
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -73,6 +75,7 @@ export default function StressPage() {
     <div className="space-y-6">
       <PageHeader
         titulo="Teste de estresse"
+        atualizadoEm={ultimoDado ? `Fechamento de ${formatDate(ultimoDado)}` : undefined}
         descricao="As piores quedas do preço na história e em crises conhecidas (2008 e covid-19)."
         acoes={
           <BotaoExportar

@@ -28,6 +28,7 @@ import {
 
 interface VolatilityResult {
   ticker: string;
+  ultimo_dado?: string;
   vol_30d: number | null;
   vol_90d: number | null;
   vol_1y: number;
@@ -118,6 +119,9 @@ function VolPanel({ ticker }: { ticker: string }) {
         />
       </div>
       <Leitura>{leituraVolatilidade({ vol30: result.vol_30d, vol1a: result.vol_1y })}</Leitura>
+      {result?.ultimo_dado && (
+        <p className="text-xs text-muted-foreground">Fechamento de {formatDate(result.ultimo_dado)}</p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard
           label="Vol. Realizada 30d (a.a.)"
@@ -140,6 +144,7 @@ function VolPanel({ ticker }: { ticker: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div role="img" aria-label="Volatilidade do ativo ao longo do tempo.">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart
               data={result.rolling_30d}
@@ -167,6 +172,7 @@ function VolPanel({ ticker }: { ticker: string }) {
               <Line type="monotone" dataKey="vol" stroke="var(--chart-1)" dot={false} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -197,10 +203,8 @@ export default function VolatilityPage() {
       />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-xs">
-        <Label htmlFor="vol-ticker">
-          Ativo (código Yahoo){" "}
-          <FieldTooltip text="Escolha um dos atalhos ou digite o código do ativo no Yahoo Finance, ex.: PETR4.SA." />
-        </Label>
+        <Label htmlFor="vol-ticker">Ativo (código Yahoo)</Label>
+        <FieldTooltip text="Escolha um dos atalhos ou digite o código do ativo no Yahoo Finance, ex.: PETR4.SA." />
         <div className="flex gap-2">
           <Input
             id="vol-ticker"

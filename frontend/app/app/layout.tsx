@@ -51,7 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const tickerItems = [
     { label: "AÇÚCAR NY", value: formatCents(sugarStats.value), change: pct(sugarStats.change) },
     { label: "USD/BRL", value: formatFX(fxStats.value), change: pct(fxStats.change) },
-    { label: "SELIC", value: formatPercent(pct(focusData?.selic?.value)), change: null },
+    { label: "SELIC fim de ano (Focus)", value: formatPercent(pct(focusData?.selic?.value)), change: null },
     { label: "IPCA EXP.", value: formatPercent(pct(focusData?.ipca?.value)), change: pct(focusData?.ipca?.delta) },
   ];
 

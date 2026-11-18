@@ -340,12 +340,14 @@ export function FixacoesChart({
   }
 
   return (
-    <Plot
-      data={traces as unknown as Data[]}
-      layout={layout as unknown as Partial<Layout>}
-      config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
-      style={{ width: "100%" }}
-      useResizeHandler
-    />
+    <div role="img" aria-label="Gráfico de candles ou linha do preço no período escolhido.">
+      <Plot
+        data={traces as unknown as Data[]}
+        layout={layout as unknown as Partial<Layout>}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true }}
+        style={{ width: "100%" }}
+        useResizeHandler
+      />
+    </div>
   );
 }

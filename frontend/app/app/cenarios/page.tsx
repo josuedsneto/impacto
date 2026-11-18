@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/feedback";
@@ -139,10 +140,11 @@ export default function CenariosPage() {
         <Card>
           <CardContent className="space-y-4 pt-6">
             <div className="space-y-1">
-              <Label>
-                Variável de análise <FieldTooltip text="A variável para a qual o breakeven será calculado" />
-              </Label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center">
+                <Label id="cenarios-variavel">Variável de análise</Label>
+                <FieldTooltip text="A variável para a qual o breakeven será calculado" />
+              </div>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="cenarios-variavel">
                 {OPCOES.map((o) => (
                   <button
                     key={o}
@@ -204,11 +206,17 @@ export default function CenariosPage() {
                 <CardContent>
                   <p
                     className={cn(
-                      "text-2xl font-bold tabular-nums",
+                      "flex items-center gap-2 text-2xl font-bold tabular-nums",
                       result.probabilidade_abaixo > 0.3 ? "text-negative" : "text-positive"
                     )}
                   >
+                    {result.probabilidade_abaixo > 0.3 && <TriangleAlert aria-hidden className="size-5 shrink-0" />}
                     {result.probabilidade_abaixo < 0.01 ? "menos de 1%" : formatPercent(result.probabilidade_abaixo, 1)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {result.probabilidade_abaixo > 0.3
+                      ? "Acima de 30%: alerta de risco de ficar abaixo do breakeven."
+                      : "Limite de alerta: 30% de chance de ficar abaixo do breakeven."}
                   </p>
                 </CardContent>
               </Card>
@@ -227,6 +235,7 @@ export default function CenariosPage() {
                 <CardTitle className="text-sm font-medium">Distribuição de probabilidade · {NOME_OPCAO[result.opcao]}</CardTitle>
               </CardHeader>
               <CardContent>
+                <div role="img" aria-label={`Distribuição de probabilidade de ${NOME_OPCAO[result.opcao]}. Breakeven em ${fmt(result.breakeven)}.`}>
                 <ResponsiveContainer width="100%" height={260}>
                   <AreaChart data={result.distribuicao} margin={{ top: 16, right: 16, left: 0, bottom: 4 }}>
                     <defs>
@@ -269,6 +278,7 @@ export default function CenariosPage() {
                     />
                   </AreaChart>
                 </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
 
@@ -287,7 +297,11 @@ export default function CenariosPage() {
                       )}
                     >
                       <span className="block text-xs text-muted-foreground">P{p}</span>
-                      <span className="font-medium tabular-nums">{fmt(v)}</span>
+                      <span className="font-medium tabular-nums">
+                        {v < result.breakeven && <span aria-hidden>▼ </span>}
+                        {fmt(v)}
+                        {v < result.breakeven && <span className="sr-only"> (abaixo do breakeven)</span>}
+                      </span>
                     </div>
                   ))}
                 </div>

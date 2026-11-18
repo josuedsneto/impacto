@@ -53,12 +53,12 @@ export default async function DashboardPage() {
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {sugar.ok ? (
-            <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugar.dados} cor="var(--chart-2)" />
+            <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugar.dados} />
           ) : (
             <ErrorState mensagem="Não foi possível carregar a cotação do açúcar." />
           )}
           {fx.ok ? (
-            <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fx.dados} cor="var(--chart-1)" />
+            <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fx.dados} />
           ) : (
             <ErrorState mensagem="Não foi possível carregar a cotação do dólar." />
           )}

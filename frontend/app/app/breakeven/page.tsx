@@ -260,8 +260,8 @@ export default function BreakevenPage() {
             <div className="space-y-1">
               <Label htmlFor="m-label">
                 Nome <span className="font-normal text-muted-foreground">· opcional</span>
-                <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
               </Label>
+              <FieldTooltip text="Ajuda a encontrar esta simulação depois, na aba Histórico." />
               <Input id="m-label" value={manualLabel}
                 onChange={(e) => setManualLabel(e.target.value)} placeholder="ex.: Cenário pessimista" />
             </div>

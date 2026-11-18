@@ -147,7 +147,11 @@ export default function SimulationPage() {
                   })}
                 </Leitura>
                 <SimulationMetrics result={activeResult} />
-                <FanChart series={activeResult.percentiles_series} dias_simulados={activeResult.dias_simulados} />
+                <FanChart
+                  series={activeResult.percentiles_series}
+                  dias_simulados={activeResult.dias_simulados}
+                  unidade={unidadeAtivo(activeResult.ticker)}
+                />
               </div>
             ) : (
               <EmptyState mensagem="Preencha os parâmetros e clique em Simular para ver a faixa de preços." />

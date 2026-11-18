@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatCents, formatFX, formatPercent } from "@/lib/format";
+import { formatCents, formatDate, formatFX, formatPercent } from "@/lib/format";
 import type { PriceRow } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
 
@@ -10,35 +10,9 @@ interface PriceCardProps {
   exchange: string; // ex.: "ICE Futures · SB=F"
   tipo: "cents" | "fx";
   rows: PriceRow[];
-  cor: string; // token de série, ex.: "var(--chart-2)"
 }
 
-function MiniBarChart({ rows, cor }: { rows: PriceRow[]; cor: string }) {
-  const valid = rows.slice(-90);
-  if (valid.length === 0) return null;
-
-  const closes = valid.map((r) => r.close!);
-  const min = Math.min(...closes);
-  const range = Math.max(...closes) - min || 1;
-
-  return (
-    <div aria-hidden className="mt-4 flex h-12 items-end gap-[3px]">
-      {valid.map((r, i) => (
-        <div
-          key={r.date}
-          className="flex-1 rounded-t-sm"
-          style={{
-            height: `${Math.max(((r.close! - min) / range) * 100, 4)}%`,
-            background: cor,
-            opacity: 0.7 + (i / valid.length) * 0.3,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-export function PriceCard({ label, exchange, tipo, rows, cor }: PriceCardProps) {
+export function PriceCard({ label, exchange, tipo, rows }: PriceCardProps) {
   const valid = useMemo(() => rows.filter((r) => r.close !== null), [rows]);
   const fmt = tipo === "fx" ? formatFX : formatCents;
   const latest = valid.at(-1);
@@ -72,13 +46,16 @@ export function PriceCard({ label, exchange, tipo, rows, cor }: PriceCardProps) 
 
       <p className="text-3xl font-bold leading-none tabular-nums">{fmt(latest?.close)}</p>
 
+      {latest && (
+        <p className="mt-1 text-xs text-muted-foreground">Fechamento de {formatDate(latest.date)}</p>
+      )}
+
       {max12m !== null && (
         <p className="mt-1 text-xs text-muted-foreground">
           Máx 12m: {fmt(max12m)} · Mín 12m: {fmt(min12m)}
         </p>
       )}
 
-      <MiniBarChart rows={valid} cor={cor} />
     </div>
   );
 }

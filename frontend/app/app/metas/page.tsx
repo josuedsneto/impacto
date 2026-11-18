@@ -90,6 +90,7 @@ export default function MetasPage() {
             min={2400} max={2800} step={10}
             value={[meta]}
             onValueChange={([v]) => setMeta(v)}
+            thumbLabel="Meta de preço (R$/t)"
           />
           <Button onClick={handleCalc} disabled={loading} className="w-full">
             {loading ? "Calculando..." : "Calcular"}
@@ -113,7 +114,7 @@ export default function MetasPage() {
               <table className="text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1 font-normal text-muted-foreground">Açúcar \ Dólar</th>
+                    <th className="sticky left-0 z-10 bg-card px-2 py-1 font-normal text-muted-foreground">Açúcar \ Dólar</th>
                     {result.dolares.map((d) => (
                       <th key={d} className="px-2 py-1 text-center font-normal text-muted-foreground">
                         {formatNumber(d, 2)}
@@ -124,7 +125,7 @@ export default function MetasPage() {
                 <tbody>
                   {result.acucares.map((a, i) => (
                     <tr key={a}>
-                      <td className="px-2 py-1 font-medium text-muted-foreground">{formatNumber(a, 2)}</td>
+                      <td className="sticky left-0 z-10 bg-card px-2 py-1 font-medium text-muted-foreground">{formatNumber(a, 2)}</td>
                       {result.heatmap[i].map((v, j) => {
                         // HARD-05: o centro do mapa é o preço de hoje (último fechamento)
                         const atual = i === Math.floor(result.acucares.length / 2) && j === Math.floor(result.dolares.length / 2);
@@ -152,6 +153,7 @@ export default function MetasPage() {
               <CardTitle className="text-sm font-medium">Valor de mercado (R$/t) no histórico e meta</CardTitle>
             </CardHeader>
             <CardContent>
+              <div role="img" aria-label="Valor de mercado do açúcar no histórico, com a linha da meta de preço.">
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart
                   data={result.mtm_series.filter((_, i) => i % 5 === 0)}
@@ -186,6 +188,7 @@ export default function MetasPage() {
                   <Line type="monotone" dataKey="mtm" stroke="var(--chart-2)" dot={false} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </>

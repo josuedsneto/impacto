@@ -135,8 +135,9 @@ export default function FixacoesPage() {
           <div className="flex flex-wrap gap-4 items-end">
             <TickerSelect value={ticker} onChange={setTicker} disabled={loading} />
             <div className="space-y-1">
-              <Label>De</Label>
+              <Label htmlFor="fixacoes-inicio">De</Label>
               <Input
+                id="fixacoes-inicio"
                 type="date"
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
@@ -145,8 +146,9 @@ export default function FixacoesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Até</Label>
+              <Label htmlFor="fixacoes-fim">Até</Label>
               <Input
+                id="fixacoes-fim"
                 type="date"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
@@ -170,6 +172,7 @@ export default function FixacoesPage() {
                 key={ct}
                 type="button"
                 onClick={() => setChartType(ct)}
+                aria-pressed={chartType === ct}
                 className={`px-3 py-1 rounded text-sm border transition-colors ${
                   chartType === ct
                     ? "bg-primary text-primary-foreground border-primary"

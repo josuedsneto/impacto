@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
-import { formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { formatDate, formatNumber, formatPercent, formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraVaR } from "@/lib/leitura";
 import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
@@ -27,6 +27,7 @@ import {
 
 interface VarResult {
   ticker: string;
+  ultimo_dado?: string;
   last_price: number;
   confidence: number;
   var_historico_abs: number;
@@ -108,7 +109,7 @@ function VarPanel({ ticker, confiancaInicial }: { ticker: string; confiancaInici
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium">Nível de confiança:</span>
         <Select value={confidence} onValueChange={handleConfidenceChange}>
-          <SelectTrigger className="w-28">
+          <SelectTrigger className="w-28" aria-label="Nível de confiança">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -172,6 +173,9 @@ function VarPanel({ ticker, confiancaInicial }: { ticker: string; confiancaInici
             perdaPct: perda(result.var_historico_pct),
           })}
         </Leitura>
+      )}
+      {!loading && !error && result?.ultimo_dado && (
+        <p className="text-xs text-muted-foreground">Fechamento de {formatDate(result.ultimo_dado)}</p>
       )}
       {!loading && !error && result && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

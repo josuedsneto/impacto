@@ -14,6 +14,7 @@ export function CoeficientesChart({ result }: DolarChartsProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold">Coeficientes do modelo</h3>
+      <div role="img" aria-label="Coeficientes do modelo de regressão do dólar.">
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 40 }}>
           <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -45,6 +46,7 @@ export function CoeficientesChart({ result }: DolarChartsProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
