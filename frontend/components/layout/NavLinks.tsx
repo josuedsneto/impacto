@@ -38,7 +38,6 @@ const NAV_SECTIONS = [
     items: [
       { href: "/app/noticias", label: "Notícias" },
       { href: "/app/focus", label: "Boletim Focus" },
-      { href: "/app/regressao-dolar", label: "Modelo do dólar" },
       { href: "/app/regressao-acucar", label: "Modelo do açúcar" },
       { href: "/app/atr", label: "ATR da usina" },
     ],

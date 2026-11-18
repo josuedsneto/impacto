@@ -9,10 +9,10 @@ import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
-import { formatDate, formatCents, formatNumber } from "@/lib/format";
+import { formatDate, formatCents } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AcucarForm, { AcucarDefaults, AcucarResult } from "@/components/regression/AcucarForm";
-import { AcucarMetrics } from "@/components/regression/AcucarMetrics";
+import { AcucarMetrics, AvisoConfianca } from "@/components/regression/AcucarMetrics";
 import { AcucarHistoricoChart } from "@/components/regression/AcucarCharts";
 
 interface HistoryItem {
@@ -83,13 +83,15 @@ export default function RegressaoAcucarPage() {
                         ["Açúcar previsto (¢/lb)", activeResult.sb_f_previsto],
                         ["Faixa provável: mínimo (¢/lb)", activeResult.sb_f_min],
                         ["Faixa provável: máximo (¢/lb)", activeResult.sb_f_max],
-                        ["R² (ajuste)", activeResult.r2],
-                        ["Erro médio, RMSE (¢/lb)", activeResult.rmse],
+                        ["R² fora da amostra", activeResult.r2_loo],
+                        ["Erro médio fora da amostra, RMSE (¢/lb)", activeResult.rmse_loo],
+                        ["Erro do chute 'ano anterior' (¢/lb)", activeResult.rmse_ano_anterior],
+                        ["Confiança", activeResult.confianca],
                       ],
                       tabelas: [
                         {
-                          colunas: ["Ano", "Real (¢/lb)", "Previsto pelo modelo (¢/lb)"],
-                          linhas: activeResult.historico.map((h) => [h.year, h.sb_f_real, h.sb_f_previsto]),
+                          colunas: ["Ano", "Real (¢/lb)", "Previsto sem ver o ano (¢/lb)"],
+                          linhas: activeResult.historico.map((h) => [h.year, h.sb_f_real, h.sb_f_previsto_fora_amostra]),
                         },
                       ],
                     })
@@ -129,6 +131,7 @@ export default function RegressaoAcucarPage() {
                 <Leitura>
                   {leituraRegAcucar({ previsto: activeResult.sb_f_previsto, min: activeResult.sb_f_min, max: activeResult.sb_f_max })}
                 </Leitura>
+                <AvisoConfianca result={activeResult} />
                 <AcucarMetrics result={activeResult} />
                 <AcucarHistoricoChart result={activeResult} />
               </div>
@@ -159,8 +162,8 @@ export default function RegressaoAcucarPage() {
                     <span className="text-sm text-muted-foreground">{formatDate(item.created_at)}</span>
                   </div>
                     <div className="mt-1 text-sm text-muted-foreground">
-                      Modelo: {item.inputs.model === "xgboost" ? "Árvores (XGBoost)" : "Linear (Ridge)"} · R²: {formatNumber(item.resultado.r2, 4)} · Erro médio:{" "}
-                      {formatCents(item.resultado.rmse)}
+                      Modelo: {item.inputs.model === "xgboost" ? "Árvores (XGBoost)" : "Linear (Ridge)"} · Confiança: {item.resultado.confianca} · Erro médio fora da amostra:{" "}
+                      {formatCents(item.resultado.rmse_loo)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Faixa: {formatCents(item.resultado.sb_f_min)} a {formatCents(item.resultado.sb_f_max)}
