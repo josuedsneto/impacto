@@ -54,6 +54,31 @@ export function formatDate(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat("pt-BR", iso.length === 10 ? { timeZone: "UTC" } : {}).format(d);
 }
 
+/** "2026-11-18T14:05:00Z" → "18 nov, 14:05". Para notícias e simulações salvas. */
+export function formatDataHora(iso: string | null | undefined): string {
+  if (!iso) return VAZIO;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return VAZIO;
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+/** Hora HH:mm de um instante (ex.: hora da última atualização). */
+export function formatHora(d: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+/** Quantidade inteira com separador de milhar: 1234567 → "1.234.567". */
+export function formatInteiro(v: Valor): string {
+  if (ausente(v)) return VAZIO;
+  return fmt({ maximumFractionDigits: 0 }).format(v);
+}
+
+/** Rótulo do status de mercado no header. null = falha ao consultar; UNKNOWN = backend não sabe. */
+export function rotuloMercado(state: string | null | undefined): string {
+  if (!state || state === "UNKNOWN") return "Status indisponível";
+  return state === "REGULAR" ? "Mercado aberto" : "Mercado fechado";
+}
+
 /** Preço no formato do ativo: SB=F em ¢/lb, USDBRL=X em R$ com 4 casas, demais com 2 casas. */
 export function formatPreco(ticker: string, v: Valor): string {
   if (ticker === "SB=F") return formatCents(v);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDataHora } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 import { EmptyState, Skeleton } from "@/components/ui/feedback";
 
@@ -56,12 +57,7 @@ export function NewsFeed() {
           <p className="text-xs leading-snug text-foreground">{item.title}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {item.published
-              ? new Date(item.published).toLocaleString("pt-BR", {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+              ? formatDataHora(item.published)
               : ""}
           </p>
         </a>

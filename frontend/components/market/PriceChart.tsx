@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatInteiro, formatNumber } from "@/lib/format";
 
 interface PriceRow {
   date: string;
@@ -56,7 +56,7 @@ export function PriceChart({ ticker, rows }: PriceChartProps) {
               <TableCell className="text-right tabular-nums">{fmt(r.low)}</TableCell>
               <TableCell className="text-right tabular-nums">{fmt(r.close)}</TableCell>
               <TableCell className="text-right tabular-nums">
-                {r.volume !== null ? r.volume.toLocaleString("pt-BR") : "—"}
+                {formatInteiro(r.volume)}
               </TableCell>
             </TableRow>
           ))}

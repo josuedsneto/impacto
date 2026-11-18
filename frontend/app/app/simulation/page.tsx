@@ -9,7 +9,7 @@ import SimulationForm, {
 import FanChart from "@/components/simulation/FanChart";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
-import { formatPreco } from "@/lib/format";
+import { formatDate, formatPreco } from "@/lib/format";
 import { Leitura } from "@/components/ui/leitura";
 import { leituraMonteCarlo } from "@/lib/leitura";
 import { nomeAtivo, unidadeAtivo } from "@/lib/ativos";
@@ -177,7 +177,7 @@ export default function SimulationPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{nomeAtivo(item.ticker)}</span>
                       <span className="text-sm text-muted-foreground">
-                        {new Date(item.created_at).toLocaleDateString("pt-BR")}
+                        {formatDate(item.created_at)}
                       </span>
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground">
