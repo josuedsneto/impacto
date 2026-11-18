@@ -46,16 +46,16 @@ As features dependem umas das outras nesta ordem. Cada uma tem `spec.md` em `fea
 Branch integrada: `integracao/auditoria` (local, sem push), com as 16 frentes feitas em threads paralelas, cada uma com spec em `features/<slug>/`.
 
 - **Correções:** `ci-deploy-vercel`, `atr-calibracao`, `monte-carlo-correcoes`, `seguranca-banco`, `cache-yahoo`, `opcoes-black76`.
-- **Novas frentes:** `cambio-previsao`, `alertas` (com briefing diário como P2), `posicoes-fixacoes`, `risco-conjunto`, `minhas-analises`.
+- **Novas frentes:** `cambio-previsao`, `hedge-cambial`, `alertas` (com briefing diário como P2), `posicoes-fixacoes`, `risco-conjunto`, `minhas-analises`.
 - **Melhorias:** `backend-robustez`, `frontend-dados`, `ux-acessibilidade`, `ux-navegacao-linguagem`, `regressao-acucar-honesta` + `regressao-dolar-cenario`.
 - **Checagens na branch integrada:** backend com 231 testes do pytest, `test_calcs.py` e `test_mensagens.py`; frontend com 349 testes, lint, `tsc` e `next build`. Tudo passou.
 
 **Pendente do usuário antes do deploy:**
-1. Aplicar as migrations novas, nesta ordem: `20260403000000_admin_config` (idempotente; rode à mão se a `…000001` já foi aplicada), depois `20261118000001` a `20261118000007`. Rode o SQL de verificação de `features/seguranca-banco/validation.md`.
+1. Aplicar as migrations novas, nesta ordem: `20260403000000_admin_config` (idempotente; rode à mão se a `…000001` já foi aplicada), depois `20261118000001` a `20261118000008`. Rode o SQL de verificação de `features/seguranca-banco/validation.md`.
 2. Variáveis de ambiente:
    - Railway: `JOBS_SECRET`, `RESEND_API_KEY`, `ALERTAS_FROM`, `ENABLE_DOCS` (deixe sem valor em produção).
    - Vercel: `CRON_SECRET`, `JOBS_SECRET`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`.
 3. Confirmar o host do backend e o Root Directory da Vercel (`frontend/`).
 4. UAT de cada frente, com os passos no `validation.md` dela.
 
-**Próximos passos:** decisor de hedge cambial (usa `backend/cambio.py` e `gk_price`); dividir `main.py` em routers; alerta `posicao_limite`; Telegram.
+**Próximos passos:** dividir `main.py` em routers; alerta `posicao_limite`; Telegram.
