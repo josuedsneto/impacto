@@ -1987,3 +1987,6 @@ app.include_router(_posicoes.router)
 # Previsão do câmbio (faixa de possibilidades): routers/cambio.py
 from routers.cambio import router as cambio_router  # noqa: E402
 app.include_router(cambio_router)
+# Hedge cambial: routers/hedge_cambial.py
+from routers.hedge_cambial import router as hedge_cambial_router  # noqa: E402
+app.include_router(hedge_cambial_router)

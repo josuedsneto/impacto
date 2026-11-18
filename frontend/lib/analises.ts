@@ -6,6 +6,7 @@ export const FERRAMENTAS = {
   breakeven: "Breakeven do açúcar",
   risco: "Risco do EBITDA",
   opcoes: "Opções",
+  hedge_cambial: "Hedge cambial",
 } as const;
 
 export type Ferramenta = keyof typeof FERRAMENTAS;
