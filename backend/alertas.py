@@ -159,7 +159,7 @@ def deve_disparar(regra: dict, condicao: bool, agora: datetime) -> bool:
     ultimo = regra.get("ultimo_disparo")
     if ultimo:
         ultimo_dt = datetime.fromisoformat(ultimo) if isinstance(ultimo, str) else ultimo
-        if agora - ultimo_dt < timedelta(hours=int(regra["cooldown_horas"])):
+        if agora - ultimo_dt < timedelta(hours=int(regra["cooldown_horas"]) - 1):  # folga de 1h: cron tem precisão de hora
             return False
     return True
 
@@ -208,7 +208,7 @@ def _disparar(db, regra: dict, condicao: bool, valor, msg: str, agora: datetime,
         .execute()
     )
     if not ins.data:  # já há evento da regra hoje: não envia de novo
-        db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).execute()
+        db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
         return False
     evento_id = ins.data[0]["id"]
     db.table("alert_rules").update(
@@ -275,7 +275,7 @@ def rodar_avaliacoes(agora: datetime | None = None, tipos: list[str] | None = No
                     if _disparar(db, regra, condicao, valor, msg, agora, emails):
                         resumo["disparadas"] += 1
                 else:
-                    db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).execute()
+                    db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
             except Exception:  # FK de regra apagada no meio da rodada etc.: isola a regra
                 logger.exception("Falha ao processar regra %s", regra["id"])
                 resumo["erros"] += 1
@@ -290,4 +290,4 @@ def inicializar_estado(db, regra: dict) -> None:
         condicao, _, _ = avaliar(regra, linhas)
     except Exception:
         return
-    db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).execute()
+    db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()

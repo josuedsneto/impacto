@@ -11,5 +11,6 @@ export async function GET(request: Request) {
   if (!cronAutorizado(request.headers.get("authorization"), segredo)) {
     return NextResponse.json({ detail: "Não autorizado." }, { status: 401 });
   }
-  return chamarJob("/api/jobs/alertas");
+  const tipos = new URL(request.url).searchParams.get("tipos");
+  return chamarJob(`/api/jobs/alertas${tipos ? `?tipos=${encodeURIComponent(tipos)}` : ""}`);
 }

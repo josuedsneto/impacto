@@ -14,7 +14,7 @@ def require_job_secret(x_job_secret: str | None = Header(default=None)) -> None:
     esperado = os.getenv("JOBS_SECRET")
     if not esperado:
         raise HTTPException(status_code=503, detail="Job não configurado no servidor.")
-    if not x_job_secret or not hmac.compare_digest(x_job_secret, esperado):
+    if not x_job_secret or not hmac.compare_digest(x_job_secret.encode(), esperado.encode()):
         raise HTTPException(status_code=401, detail="Segredo do job inválido.")
 
 

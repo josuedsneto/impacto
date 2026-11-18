@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS public.alert_rules (
   tipo            text NOT NULL CHECK (tipo IN ('preco_cruza', 'variacao_diaria', 'vol_acima', 'prob_cruzar')),
   ticker          text NOT NULL,
   params          jsonb NOT NULL,
-  canal           text NOT NULL DEFAULT 'email' CHECK (canal IN ('email', 'telegram')),
+  canal           text NOT NULL DEFAULT 'email' CHECK (canal IN ('email', 'telegram')),  -- telegram: v2, a API recusa
   ativo           boolean NOT NULL DEFAULT true,
-  cooldown_horas  int NOT NULL DEFAULT 24,
+  cooldown_horas  int NOT NULL DEFAULT 24 CHECK (cooldown_horas BETWEEN 24 AND 720),
   ultimo_estado   boolean,
   ultimo_disparo  timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now()

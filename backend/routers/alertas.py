@@ -81,9 +81,10 @@ def criar(request: Request, body: RegraIn, user: Annotated[dict, Depends(get_cur
 def alterar(rule_id: UUID, body: RegraPatch, user: Annotated[dict, Depends(get_current_user)]):
     db = market_cache.supa_client()
     regra = _regra_do_usuario(db, rule_id, user)
-    db.table("alert_rules").update({"ativo": body.ativo}).eq("id", regra["id"]).execute()
+    db.table("alert_rules").update({"ativo": body.ativo}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
     if body.ativo and not regra["ativo"]:
-        alertas.inicializar_estado(db, {**regra, "ativo": True})  # DEC-01/DEC-04: reativar reavalia
+        db.table("alert_rules").update({"ultimo_estado": None}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
+        alertas.inicializar_estado(db, {**regra, "ativo": True})  # DEC-04: reativar reavalia, sem disparar
     return _regra_do_usuario(db, rule_id, user)
 
 
