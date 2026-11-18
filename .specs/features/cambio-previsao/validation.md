@@ -1,26 +1,28 @@
 # Validação — cambio-previsao
 
-**Status geral:** backend implementado e testado em partes. **Tela, `lib/cambio.ts`, `leituraCambio` e entrada no menu NÃO foram feitas** (histórias P1 de tela). Checks do frontend: **pendentes, coordenadora roda após integração** (`npm test`, `npm run lint`, `npm run build`), sem `node_modules` nesta worktree.
+**Status geral:** backend e tela implementados. Tela em `frontend/app/app/cambio/page.tsx`, `lib/cambio.ts` (horizontes, safra, níveis), `leituraCambio` em `lib/leitura.ts` e entrada "Câmbio (USD/BRL)" no menu. Checks do frontend: **pendentes, coordenadora roda após integração** (`npm test`, `npm run lint`, `npm run build`), sem `node_modules` nesta worktree. Sem `node_modules`, não foi possível rodar o build nem conferir o uso de Next.js; a tela segue o padrão de `arima/page.tsx`.
 
 ## Requisitos
 
 | ID | Requisito | Status | Evidência |
 |----|-----------|--------|-----------|
 | CAM-01 | Bandas p5/p50/p95 por dia em nível de preço | Backend feito | `test_bandas_ordenadas_e_alargam_com_horizonte` passou. Endpoint sem teste HTTP. |
-| CAM-02 | `horizonte` fora de 1–262 → 400 em português; histórico < 252 → 503 | Backend feito | Validação manual em `routers/cambio.py`. Sem teste automatizado (pendente). |
-| CAM-03 | P(acima), P(abaixo) e P(tocar) por nível | Funções feitas; tela pendente | `test_prob_tocar_direcao_e_invariante` passou (direção e invariante P(tocar) ≥ P(acima)). |
-| CAM-04 | `niveis` padrão spot ±5%; até 10 valores finitos em [0,5; 20] | Backend feito | Código em `_niveis_do_texto`. Sem teste (pendente). |
+| CAM-02 | `horizonte` fora de 1–262 → 400 em português; histórico < 252 → 503 | Feito | `test_horizonte_fora_do_intervalo_responde_400_em_portugues`, `test_sem_precos_responde_503`. |
+| CAM-03 | P(acima), P(abaixo) e P(tocar) por nível | Feito (backend e tela) | `test_prob_tocar_direcao_e_invariante` passou (direção e invariante P(tocar) ≥ P(acima)). |
+| CAM-04 | `niveis` padrão spot ±5%; até 10 valores finitos em [0,5; 20] | Feito | `test_niveis_padrao_sao_spot_menos_e_mais_5_por_cento` e `test_niveis_invalidos_respondem_400` (7 casos). |
 | CAM-05 | Forward por paridade coberta com aproximação explícita | Feito | `test_forward_paridade_coberta_exemplo` passou (5,00 × 1,10/1,05). |
 | CAM-06 | `fetch_indicator` extraído para `focus.py`; `/api/focus` com mesmo retorno | Feito | Revisão do advisor confirmou retorno idêntico. Sem teste de regressão. |
 | CAM-07 | Backtest walk-forward com as métricas da spec | Feito | `backtest.md` gerado por `backtest_cambio.py`. |
 | CAM-08 | Regra de produção aplicada | Feito | Decisão em `backtest.md`: **M1**. |
 | CAM-09 | Eixo do dólar no mapa de calor centrado no spot | Feito | Código em `/api/metas`. Sem teste (pendente). |
-| CAM-10 | Edge cases | Parcial | Limpeza de ticks (`test_limpar_*`), vol zero (`test_vol_zero_nao_quebra`), `niveis` com nan/inf e FRED/BCB ausentes tratados no código; sem teste de endpoint. |
+| Tela | Histórias P1 de tela: faixa, níveis, forward, Focus, cobertura de 6 meses, CSV | Feito, checks de frontend pendentes | `frontend/lib/cambio.test.ts` (dias úteis, safra, níveis, leitura) escrito, não rodado. |
+| CAM-10 | Edge cases | Feito, exceto `ano_seguinte` do Focus | Ticks (`test_limpar_*`), vol zero, nan/inf, FRED/BCB ausentes (`test_sem_selic_ou_fed_o_forward_fica_nulo_e_as_bandas_continuam`). `ano_seguinte` (outubro em diante) sem teste. |
 
 ## Evidências de teste
 
 - `python -m pytest tests/test_cambio.py -q` → **7 passed** (inclui cobertura de 90% com GBM de vol conhecida, N=1.000 origens sem overlap, 2.000 caminhos, seed fixa; a faixa 87–93% passou).
-- `python -m pytest tests -q` (suíte completa do backend) → **28 passed** (47,8 s).
+- `python -m pytest tests -q` (suíte completa do backend) → **28 passed** (47,8 s) antes dos testes HTTP do endpoint.
+- `python -m pytest tests/test_endpoints_cambio.py tests/test_cambio.py -q` → **21 passed** (14 HTTP + 7 unitários).
 - `python test_calcs.py` → **ok**. `python test_mensagens.py` → **ok**.
 - `python backtest_cambio.py --saida ...` → **EXIT=0**, gera `backtest.md` (rodado duas vezes; a última com a decisão corrigida).
 - Frontend: `npm test`, `npm run lint`, `npm run build` **não rodados** nesta worktree (sem `node_modules`; pendentes, a coordenadora roda após integração).
