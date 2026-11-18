@@ -95,7 +95,6 @@ export default function HedgeCambialPage() {
         if (p.forward.valor != null) {
           setCampos((c) => ({
             ...c,
-            orcamento: txt(p.forward.valor!),
             strikePut: txt(p.spot * 0.95),
             k1: txt(p.spot * 0.95),
             k2: txt(p.spot * 1.05),
@@ -115,13 +114,17 @@ export default function HedgeCambialPage() {
   }
 
   async function calcular() {
-    const volume = lerNumero(campos.volume);
-    const orcamento = lerNumero(campos.orcamento);
+    // b. Volume em pt-BR: ponto é separador de milhar ("500.000" = 500 mil).
+    const volTexto = campos.volume.trim();
+    const volume = lerNumero(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(volTexto) ? volTexto.replace(/\./g, "") : volTexto);
+    // a. Orçamento vazio = forward do prazo escolhido (o backend calcula).
+    const orcTexto = campos.orcamento.trim();
+    const orcamento = orcTexto ? lerNumero(orcTexto) : null;
     const pct = lerNumero(campos.pct);
     const strikePut = lerNumero(campos.strikePut);
     const k1 = lerNumero(campos.k1);
     const k2 = lerNumero(campos.k2);
-    if (volume == null || orcamento == null || pct == null || strikePut == null || k1 == null || k2 == null) {
+    if (volume == null || (orcTexto && orcamento == null) || pct == null || strikePut == null || k1 == null || k2 == null) {
       toast.error("Preencha todos os campos com números.");
       return;
     }
@@ -207,7 +210,12 @@ export default function HedgeCambialPage() {
         </div>
         <div className="space-y-1">
           <label htmlFor="orcamento" className="text-sm font-medium">Câmbio mínimo do orçamento (R$)</label>
-          <Input id="orcamento" value={campos.orcamento} onChange={(e) => atualizar("orcamento", e.target.value)} />
+          <Input
+            id="orcamento"
+            value={campos.orcamento}
+            placeholder="forward do prazo"
+            onChange={(e) => atualizar("orcamento", e.target.value)}
+          />
         </div>
         <div className="space-y-1">
           <label htmlFor="pct" className="text-sm font-medium">% travado no forward</label>
@@ -309,8 +317,9 @@ export default function HedgeCambialPage() {
           <Leitura>{leitura}</Leitura>
 
           <p className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-            <strong>{AVISO}</strong> O forward está {formatPercent(resultado.forward_vs_spot, 2)} acima do câmbio de hoje, por causa
-            do diferencial de juros (carrego de {formatBRL(resultado.carrego_rs)} no volume). A simulação não tem carrego, então
+            <strong>{AVISO}</strong> O forward está {formatPercent(Math.abs(resultado.forward_vs_spot), 2)}{" "}
+            {resultado.forward_vs_spot >= 0 ? "acima" : "abaixo"} do câmbio de hoje, por causa do diferencial de juros (carrego de{" "}
+            {formatBRL(Math.abs(resultado.carrego_rs))} no volume). A simulação não tem carrego, então
             travar tende a custar em média.
           </p>
 
@@ -368,7 +377,9 @@ export default function HedgeCambialPage() {
                     <TableCell>{formatCompactBRL(e.receita_rs.media)}</TableCell>
                     <TableCell>{formatPercent(e.p_abaixo_orcamento, 1)}</TableCell>
                     <TableCell>{formatPercent(e.p_arrepender, 1)}</TableCell>
-                    <TableCell>{e.premio_rs > 0 ? formatBRL(e.premio_rs) : "—"}</TableCell>
+                    <TableCell>
+                      {e.premio_rs > 0 ? formatBRL(e.premio_rs) : e.premio_rs < 0 ? `crédito de ${formatBRL(-e.premio_rs)}` : "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

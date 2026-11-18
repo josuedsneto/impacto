@@ -106,7 +106,7 @@ A usina recebe em dólar e precisa decidir como proteger a receita em R$ do venc
 
 **Acceptance Criteria**:
 
-1. **HED-10** The endpoint SHALL aceitar `volume_usd` (0 < v ≤ 10⁹), `horizonte_du` (1–262), `minimo` (0,5–20), `pct_forward` (0–100), `strike_put` (0,5–20), `collar_k1`, `collar_k2` (0,5–20, K1 ≤ K2). Fora disso, 422 (validação do corpo, como `posicoes` e `analises`). K1 > K2 responde 400 com mensagem em português.
+1. **HED-10** The endpoint SHALL aceitar `volume_usd` (0 < v ≤ 10⁹), `horizonte_du` (1–262), `orcamento` (0,5–20; ausente = forward do prazo), `pct_forward` (0–100), `strike_put` (0,5–20), `collar_k1`, `collar_k2` (0,5–20, K1 ≤ K2). Fora disso, 422 (validação do corpo, como `posicoes` e `analises`). K1 > K2 responde 400 com mensagem em português.
 2. The endpoint SHALL usar `Depends(get_current_user)` e `@limiter.limit("10/minute")`, e `def` (I/O bloqueante).
 3. WHEN há menos de 252 fechamentos limpos THEN 503 com a mensagem de `cambio-previsao`. WHEN Selic ou Fed faltam THEN 503 "Sem dados de juros para calcular o hedge. Tente novamente em alguns minutos."
 4. The endpoint SHALL recusar `nan` e `inf` (Pydantic `allow_inf_nan=False`).
