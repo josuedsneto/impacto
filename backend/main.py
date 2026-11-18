@@ -165,6 +165,10 @@ app.add_middleware(
 
 from routers.risco_conjunto import router as risco_conjunto_router  # noqa: E402
 app.include_router(risco_conjunto_router)
+from routers.alertas import router as alertas_router  # noqa: E402
+from routers.jobs import router as jobs_router  # noqa: E402
+app.include_router(alertas_router)
+app.include_router(jobs_router)
 
 
 # ── Pydantic models ─────────────────────────────────────────────────────────────

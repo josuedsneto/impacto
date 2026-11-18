@@ -1,6 +1,7 @@
 """Supabase e Yahoo simulados para os testes do backend (sem rede)."""
 import sys
-from datetime import date, timedelta
+import uuid
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -50,19 +51,55 @@ class _Query:
         self.intervalo = (0, n - 1)
         return self
 
+    def in_(self, k, valores):
+        self.filtros.append(lambda r: r.get(k) in valores)
+        return self
+
+    def insert(self, linhas):
+        self.op, self.linhas, self.chaves, self.ignorar = "insert", linhas, ("id",), False
+        return self
+
+    def update(self, valores):
+        self.op, self.valores = "update", valores
+        return self
+
+    def delete(self):
+        self.op = "delete"
+        return self
+
     def upsert(self, linhas, on_conflict, ignore_duplicates=False):
         self.op, self.linhas, self.chaves, self.ignorar = "upsert", linhas, on_conflict.split(","), ignore_duplicates
         return self
 
+    def _preparar(self, linha):
+        # Como o Postgres: id gerado e created_at preenchidos quando ausentes.
+        linha = dict(linha)
+        linha.setdefault("id", str(uuid.uuid4()))
+        linha.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+        return linha
+
     def execute(self):
         tabela = self.db.setdefault(self.tabela, {})
-        if self.op == "upsert":
+        if self.op in ("upsert", "insert"):
+            gravadas = []
             for linha in self.linhas if isinstance(self.linhas, list) else [self.linhas]:
+                linha = self._preparar(linha)
                 chave = tuple(linha[k] for k in self.chaves)
                 if chave in tabela and self.ignorar:
                     continue
+                if chave in tabela and self.op == "insert":
+                    raise ValueError("violação de chave única")
                 tabela[chave] = {**tabela.get(chave, {}), **linha}
-            return _Resp([])
+                gravadas.append(tabela[chave])
+            return _Resp(gravadas)
+        if self.op in ("update", "delete"):
+            alvo = [k for k, r in tabela.items() if all(f(r) for f in self.filtros)]
+            for k in alvo:
+                if self.op == "update":
+                    tabela[k].update(self.valores)
+                else:
+                    del tabela[k]
+            return _Resp([tabela[k] for k in alvo] if self.op == "update" else [])
         linhas = [r for r in tabela.values() if all(f(r) for f in self.filtros)]
         if self.ordem:
             linhas.sort(key=lambda r: r[self.ordem[0]], reverse=self.ordem[1])

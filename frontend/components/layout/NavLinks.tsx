@@ -32,6 +32,7 @@ const NAV_SECTIONS = [
       { href: "/app/risco", label: "Risco do EBITDA" },
       { href: "/app/risco-conjunto", label: "Receita em R$ (açúcar × dólar)" },
       { href: "/app/cenarios", label: "Breakeven da safra" },
+      { href: "/app/alertas", label: "Alertas" },
     ],
   },
   {
