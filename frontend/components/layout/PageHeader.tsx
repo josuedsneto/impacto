@@ -11,6 +11,8 @@ interface PageHeaderProps {
 export function PageHeader({ titulo, descricao, acoes, atualizadoEm }: PageHeaderProps) {
   return (
     <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* UXA-10: título da aba por rota. React 19 eleva o <title> para o <head>. */}
+      <title>{`${titulo} · Sugarcane`}</title>
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{titulo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>

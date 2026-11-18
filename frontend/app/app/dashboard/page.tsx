@@ -99,8 +99,8 @@ export default async function DashboardPage() {
           Preços
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugarRows} cor="var(--chart-2)" />
-          <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fxRows} cor="var(--chart-1)" />
+          <PriceCard label="Açúcar NY nº 11" exchange="ICE Futures · SB=F" tipo="cents" rows={sugarRows} />
+          <PriceCard label="Dólar / Real" exchange="Câmbio · USDBRL=X" tipo="fx" rows={fxRows} />
         </div>
       </section>
 
