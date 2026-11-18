@@ -43,7 +43,7 @@ export function formatPercent(v: Valor, casas = 2): string {
 export function formatCompactBRL(v: Valor): string {
   if (ausente(v)) return VAZIO;
   if (Math.abs(v) < 1_000_000) return formatBRL(v);
-  return espaco(fmt({ style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(v));
+  return espaco(fmt({ style: "currency", currency: "BRL", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(v));
 }
 
 /** "2026-10-05" → "05/10/2026". Datas ISO sem hora são lidas em UTC para não voltar um dia. */
