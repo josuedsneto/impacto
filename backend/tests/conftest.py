@@ -120,6 +120,7 @@ def supa(monkeypatch):
     fake = FakeSupabase()
     monkeypatch.setattr(market_cache, "supa_client", lambda: fake)
     market_cache._ultima_rebusca.clear()
+    market_cache._negativos.clear()
     return fake
 
 
