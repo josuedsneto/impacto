@@ -145,7 +145,7 @@ app = FastAPI(
     openapi_url="/openapi.json" if _docs_on else None,
 )
 
-limiter = Limiter(key_func=get_remote_address)
+from limiter import limiter  # módulo próprio: routers/cambio.py importa sem ciclo
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 # Por dentro do CORS: o erro 500 também sai com cabeçalhos CORS (HARD-02, HARD-10)
@@ -260,44 +260,15 @@ def get_focus(request: Request, user: Annotated[dict, Depends(get_current_user)]
     for the current calendar year, plus the delta vs the reading from ~7 days ago.
     Falls back to None values if the BCB API is unavailable.
     """
-    from bcb import Expectativas
+    from focus import fetch_indicator
 
     current_year = str(date.today().year)
-    today = date.today()
-    week_ago = today - timedelta(days=9)  # buffer for weekends
 
     indicators = ["IPCA", "Câmbio", "Selic", "PIB Total"]
     result = {}
 
-    def fetch_indicator(name: str) -> dict:
-        try:
-            expec = Expectativas()
-            ep = expec.get_endpoint("ExpectativasMercadoAnuais")
-            data = (
-                ep.query()
-                .filter(ep.Indicador == name)
-                .filter(ep.DataReferencia == current_year)
-                .filter(ep.baseCalculo == 0)
-                .filter(ep.Data >= str(week_ago))
-                .filter(ep.Data <= str(today))
-                .collect()
-            )
-            if data.empty:
-                return {"value": None, "delta": None}
-            data = data.sort_values("Data")
-            latest = float(data.iloc[-1]["Mediana"])
-            if len(data) >= 2:
-                prior = float(data.iloc[0]["Mediana"])
-                delta = round(latest - prior, 4)
-            else:
-                delta = None
-            return {"value": round(latest, 4), "delta": delta}
-        except Exception as exc:
-            logger.warning("BCB Focus falhou para %s: %s", name, exc)
-            return {"value": None, "delta": None}
-
     with ThreadPoolExecutor(max_workers=len(indicators)) as pool:
-        values = list(pool.map(fetch_indicator, indicators))
+        values = list(pool.map(lambda nome: fetch_indicator(nome, current_year), indicators))
 
     key_map = {"IPCA": "ipca", "Câmbio": "cambio", "Selic": "selic", "PIB Total": "pib"}
     for name, val in zip(indicators, values):
@@ -1750,7 +1721,7 @@ def get_metas(
     sugar_rows = [r for r in get_prices("SB=F", start, end) if r["close"] is not None]
     fx_rows = [r for r in get_prices("USDBRL=X", start, end) if r["close"] is not None]
 
-    if len(sugar_rows) < 10 or len(fx_rows) < 10:
+    if len(sugar_rows) < 10 or len(fx_rows) < 10 or not any(r["close"] for r in fx_rows):
         raise HTTPException(status_code=503, detail="Dados insuficientes.")
 
     # HARD-05: o mapa é centrado no último fechamento de cada preço
@@ -2013,3 +1984,6 @@ def simular_cenarios(
 # ── Posições da safra (routers/posicoes.py) ──
 from routers import posicoes as _posicoes  # noqa: E402
 app.include_router(_posicoes.router)
+# Previsão do câmbio (faixa de possibilidades): routers/cambio.py
+from routers.cambio import router as cambio_router  # noqa: E402
+app.include_router(cambio_router)

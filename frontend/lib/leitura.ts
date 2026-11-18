@@ -1,6 +1,6 @@
 // Frases que dizem, em português, o que o resultado de cada ferramenta significa (LING-03, LING-04).
 // Os textos seguem a tabela de .specs/features/linguagem-clara/design.md.
-import { formatBRL, formatCompactBRL, formatDate, formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { formatBRL, formatCompactBRL, formatDate, formatFX, formatNumber, formatPercent, formatPreco } from "@/lib/format";
 
 type N = number | null | undefined;
 
@@ -40,6 +40,13 @@ export function leituraArima(r: { ticker: string; dias: number; valor: N; min: N
   if (falta(r.valor, r.min, r.max)) return AUSENTE;
   const p = (v: N) => formatPreco(r.ticker, v);
   return `Em ${r.dias} dias úteis o modelo projeta ${p(r.valor)}, com 95% de chance de ficar entre ${p(r.min)} e ${p(r.max)}.`;
+}
+
+/** Câmbio: faixa de 90% no horizonte escolhido, o spot de hoje e, se houver, o preço de travar hoje. */
+export function leituraCambio(r: { horizonte: number; spot: N; p5: N; p95: N; forward: N }) {
+  if (falta(r.spot, r.p5, r.p95)) return AUSENTE;
+  const travar = r.forward != null ? ` Travar o dólar hoje para esse prazo custaria cerca de ${formatFX(r.forward)} (preço de travar hoje, não previsão).` : "";
+  return `Em ${r.horizonte} dias úteis, o dólar fica entre ${formatFX(r.p5)} e ${formatFX(r.p95)} em 90% dos cenários simulados. Hoje ele está em ${formatFX(r.spot)}.${travar}`;
 }
 
 export function leituraJump(r: { ticker: string; s0: N; final: N }) {
