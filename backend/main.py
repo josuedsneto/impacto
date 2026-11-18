@@ -45,11 +45,15 @@ def validate_ticker(ticker: str) -> str:
     return t
 
 
+# Documentação da API (Swagger, ReDoc e schema) só com ENABLE_DOCS=true.
+_docs_on = os.getenv("ENABLE_DOCS", "").strip().lower() == "true"
+
 app = FastAPI(
     title="Impacto API",
     version="2.0.0",
-    docs_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/docs",
-    redoc_url=None if os.getenv("RAILWAY_ENVIRONMENT") else "/redoc",
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
 limiter = Limiter(key_func=get_remote_address)
