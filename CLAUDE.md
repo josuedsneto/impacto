@@ -32,13 +32,19 @@ cd frontend && npm ci && npm run dev
 ## Testes e checagens
 
 ```bash
-cd backend && python test_calcs.py && python test_mensagens.py   # cálculos e mensagens em português
+cd backend && pytest tests && python test_calcs.py && python test_mensagens.py   # API, cálculos e mensagens em português
 cd frontend && npm test && npm run build && npm run lint
 ```
 
+O workflow `.github/workflows/ci.yml` (nome `ci`, jobs `backend` e `frontend`) roda esses mesmos comandos em todo pull request e push na `main`.
+
 ## Deploy
 
-Push na `main` dispara `.github/workflows/deploy.yml`: SSH na VM Oracle, `git pull`, build do frontend, `pip install` e `pm2 restart` (`scripts/ecosystem.config.js`: Next na 3000, uvicorn com 4 workers na 8000). O nginx (`nginx/impacto.conf`) envia `/api/` para a API e o resto para o Next. **Não faça push na `main` sem autorização explícita.**
+- **Frontend:** Vercel, pela integração Git. Root Directory `frontend/` (a confirmar no painel).
+- **Backend:** Railway, pela integração Git, com `backend/railway.toml` (nixpacks, `uvicorn main:app`). Host público a confirmar; a Vercel aponta para ele pela variável `NEXT_PUBLIC_API_URL`.
+- Não há deploy por CLI nem por SSH: o CI só testa.
+
+**Não faça push na `main` sem autorização explícita.**
 
 ## Convenções
 
