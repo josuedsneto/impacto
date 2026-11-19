@@ -74,6 +74,7 @@ CONTRATO = [
     ('POST', '/api/posicoes', ('request', 'body', 'user'), ('get_current_user',), 201, '20 per 1 minute'),
     ('POST', '/api/posicoes/lote', ('request', 'body', 'user'), ('get_current_user',), 201, '5 per 1 minute'),
     ('GET', '/api/posicoes/resumo', ('request', 'usina_id', 'safra', 'user'), ('get_current_user',), None, '30 per 1 minute'),
+    ('GET', '/api/posicoes/exposicao', ('request', 'usina_id', 'safra', 'user'), ('get_current_user',), None, '30 per 1 minute'),
     ('DELETE', '/api/posicoes/{pos_id}', ('request', 'pos_id', 'user'), ('get_current_user',), None, '20 per 1 minute'),
     ('PUT', '/api/posicoes/{pos_id}', ('request', 'pos_id', 'body', 'user'), ('get_current_user',), None, '20 per 1 minute'),
     ('GET', '/api/regression/acucar/defaults', ('request', 'user'), ('get_current_user',), None, '20 per 1 minute'),
