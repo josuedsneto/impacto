@@ -489,18 +489,8 @@ def market_analysis(
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
 
-# ICE Sugar No. 11: seg–sex, 03:30 às 13:00 (Nova York). Sem feriados (ponytail: calendário fixo).
-PREGAO_TZ = ZoneInfo("America/New_York")
-PREGAO_ABERTURA = Hora(3, 30)
-PREGAO_FECHAMENTO = Hora(13, 0)
-
-
-def estado_pregao(agora: datetime) -> str:
-    """REGULAR dentro do pregão do açúcar nº 11, CLOSED fora dele. Intervalo [abertura, fechamento)."""
-    local = agora.astimezone(PREGAO_TZ)
-    if local.weekday() >= 5:
-        return "CLOSED"
-    return "REGULAR" if PREGAO_ABERTURA <= local.time() < PREGAO_FECHAMENTO else "CLOSED"
+# Pregão do açúcar nº 11 (horário e feriados ICE): módulo próprio.
+from pregao import estado_pregao  # noqa: E402
 
 
 @app.get("/api/market/status")
@@ -821,7 +811,7 @@ class MCPriceRequest(BaseModel):
     T: float = Field(gt=0, le=30)
     r: float = Field(ge=0, le=5)
     sigma: float = Field(gt=0, le=10)
-    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
+    num_simulacoes: int = Field(default=10_000, ge=100, le=100_000)
 
 
 @app.post("/api/options/payoff")
