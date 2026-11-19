@@ -4,25 +4,27 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import main
-from routers import conta
+import pregao
+import requests
+from routers import conta, mercado
 
 NY = ZoneInfo("America/New_York")
 
 
 def test_estado_pregao_dentro_e_fora_do_horario():
     """YAH-04.1 e 04.2: segunda 10:00 NY abre; 14:00 e sábado fecham; 13:00 já é fechado (intervalo semiaberto)."""
-    assert main.estado_pregao(datetime(2026, 11, 16, 10, 0, tzinfo=NY)) == "REGULAR"
-    assert main.estado_pregao(datetime(2026, 11, 16, 3, 30, tzinfo=NY)) == "REGULAR"
-    assert main.estado_pregao(datetime(2026, 11, 16, 13, 0, tzinfo=NY)) == "CLOSED"
-    assert main.estado_pregao(datetime(2026, 11, 16, 14, 0, tzinfo=NY)) == "CLOSED"
-    assert main.estado_pregao(datetime(2026, 11, 21, 10, 0, tzinfo=NY)) == "CLOSED"  # sábado
+    assert pregao.estado_pregao(datetime(2026, 11, 16, 10, 0, tzinfo=NY)) == "REGULAR"
+    assert pregao.estado_pregao(datetime(2026, 11, 16, 3, 30, tzinfo=NY)) == "REGULAR"
+    assert pregao.estado_pregao(datetime(2026, 11, 16, 13, 0, tzinfo=NY)) == "CLOSED"
+    assert pregao.estado_pregao(datetime(2026, 11, 16, 14, 0, tzinfo=NY)) == "CLOSED"
+    assert pregao.estado_pregao(datetime(2026, 11, 21, 10, 0, tzinfo=NY)) == "CLOSED"  # sábado
 
 
 def test_estado_pregao_converte_utc():
     """Instante em UTC é convertido para Nova York antes de comparar."""
     # 15:00 UTC em novembro (EST, UTC-5) = 10:00 NY, segunda
     agora = datetime(2026, 11, 16, 15, 0, tzinfo=timezone.utc)
-    assert main.estado_pregao(agora) == "REGULAR"
+    assert pregao.estado_pregao(agora) == "REGULAR"
 
 
 def test_market_status_nao_consulta_yahoo_e_responde_regular_ou_closed(api, yahoo):
@@ -38,7 +40,7 @@ def test_market_status_responde_unknown_quando_calculo_falha(api, monkeypatch):
     def quebrado(agora):
         raise RuntimeError("tzdata ausente")
 
-    monkeypatch.setattr(main, "estado_pregao", quebrado)
+    monkeypatch.setattr(mercado, "estado_pregao", quebrado)
     r = api.get("/api/market/status", params={"ticker": "SB=F"})
     assert r.json() == {"ticker": "SB=F", "state": "UNKNOWN", "open": False}
 
@@ -117,8 +119,8 @@ def test_noticias_com_timeout_e_url_codificada(api, monkeypatch):
         chamadas["url"], chamadas["kwargs"] = url, kwargs
         return Resp()
 
-    monkeypatch.setattr(main.requests, "get", falso_get)
-    main._news_cache.update({"ts": 0.0, "items": []})
+    monkeypatch.setattr(requests, "get", falso_get)
+    mercado._news_cache.update({"ts": 0.0, "items": []})
     assert api.get("/api/news").status_code == 200
     assert chamadas["kwargs"]["timeout"] == 10
     assert " " not in chamadas["url"] and "ç" not in chamadas["url"]

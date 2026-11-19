@@ -10,7 +10,6 @@ from auth import get_current_user
 from market_cache import get_prices, supa_client
 from simulation import run_simulation, DadosInsuficientesError
 from validacao import validate_ticker, _validar_paginacao
-from fechamentos_cache import fechamentos
 from limiter import limiter
 from fastapi import APIRouter
 
