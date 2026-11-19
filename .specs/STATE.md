@@ -77,3 +77,16 @@ Branch integrada: `integracao/rodada-2`, a partir da `main` já com os PRs #2 e 
 3. Conferir quantos crons o plano da Vercel permite (agora são 3).
 
 **Decisões em aberto:** nenhuma. Ver AD-014; a histerese do `prob_cruzar` entra na rodada 3 com margem padrão de 5 p.p.
+
+
+## Rodada 2026-11-20
+
+Branch integrada: `integracao/rodada-3`, a partir da `main` já com o PR #4.
+
+- **`painel-hoje`:** o dashboard vira "Hoje", com alertas, posição contra a política, mercado, faixa do dólar, Focus, análises e notícias, em ordem de urgência. Endpoint `GET /api/painel/hoje`.
+- **`posicoes-fixacoes` v2:** MTM de opções por Black-76 (açúcar) e Garman-Kohlhagen (dólar); `exposicao_aberta` em `backend/exposicao.py`; botões que preenchem as telas de risco conjunto e de hedge cambial a partir das posições.
+- **`alertas` rodada 3:** histerese (`margem` padrão de 5 p.p. no `prob_cruzar`; `margem_pct` no `preco_cruza`, padrão 0), bloqueio do nível já cruzado e o tipo `sinal_tecnico`.
+- **AD-014:** `watchlist` removida e `SBK26.NYB` fora do catálogo.
+- **Checagens:** backend com 358 testes, mais `test_calcs.py` e `test_mensagens.py`; frontend com 389 testes, lint, `tsc` e `next build`. Tudo passou.
+
+**Pendente do usuário:** aplicar as migrations `20261120000004`, `20261120000007` e `20261120000010`, **antes do deploy do backend** (sem a coluna `tipo_opcao`, gravar posições dá erro).
