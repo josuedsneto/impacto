@@ -14,7 +14,7 @@
 | CAM-06 | `fetch_indicator` extraído para `focus.py`; `/api/focus` com mesmo retorno | Feito | Revisão do advisor confirmou retorno idêntico. Sem teste de regressão. |
 | CAM-07 | Backtest walk-forward com as métricas da spec | Feito | `backtest.md` gerado por `backtest_cambio.py`. |
 | CAM-08 | Regra de produção aplicada | Feito | Decisão em `backtest.md`: **M1**. |
-| CAM-09 | Eixo do dólar no mapa de calor centrado no spot | Feito | Código em `/api/metas`. Sem teste (pendente). |
+| CAM-09 | Eixo do dólar no mapa de calor centrado no spot | Feito | Código em `/api/metas`. Teste em `pendencias-pequenas` (PEN-07, `test_metas_eixos_tem_o_ultimo_fechamento_no_centro`). |
 | Tela | Histórias P1 de tela: faixa, níveis, forward, Focus, cobertura de 6 meses, CSV | Feito, checks de frontend pendentes | `frontend/lib/cambio.test.ts` (dias úteis, safra, níveis, leitura) escrito, não rodado. |
 | CAM-10 | Edge cases | Feito, exceto `ano_seguinte` do Focus | Ticks (`test_limpar_*`), vol zero, nan/inf, FRED/BCB ausentes (`test_sem_selic_ou_fed_o_forward_fica_nulo_e_as_bandas_continuam`). `ano_seguinte` (outubro em diante) sem teste. |
 

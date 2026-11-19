@@ -1,5 +1,5 @@
 """ALE-01/03/04/06: CRUD, limite, job com segredo e transição de ponta a ponta (sem rede)."""
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -7,7 +7,15 @@ import pytest
 import alertas
 from conftest import dias_uteis
 
-ULTIMO = max(dias_uteis(date.today() - timedelta(days=10), date.today()))
+# O job usa a data de Brasília; date.today() no CI (UTC) vira o dia seguinte depois das 21h de Brasília.
+HOJE = datetime.now(alertas.BRT).date()
+ULTIMO = max(dias_uteis(HOJE - timedelta(days=10), HOJE))
+
+
+@pytest.fixture(autouse=True)
+def _sem_feriado(monkeypatch):
+    """O job pula feriado da ICE; estes testes não podem depender do dia em que rodam."""
+    monkeypatch.setattr(alertas, "FERIADOS_ICE", frozenset())
 
 
 @pytest.fixture
@@ -26,9 +34,9 @@ def cliente(api, supa, yahoo, monkeypatch):
 
 def _precos(supa, fechamento, dias=40):
     """Preenche o cache com `fechamento` nos últimos `dias` dias úteis e cobre o intervalo."""
-    dias_l = list(dias_uteis(date.today() - timedelta(days=dias * 2), date.today()))[-dias:]
+    dias_l = list(dias_uteis(HOJE - timedelta(days=dias * 2), HOJE))[-dias:]
     supa.gravar_precos("SB=F", {d: fechamento for d in dias_l})
-    supa.cobertura("SB=F", dias_l[0], date.today())
+    supa.cobertura("SB=F", dias_l[0], HOJE)
 
 
 def _regra_preco(api, nivel=11.0):
@@ -57,14 +65,12 @@ def test_params_invalidos_retornam_422(cliente, supa):
     assert "Parâmetros inválidos" in r.json()["detail"]
 
 
-def test_prob_cruzar_e_telegram_recusados(cliente, supa):
+def test_canal_telegram_sem_vinculo_responde_422(cliente, supa):
     _precos(supa, 10.0)
-    r1 = cliente.post("/api/alertas", json={"tipo": "prob_cruzar", "ticker": "USDBRL=X", "params": {
-        "strike": 5, "direcao": "acima", "horizonte_dias": 30, "prob_min": 60}})
-    r2 = cliente.post("/api/alertas", json={"tipo": "vol_acima", "ticker": "SB=F",
-                                            "params": {"pct": 30}, "canal": "telegram"})
-    assert r1.status_code == 422 and r1.json()["detail"] == "Disponível em breve."
-    assert r2.status_code == 422 and r2.json()["detail"] == "Disponível em breve."
+    r = cliente.post("/api/alertas", json={"tipo": "vol_acima", "ticker": "SB=F",
+                                           "params": {"pct": 30}, "canal": "telegram"})
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Vincule o Telegram antes de usar este canal."
 
 
 def test_limite_de_20_regras(cliente, supa):
@@ -165,7 +171,7 @@ def test_ticker_com_dado_velho_e_pulado(cliente, supa, monkeypatch):
     _regra_preco(cliente, nivel=11.0)
     # Apaga a cobertura recente: a última barra fica com mais de 4 dias corridos.
     for k in list(supa.db["market_prices"]):
-        if k[1] > (date.today() - timedelta(days=10)).isoformat():
+        if k[1] > (HOJE - timedelta(days=10)).isoformat():
             del supa.db["market_prices"][k]
     r = cliente.post("/api/jobs/alertas", headers={"X-Job-Secret": "segredo-de-teste"}).json()
     assert r["disparadas"] == 0 and r["puladas"] == 1 and enviados == []

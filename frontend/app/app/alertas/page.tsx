@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { ATIVOS, nomeAtivo } from "@/lib/ativos";
 import { descreverRegra, LIMITE_REGRAS, montarParams, TIPOS, type Evento, type Regra, type TipoAlerta } from "@/lib/alertas";
+import { BriefingToggle, TelegramVinculo } from "@/components/alertas/CanaisAlerta";
 import { formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
@@ -32,6 +33,22 @@ export default function AlertasPage() {
   const [nivel, setNivel] = useState("");
   const [direcao, setDirecao] = useState<"acima" | "abaixo">("acima");
   const [cooldown, setCooldown] = useState("24");
+  const [horizonte, setHorizonte] = useState("5");
+  const [probPct, setProbPct] = useState("");
+  const [usinas, setUsinas] = useState<{ id: string; nome: string }[]>([]);
+  const [usinaId, setUsinaId] = useState("");
+  const [safra, setSafra] = useState("2026/27");
+  const [canal, setCanal] = useState<"email" | "telegram">("email");
+  const [telegramVinculado, setTelegramVinculado] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ usinas: { id: string; nome: string }[] }>("/api/atr/usinas")
+      .then((d) => {
+        setUsinas(d.usinas);
+        setUsinaId((atual) => atual || d.usinas[0]?.id || "");
+      })
+      .catch(() => setUsinas([]));
+  }, []);
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -58,15 +75,32 @@ export default function AlertasPage() {
       return;
     }
     const valor = Number(nivel.replace(",", "."));
-    if (!nivel || !Number.isFinite(valor) || valor <= 0) {
-      toast.error(tipo === "preco_cruza" ? "Informe um nível de preço maior que zero." : "Informe um percentual maior que zero.");
+    const prob = Number(probPct.replace(",", "."));
+    const h = Number(horizonte);
+    if (tipo === "posicao_limite") {
+      if (!usinaId || !/^\d{4}\/\d{2}$/.test(safra)) {
+        toast.error("Escolha a usina e informe a safra no formato 2026/27.");
+        return;
+      }
+    } else if (!nivel || !Number.isFinite(valor) || valor <= 0) {
+      toast.error(tipo === "preco_cruza" || tipo === "prob_cruzar" ? "Informe um nível de preço maior que zero." : "Informe um percentual maior que zero.");
+      return;
+    }
+    if (tipo === "prob_cruzar" && (!Number.isInteger(h) || h < 1 || h > 252 || !(prob > 0 && prob <= 100))) {
+      toast.error("Use de 1 a 252 dias úteis e uma probabilidade entre 0 e 100%.");
       return;
     }
     setSalvando(true);
     try {
       await apiFetch("/api/alertas", {
         method: "POST",
-        body: JSON.stringify({ tipo, ticker, params: montarParams(tipo, valor, direcao), cooldown_horas: Number(cooldown) }),
+        body: JSON.stringify({
+          tipo,
+          ticker: tipo === "posicao_limite" ? "POSICAO" : ticker,
+          params: montarParams(tipo, valor, direcao, { horizonte: h, probPct: prob, usinaId, safra }),
+          canal,
+          cooldown_horas: Number(cooldown),
+        }),
       });
       toast.success("Alerta criado. Ele é avaliado uma vez por dia, após o fechamento.");
       setNivel("");
@@ -190,17 +224,19 @@ export default function AlertasPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label>Ativo</Label>
-                <Select value={ticker} onValueChange={setTicker}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ATIVOS).map(([cod, a]) => <SelectItem key={cod} value={cod}>{a.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {tipo !== "posicao_limite" && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Ativo</Label>
+                  <Select value={ticker} onValueChange={setTicker}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ATIVOS).map(([cod, a]) => <SelectItem key={cod} value={cod}>{a.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-              {tipo === "preco_cruza" && (
+              {(tipo === "preco_cruza" || tipo === "prob_cruzar") && (
                 <div className="flex flex-col gap-1.5">
                   <Label>Quando o preço ficar</Label>
                   <Select value={direcao} onValueChange={(v) => setDirecao(v as "acima" | "abaixo")}>
@@ -213,18 +249,66 @@ export default function AlertasPage() {
                 </div>
               )}
 
+              {tipo === "posicao_limite" ? (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Usina</Label>
+                    <Select value={usinaId} onValueChange={setUsinaId}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Escolha a usina" /></SelectTrigger>
+                      <SelectContent>
+                        {usinas.map((u) => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="safra">Safra</Label>
+                    <Input id="safra" placeholder="ex.: 2026/27" value={safra} onChange={(ev) => setSafra(ev.target.value)} />
+                    <span className="text-xs text-muted-foreground">Avisa quando o % fixado sai da faixa da política dessa safra.</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="nivel">
+                    {tipo === "preco_cruza" || tipo === "prob_cruzar" ? "Nível de preço" : "Percentual (%)"}
+                  </Label>
+                  <Input
+                    id="nivel"
+                    inputMode="decimal"
+                    placeholder={tipo === "preco_cruza" || tipo === "prob_cruzar" ? "ex.: 16,50" : "ex.: 2,5"}
+                    value={nivel}
+                    onChange={(ev) => setNivel(ev.target.value)}
+                  />
+                  {tipo === "preco_cruza" && (
+                    <span className="text-xs text-muted-foreground">Use a unidade do ativo (ex.: ¢/lb para o açúcar).</span>
+                  )}
+                </div>
+              )}
+
+              {tipo === "prob_cruzar" && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="horizonte">Prazo (dias úteis)</Label>
+                    <Input id="horizonte" inputMode="numeric" value={horizonte} onChange={(ev) => setHorizonte(ev.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="probabilidade">Avisar quando a chance passar de (%)</Label>
+                    <Input id="probabilidade" inputMode="decimal" placeholder="ex.: 30" value={probPct} onChange={(ev) => setProbPct(ev.target.value)} />
+                    <span className="text-xs text-muted-foreground">Estimativa no fechamento diário. Não é previsão.</span>
+                  </div>
+                </>
+              )}
+
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nivel">{tipo === "preco_cruza" ? "Nível de preço" : "Percentual (%)"}</Label>
-                <Input
-                  id="nivel"
-                  inputMode="decimal"
-                  placeholder={tipo === "preco_cruza" ? "ex.: 16,50" : "ex.: 2,5"}
-                  value={nivel}
-                  onChange={(ev) => setNivel(ev.target.value)}
-                />
-                {tipo === "preco_cruza" && (
-                  <span className="text-xs text-muted-foreground">Use a unidade do ativo (ex.: ¢/lb para o açúcar).</span>
-                )}
+                <Label>Canal</Label>
+                <Select value={canal} onValueChange={(v) => setCanal(v as "email" | "telegram")}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">E-mail</SelectItem>
+                    <SelectItem value="telegram" disabled={!telegramVinculado}>
+                      Telegram{telegramVinculado ? "" : " (vincule abaixo)"}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -245,6 +329,11 @@ export default function AlertasPage() {
         </Card>
       </div>
 
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <BriefingToggle />
+        <TelegramVinculo onMudou={setTelegramVinculado} />
+      </div>
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Histórico de disparos</CardTitle>
@@ -259,7 +348,7 @@ export default function AlertasPage() {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Mensagem</TableHead>
-                    <TableHead>E-mail</TableHead>
+                    <TableHead>Envio</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

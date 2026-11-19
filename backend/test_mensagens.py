@@ -36,16 +36,24 @@ def mensagens(arquivo: str) -> list[tuple[int, str]]:
     return out
 
 
+# Lista explícita (não é glob em routers/: a pasta é compartilhada com outras frentes).
+ARQUIVOS = [
+    "main.py", "auth.py", "options.py", "regression.py",
+    "validacao.py", "constantes.py", "pregao.py", "noticias.py",
+    "routers/conta.py", "routers/opcoes.py", "routers/regressao.py", "routers/simulacoes.py",
+    "routers/atr_usinas.py", "routers/admin.py", "routers/mercado.py",
+]
+
 achados = [
     f"{arq}:{linha}: {texto}"
-    for arq in ("main.py", "auth.py", "options.py", "regression.py")
+    for arq in ARQUIVOS
     for linha, texto in mensagens(arq)
     if INGLES.search(texto)
 ]
 assert not achados, "Mensagens em inglês:\n" + "\n".join(achados)
 
 # Mensagem de dados insuficientes no formato da spec.
-textos = [t for _, t in mensagens("main.py")]
+textos = [t for arq in ARQUIVOS for _, t in mensagens(arq)]
 assert "Dados insuficientes para . Tente outro ativo ou período." in textos, textos
 
 print("ok")
