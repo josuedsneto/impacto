@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import main
+from routers import conta
 
 NY = ZoneInfo("America/New_York")
 
@@ -84,19 +85,19 @@ def test_job_continua_quando_um_ativo_falha_no_banco(api, supa, yahoo, monkeypat
 
 
 def test_health_simples_nao_consulta_banco(api, monkeypatch):
-    monkeypatch.setattr(main, "supa_client", lambda: 1 / 0)
+    monkeypatch.setattr(conta, "supa_client", lambda: 1 / 0)
     assert api.get("/api/health").json() == {"status": "ok"}
 
 
 def test_health_profundo_ok_e_degradado(api, supa, monkeypatch):
     """YAH-07.2 e 07.3."""
-    monkeypatch.setattr(main, "supa_client", lambda: supa)
+    monkeypatch.setattr(conta, "supa_client", lambda: supa)
     assert api.get("/api/health", params={"deep": 1}).json() == {"status": "ok", "supabase": "ok"}
 
     def fora():
         raise ConnectionError("supabase fora")
 
-    monkeypatch.setattr(main, "supa_client", fora)
+    monkeypatch.setattr(conta, "supa_client", fora)
     r = api.get("/api/health", params={"deep": 1})
     assert r.status_code == 503
     assert r.json() == {"status": "degradado", "supabase": "erro"}

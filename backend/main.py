@@ -146,19 +146,6 @@ from routers.analises import router as analises_router  # noqa: E402
 app.include_router(analises_router)
 
 
-@app.get("/api/health")
-@limiter.limit("30/minute")
-def health(request: Request, deep: bool = False):
-    """Sem deep: só diz que o processo responde. Com deep=1: também consulta o Supabase."""
-    if not deep:
-        return {"status": "ok"}
-    try:
-        supa_client().table("market_coverage").select("ticker").limit(1).execute()
-    except Exception:
-        logger.exception("Health profundo: Supabase não respondeu")
-        return JSONResponse(status_code=503, content={"status": "degradado", "supabase": "erro"})
-    return {"status": "ok", "supabase": "ok"}
-
 
 @app.get("/api/focus")
 @limiter.limit("20/minute")
@@ -288,12 +275,6 @@ def regression_runs_list(
     )
     return {"runs": res.data}
 
-
-@app.get("/api/me")
-@limiter.limit("60/minute")
-def me(request: Request, user: Annotated[dict, Depends(get_current_user)]):
-    """Returns current user info — verifies JWT is accepted for normal users."""
-    return {"id": user["id"], "email": user["email"], "role": user["role"]}
 
 
 # ── Market data ─────────────────────────────────────────────────────────────────
@@ -1869,3 +1850,7 @@ app.include_router(cambio_router)
 # Hedge cambial: routers/hedge_cambial.py
 from routers.hedge_cambial import router as hedge_cambial_router  # noqa: E402
 app.include_router(hedge_cambial_router)
+
+# Rotas de conta: routers/conta.py
+from routers import conta as _conta  # noqa: E402
+app.include_router(_conta.router)
