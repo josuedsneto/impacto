@@ -15,7 +15,7 @@ from limiter import limiter
 
 
 class RegraIn(BaseModel):
-    tipo: Literal["preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar"]
+    tipo: Literal["preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar", "posicao_limite"]
     ticker: str = Field(min_length=1, max_length=20)
     params: dict
     canal: Literal["email", "telegram"] = "email"
@@ -26,19 +26,27 @@ class RegraPatch(BaseModel):
     ativo: bool
 
 
-def _validar_regra(body: RegraIn) -> tuple[str, dict]:
+def _validar_regra(body: RegraIn, db, user: dict) -> tuple[str, dict]:
     if body.tipo not in alertas.TIPOS_DISPONIVEIS:
-        raise HTTPException(422, "Disponível em breve.")
-    if body.canal != "email":
-        raise HTTPException(422, "Disponível em breve.")
-    ticker = body.ticker.strip().upper()
-    if not alertas.TICKER_RE.match(ticker):
-        raise HTTPException(422, "Código de ativo inválido. Use letras, números, '=' ou '.' (ex.: SB=F).")
+        raise HTTPException(422, "Tipo de alerta desconhecido.")
     try:
         params = alertas.validar_params(body.tipo, body.params)
     except ValidationError:
         raise HTTPException(422, "Parâmetros inválidos para este tipo de alerta.")
+    if body.canal == "telegram" and not alertas._chat_telegram(db, user["id"]):
+        raise HTTPException(422, "Vincule o Telegram antes de usar este canal.")
+    if body.tipo == "posicao_limite":
+        if not _membro(db, user["id"], params["usina_id"]):
+            raise HTTPException(403, "Usuário não associado a esta usina.")
+        return alertas.TICKER_POSICAO, params  # DEC-22
+    ticker = body.ticker.strip().upper()
+    if not alertas.TICKER_RE.match(ticker):
+        raise HTTPException(422, "Código de ativo inválido. Use letras, números, '=' ou '.' (ex.: SB=F).")
     return ticker, params
+
+
+def _membro(db, user_id: str, usina_id: str) -> bool:
+    return alertas._membro(db, user_id, usina_id)
 
 
 def _regra_do_usuario(db, rule_id: UUID, user: dict) -> dict:
@@ -60,8 +68,8 @@ def listar(user: Annotated[dict, Depends(get_current_user)]):
 @router.post("", status_code=201)
 @limiter.limit("30/minute")
 def criar(request: Request, body: RegraIn, user: Annotated[dict, Depends(get_current_user)]):
-    ticker, params = _validar_regra(body)
     db = market_cache.supa_client()
+    ticker, params = _validar_regra(body, db, user)
     atuais = db.table("alert_rules").select("id").eq("user_id", user["id"]).execute().data or []
     if len(atuais) >= alertas.MAX_REGRAS_POR_USUARIO:
         raise HTTPException(400, "Limite de 20 alertas por conta atingido. Apague um alerta para criar outro.")
@@ -112,12 +120,20 @@ def testar(request: Request, rule_id: UUID, user: Annotated[dict, Depends(get_cu
     db = market_cache.supa_client()
     regra = _regra_do_usuario(db, rule_id, user)
     hoje = datetime.now(alertas.BRT).date()
+    if regra["tipo"] == "posicao_limite":
+        try:
+            condicao, valor, msg = alertas._avaliar_posicao_regra(db, regra)
+        except alertas.PermissaoPerdida:
+            raise HTTPException(403, "Usuário não associado a esta usina.")
+        except alertas.DadosInsuficientes:
+            raise HTTPException(400, "Sem política de hedge ou produção estimada para esta safra.")
+        return {"condicao": condicao, "valor": valor, "mensagem": msg, "ultimo_dado": None}
     try:
         linhas = market_cache.get_prices(regra["ticker"], hoje - timedelta(days=alertas.JANELA_DIAS), hoje)
     except Exception:
         raise HTTPException(503, f"Não foi possível obter os preços de {regra['ticker']} agora. Tente novamente em alguns minutos.")
     try:
-        condicao, valor, msg = alertas.avaliar(regra, linhas)
+        condicao, valor, msg = alertas.avaliar(regra, linhas, hoje)
     except alertas.DadosInsuficientes:
         raise HTTPException(400, f"Dados insuficientes para {regra['ticker']}.")
     return {"condicao": condicao, "valor": valor, "mensagem": msg, "ultimo_dado": linhas[-1]["date"]}

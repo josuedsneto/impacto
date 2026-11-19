@@ -57,14 +57,12 @@ def test_params_invalidos_retornam_422(cliente, supa):
     assert "Parâmetros inválidos" in r.json()["detail"]
 
 
-def test_prob_cruzar_e_telegram_recusados(cliente, supa):
+def test_canal_telegram_sem_vinculo_responde_422(cliente, supa):
     _precos(supa, 10.0)
-    r1 = cliente.post("/api/alertas", json={"tipo": "prob_cruzar", "ticker": "USDBRL=X", "params": {
-        "strike": 5, "direcao": "acima", "horizonte_dias": 30, "prob_min": 60}})
-    r2 = cliente.post("/api/alertas", json={"tipo": "vol_acima", "ticker": "SB=F",
-                                            "params": {"pct": 30}, "canal": "telegram"})
-    assert r1.status_code == 422 and r1.json()["detail"] == "Disponível em breve."
-    assert r2.status_code == 422 and r2.json()["detail"] == "Disponível em breve."
+    r = cliente.post("/api/alertas", json={"tipo": "vol_acima", "ticker": "SB=F",
+                                           "params": {"pct": 30}, "canal": "telegram"})
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Vincule o Telegram antes de usar este canal."
 
 
 def test_limite_de_20_regras(cliente, supa):

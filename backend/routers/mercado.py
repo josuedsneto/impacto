@@ -463,16 +463,13 @@ def get_news(
     if now - _news_cache["ts"] < _NEWS_TTL and _news_cache["items"]:
         return {"items": _news_cache["items"], "cached": True}
 
-    try:
-        items = buscar_manchetes()
-        _news_cache["ts"] = now
-        _news_cache["items"] = items
-    except Exception as exc:
-        logger.error("Failed to fetch news: %s", exc)
+    items = buscar_manchetes(10)
+    if items is None:
         if _news_cache["items"]:
             return {"items": _news_cache["items"], "cached": True, "warning": "News fetch failed, showing cached data"}
         raise HTTPException(status_code=503, detail="Não foi possível carregar as notícias agora. Tente novamente em alguns minutos.")
-
+    _news_cache["ts"] = now
+    _news_cache["items"] = items
     return {"items": items, "cached": False}
 
 

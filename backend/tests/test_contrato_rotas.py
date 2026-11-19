@@ -4,7 +4,8 @@ A lista abaixo é a foto de (método, path, nomes dos parâmetros, status_code, 
 tirada de main.app.routes ANTES da divisão do main.py em routers. Não pode mudar durante a
 refatoração: se o teste quebrar, uma rota mudou de contrato.
 
-Excluídas: /api/alertas e /api/jobs (routers em evolução em outra frente; ficam de fora desta foto).
+Incluídas depois da integração da rodada 2 (alertas v2 e telegram): /api/alertas, /api/jobs, /api/telegram.
+As rotas de antes da divisão não mudaram: a lista antiga (67) é subconjunto da atual.
 """
 import inspect
 
@@ -26,6 +27,12 @@ CONTRATO = [
     ('DELETE', '/api/admin/usinas/{usina_id}/usuarios/{user_id_target}', ('request', 'usina_id', 'user_id_target', '_'), ('require_admin',), None, '10 per 1 minute'),
     ('POST', '/api/admin/usinas/{usina_id}/usuarios/{user_id_target}', ('request', 'usina_id', 'user_id_target', '_'), ('require_admin',), None, '10 per 1 minute'),
     ('GET', '/api/admin/usuarios', ('request', '_'), ('require_admin',), None, '10 per 1 minute'),
+    ('GET', '/api/alertas', ('user',), ('get_current_user',), None, None),
+    ('POST', '/api/alertas', ('request', 'body', 'user'), ('get_current_user',), 201, '30 per 1 minute'),
+    ('GET', '/api/alertas/eventos', ('user', 'rule_id'), ('get_current_user',), None, None),
+    ('DELETE', '/api/alertas/{rule_id}', ('rule_id', 'user'), ('get_current_user',), 204, None),
+    ('PATCH', '/api/alertas/{rule_id}', ('rule_id', 'body', 'user'), ('get_current_user',), None, None),
+    ('POST', '/api/alertas/{rule_id}/testar', ('request', 'rule_id', 'user'), ('get_current_user',), None, '20 per 1 minute'),
     ('GET', '/api/analises', ('request', 'user', 'ferramenta', 'limit', 'offset'), ('get_current_user',), None, '60 per 1 minute'),
     ('POST', '/api/analises', ('request', 'body', 'user'), ('get_current_user',), 201, '30 per 1 minute'),
     ('DELETE', '/api/analises/{analise_id}', ('request', 'analise_id', 'user'), ('get_current_user',), None, '30 per 1 minute'),
@@ -46,6 +53,9 @@ CONTRATO = [
     ('GET', '/api/focus', ('request', 'user'), ('get_current_user',), None, '20 per 1 minute'),
     ('GET', '/api/health', ('request', 'deep'), (), None, '30 per 1 minute'),
     ('POST', '/api/hedge-cambial', ('request', 'body', 'user'), ('get_current_user',), None, '10 per 1 minute'),
+    ('POST', '/api/jobs/alertas', ('tipos',), ('require_job_secret',), None, None),
+    ('POST', '/api/jobs/aquecer-cache', (), ('require_job_secret',), None, None),
+    ('POST', '/api/jobs/briefing', (), ('require_job_secret',), None, None),
     ('POST', '/api/jump-diffusion', ('request', 'body', 'user'), ('get_current_user',), None, '15 per 1 minute'),
     ('GET', '/api/market/analysis', ('request', 'ticker', 'start', 'end', 'user', 'indicators', 'rsi_period', 'bb_window', 'bb_std', 'macd_fast', 'macd_slow', 'macd_signal', 'stoch_k', 'stoch_d', 'cci_period', 'sma_periods', 'ema_periods'), ('get_current_user',), None, '20 per 1 minute'),
     ('GET', '/api/market/prices', ('request', 'ticker', 'start', 'end', 'user'), ('get_current_user',), None, '30 per 1 minute'),
@@ -79,6 +89,10 @@ CONTRATO = [
     ('POST', '/api/simulations', ('request', 'body', 'user'), ('get_current_user',), 201, '10 per 1 minute'),
     ('GET', '/api/simulations/{sim_id}', ('request', 'sim_id', 'user'), ('get_current_user',), None, '60 per 1 minute'),
     ('GET', '/api/stress', ('request', 'ticker', 'user'), ('get_current_user',), None, '10 per 1 minute'),
+    ('POST', '/api/telegram/codigo', ('request', 'user'), ('get_current_user',), None, '5 per 1 minute'),
+    ('GET', '/api/telegram/status', ('user',), ('get_current_user',), None, None),
+    ('DELETE', '/api/telegram/vinculo', ('user',), ('get_current_user',), 204, None),
+    ('POST', '/api/telegram/webhook', ('update', 'x_telegram_bot_api_secret_token'), (), None, None),
     ('GET', '/api/var', ('request', 'ticker', 'confidence', 'horizon', 'user'), ('get_current_user',), None, '10 per 1 minute'),
     ('GET', '/api/volatility', ('request', 'ticker', 'user'), ('get_current_user',), None, '10 per 1 minute'),
 ]
@@ -97,8 +111,6 @@ def _foto_atual():
     fotos = []
     for rota in main.app.routes:
         if not isinstance(rota, APIRoute):
-            continue
-        if rota.path.startswith(("/api/alertas", "/api/jobs")):
             continue
         params = tuple(inspect.signature(rota.endpoint).parameters)
         deps = _dependencias(rota)

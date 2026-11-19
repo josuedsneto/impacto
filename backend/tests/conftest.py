@@ -39,6 +39,14 @@ class _Query:
         self.filtros.append(lambda r: r[k] <= v)
         return self
 
+    def gt(self, k, v):
+        self.filtros.append(lambda r: r.get(k) is not None and r[k] > v)
+        return self
+
+    def neq(self, k, v):
+        self.filtros.append(lambda r: r.get(k) != v)
+        return self
+
     def order(self, k, desc=False):
         self.ordem = (k, desc)
         return self

@@ -46,3 +46,12 @@ def test_lista_tem_os_feriados_de_2026_e_2027():
     anos = {d.year for d in pregao.FERIADOS_ICE}
     assert anos == {2026, 2027}
     assert len(pregao.FERIADOS_ICE) == 20
+
+
+def test_briefing_pula_feriado_do_pregao_no_dia_util_anterior():
+    """Alertas: 'dia útil anterior' não conta feriado do ICE (1º/jan/2026 é quinta)."""
+    import briefing
+    from datetime import date
+
+    assert briefing.ultimo_dia_util_anterior(date(2026, 1, 2)) == date(2025, 12, 31)  # sex 02/01 → qui 01/01 é feriado → qua 31/12
+    assert briefing.ultimo_dia_util_anterior(date(2026, 1, 5)) == date(2026, 1, 2)    # segunda → sexta 02/01 (útil)
