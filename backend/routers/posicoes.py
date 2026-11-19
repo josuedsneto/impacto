@@ -147,7 +147,7 @@ def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[fl
     `modelos` mapeia id da posição → detalhe do MTM por modelo (opcoes v2). Sem entrada, cai no intrínseco.
     """
     modelos = modelos or {}
-    sit = situacao([p for p in posicoes if not e_call(p)], politica)
+    sit = situacao(posicoes, politica)
 
     venda = [p for p in posicoes if p["instrumento"] in VENDA_ACUCAR]
     vol_v = sum(p["volume"] for p in venda)
@@ -270,10 +270,12 @@ def _modelos_opcoes(posicoes: list[dict], sb: float, fx: float) -> dict:
             vol_fx = sigma_dia * np.sqrt(cambio.DIAS_UTEIS_ANO)
         except Exception:
             vol_fx = None
-        try:
-            selic, fed = juros_em(pd.Timestamp(hoje))
-        except Exception:
-            selic = fed = None
+
+    # Black-76 também desconta pela taxa: busca os juros para qualquer opção, não só a de dólar.
+    try:
+        selic, fed = juros_em(pd.Timestamp(hoje))
+    except Exception:
+        selic = fed = None
 
     modelos = {}
     for p in opcoes:

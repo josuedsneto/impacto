@@ -64,7 +64,7 @@ export function CartaoPosicoes({ s }: { s: Secao<PainelPosicao[]> }) {
                 {leituraPosicaoPolitica({ status: u.status, pct: u.pct_fixado, minimo: u.minimo_pct, maximo: u.maximo_pct, safra: u.safra })}
               </p>
               {u.mtm_total_rs !== null && (
-                <p className="text-xs text-muted-foreground">Resultado a mercado: {formatBRL(u.mtm_total_rs)}</p>
+                <p className="text-xs text-muted-foreground">Resultado a mercado: {formatBRL(u.mtm_total_rs)} (opções pelo valor intrínseco)</p>
               )}
               {u.aviso && <p className="text-xs text-muted-foreground">{u.aviso}</p>}
               {u.n_posicoes === 0 && (

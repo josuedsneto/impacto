@@ -13,7 +13,8 @@ def situacao(posicoes: list[dict], politica: Optional[dict]) -> dict:
     minimo = politica.get("minimo_pct") if politica else None
     maximo = politica.get("maximo_pct") if politica else None
 
-    vol_acucar = sum(p["volume"] for p in posicoes if p["instrumento"] in ACUCAR)
+    # Call comprada não trava preço: não conta no % fixado (v2 R-V2-03). Vale para resumo, alerta e painel.
+    vol_acucar = sum(p["volume"] for p in posicoes if p["instrumento"] in ACUCAR and p.get("tipo_opcao") != "call")
     pct = round(vol_acucar / producao * 100, 2) if producao else None
 
     if politica is None:

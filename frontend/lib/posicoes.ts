@@ -317,7 +317,13 @@ export function valoresParaRisco(ex: Exposicao): { pctFixado: string | null; pre
   return {
     pctFixado: pct === null ? null : String(pct),
     precoFixado: semPreco ? null : String(ex.preco_medio_rs_t),
-    aviso: pct === null ? AVISO_SEM_PRODUCAO : pct > 0 && semPreco ? AVISO_SEM_CAMBIO : null,
+    // Fixação existe, mas nenhuma com câmbio: o % vem 0 e o preço vazio; avisar em vez de preencher calado.
+    aviso:
+      pct === null
+        ? AVISO_SEM_PRODUCAO
+        : (pct > 0 && semPreco) || (pct === 0 && (ex.pct_travado ?? 0) > 0)
+          ? AVISO_SEM_CAMBIO
+          : null,
   };
 }
 

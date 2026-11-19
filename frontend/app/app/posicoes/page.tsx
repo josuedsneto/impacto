@@ -330,6 +330,7 @@ export default function PosicoesPage() {
                     <option value="">Não informado (put)</option>
                     {(Object.keys(TIPO_OPCAO_LABEL) as TipoOpcao[]).map((t) => <option key={t} value={t}>{TIPO_OPCAO_LABEL[t]}</option>)}
                   </select>
+                  <p className="text-xs text-muted-foreground">A opção é tratada como comprada (prêmio pago). Opção vendida ainda não é suportada.</p>
                 </div>
               )}
               {campo("Vencimento", "vencimento", "date")}

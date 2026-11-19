@@ -131,8 +131,13 @@ describe("valoresParaRisco", () => {
     expect(r.aviso).toBe(AVISO_SEM_CAMBIO);
   });
   it("nada fixado: preenche 0 e não avisa de câmbio", () => {
-    const r = valoresParaRisco({ ...EX_BASE, pct_travado_rs: 0, preco_medio_rs_t: null });
+    const r = valoresParaRisco({ ...EX_BASE, pct_travado: 0, pct_travado_rs: 0, preco_medio_rs_t: null });
     expect(r).toEqual({ pctFixado: "0", precoFixado: null, aviso: null });
+  });
+  it("só fixação sem câmbio: preenche 0 mas avisa (revisão da rodada 3)", () => {
+    const r = valoresParaRisco({ ...EX_BASE, pct_travado: 45, pct_travado_rs: 0, preco_medio_rs_t: null });
+    expect(r.pctFixado).toBe("0");
+    expect(r.aviso).toBe(AVISO_SEM_CAMBIO);
   });
   it("sem produção, não preenche o %", () => {
     const r = valoresParaRisco({ ...EX_BASE, pct_travado_rs: null });
