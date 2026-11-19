@@ -1,4 +1,5 @@
 """HARD-01 a HARD-12: validações, erro 500 controlado, constantes, heatmap e jump-diffusion."""
+import importlib
 import math
 from datetime import date, timedelta
 
@@ -6,15 +7,32 @@ import pytest
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
+import constantes
 import main
+from routers import admin as admin_router, risco, simulacoes
 
 ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
 
 
+DOMINIOS = ["conta", "opcoes", "regressao", "simulacoes", "atr_usinas", "admin", "mercado", "risco"]
+
+
+def _modulos_com_supa():
+    """Cada módulo que importa supa_client por nome precisa do fake (main e constantes incluídos)."""
+    mods = [main, constantes]
+    for dominio in DOMINIOS:
+        try:
+            mods.append(importlib.import_module(f"routers.{dominio}"))
+        except ModuleNotFoundError:
+            pass  # domínio ainda não migrado
+    return [m for m in mods if hasattr(m, "supa_client")]
+
+
 @pytest.fixture(autouse=True)
 def _supa_do_main(supa, monkeypatch):
-    """main importa supa_client por nome: troca também aqui, além do market_cache."""
-    monkeypatch.setattr(main, "supa_client", lambda: supa)
+    """Módulos importam supa_client por nome: troca em cada um, além do market_cache."""
+    for mod in _modulos_com_supa():
+        monkeypatch.setattr(mod, "supa_client", lambda: supa)
 
 
 @pytest.fixture
@@ -87,7 +105,7 @@ def test_excecao_nao_tratada_vira_500_em_portugues_com_cors(supa, monkeypatch):
     def quebra(*_a, **_k):
         raise RuntimeError("segredo interno")
 
-    monkeypatch.setattr(main, "get_prices", quebra)
+    monkeypatch.setattr(risco, "get_prices", quebra)
     main.limiter.enabled = False
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": "u1", "email": "u@x.com", "role": "user"}
     cliente = TestClient(main.app, raise_server_exceptions=False)
@@ -106,7 +124,7 @@ def test_excecao_nao_tratada_vira_500_em_portugues_com_cors(supa, monkeypatch):
 def test_breakeven_ignora_fechamento_nulo(supa, monkeypatch):
     dados = _precos_recentes(20.0, 5.0)
     dados["SB=F"].append({"date": date.today().isoformat(), "close": None})
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     main.limiter.enabled = False
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": "u1", "email": "u@x.com", "role": "user"}
     try:
@@ -161,7 +179,7 @@ class _Supa:
 
 def test_todos_usuarios_percorre_todas_as_paginas():
     supa = _Supa(2005)
-    usuarios = main._todos_usuarios(supa)
+    usuarios = admin_router._todos_usuarios(supa)
     assert len(usuarios) == 2005
     assert supa.auth.admin.pedidos == [1, 2, 3, 4]  # para na página vazia
     emails = [u.email for u in usuarios]
@@ -172,14 +190,14 @@ def test_todos_usuarios_percorre_todas_as_paginas():
 
 def test_constante_ausente_ou_invalida_usa_valor_do_codigo(supa):
     supa.db["admin_config"] = {("fator_conversao_mtm",): {"key": "fator_conversao_mtm", "value": "1.000.000"}}
-    valores = main._ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1")
-    assert valores["fator_conversao_mtm"] == main.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0]
-    assert valores["risco_custo_fixo_1"] == main.CONSTANTES_NEGOCIO["risco_custo_fixo_1"][0]
+    valores = constantes._ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1")
+    assert valores["fator_conversao_mtm"] == constantes.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0]
+    assert valores["risco_custo_fixo_1"] == constantes.CONSTANTES_NEGOCIO["risco_custo_fixo_1"][0]
 
 
 def test_constante_lida_do_banco_aceita_virgula(supa):
     supa.db["admin_config"] = {("breakeven_fator_conversao",): {"key": "breakeven_fator_conversao", "value": "1,2"}}
-    assert main._ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"] == 1.2
+    assert constantes._ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"] == 1.2
 
 
 def test_put_constante_nao_numerica_responde_422(admin):
@@ -203,7 +221,7 @@ def test_put_constante_numerica_grava_com_ponto(admin):
 
 def test_heatmap_centrado_no_ultimo_fechamento(api, monkeypatch):
     dados = _precos_recentes(18.0, 5.6)
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     r = api.get("/api/metas", params={"meta": 2600})
     assert r.status_code == 200
     corpo = r.json()
@@ -212,14 +230,14 @@ def test_heatmap_centrado_no_ultimo_fechamento(api, monkeypatch):
     assert corpo["dolares"][5] == 5.6
     assert corpo["acucares"] == sorted(corpo["acucares"], reverse=True)
     assert corpo["dolares"] == sorted(corpo["dolares"])
-    assert corpo["heatmap"][5][5] == round(main.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0] * 18.0 * 5.6 - 2600, 2)
+    assert corpo["heatmap"][5][5] == round(constantes.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0] * 18.0 * 5.6 - 2600, 2)
 
 
 def test_metas_sem_precos_recentes_responde_503(api, monkeypatch):
     dados = _precos_recentes(18.0, 5.6)
     antigos = [{**r, "date": "2020-01-0" + str(i % 9 + 1)} for i, r in enumerate(dados["SB=F"])]
     dados["SB=F"] = antigos
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     r = api.get("/api/metas")
     assert r.status_code == 503
     assert r.json()["detail"] == "Sem preços recentes para montar o mapa de metas."
@@ -241,10 +259,10 @@ def test_409_so_para_conflito_de_unicidade(admin, monkeypatch):
         def execute(self):
             return self
 
-    monkeypatch.setattr(main, "supa_client", lambda: _Insere("23505"))
+    monkeypatch.setattr(admin_router, "supa_client", lambda: _Insere("23505"))
     assert admin.post("/api/admin/usinas", json={"nome": "Usina A"}).status_code == 409
 
-    monkeypatch.setattr(main, "supa_client", lambda: _Insere("42501"))
+    monkeypatch.setattr(admin_router, "supa_client", lambda: _Insere("42501"))
     cliente = TestClient(main.app, raise_server_exceptions=False)
     assert cliente.post("/api/admin/usinas", json={"nome": "Usina B"}).status_code == 500
 
@@ -256,7 +274,7 @@ def test_jump_diffusion_sem_saltos_segue_o_drift_em_log(api, monkeypatch):
     # deve ser T·mu. Com a dupla contagem antiga (−σ²/2 extra) a média cairia ~ T·σ²/2.
     closes = [100.0 + (i % 2) for i in range(30)]
     linhas = [{"date": (date.today() - timedelta(days=i)).isoformat(), "close": c} for i, c in enumerate(closes)]
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: linhas)
+    monkeypatch.setattr(simulacoes, "get_prices", lambda t, s, e: linhas)
     T, rep = 252, 300
     somas, mu = [], None
     for _ in range(rep):

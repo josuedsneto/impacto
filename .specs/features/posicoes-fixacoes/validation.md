@@ -42,7 +42,7 @@ Duas revisões (spec e diff final). Aplicado: opções só put (R1), média só 
 
 ## Lacunas conhecidas (não feitas)
 
-- **R15, mapeamento de erro do lote no backend:** não implementado. O frontend valida cada linha antes de enviar e mostra o número da linha. Um 422 do backend ainda cai na mensagem genérica.
+- **R15, mapeamento de erro do lote no backend:** **resolvido** em `pendencias-pequenas` (PEN-04 a PEN-06). O 422 traz `Linha n (Campo): valor inválido.` e a tela mostra no toast. O frontend continua validando antes de enviar.
 - **`limiter` importado de `main`:** import circular. Funciona com `uvicorn main:app` (Procfile e railway.toml). Importar `routers.posicoes` antes de `main` quebra com AttributeError; os testes importam `main` primeiro. Correção definitiva: mover o `limiter` para um módulo próprio. Não feito para não tocar em `main.py` além da linha de include.
 - **Fator de conversão:** `FATOR = 22.0462 * 1.04` repetido em `routers/posicoes.py`. Confirmar com a trading (ver Open questions da spec, incluindo a diferença de ~1% para o faturamento de `main.py`).
 - **Vencimento:** MTM marcado contra o SB=F da frente, sem ajuste por mês. Aviso fixo na tela.

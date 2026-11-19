@@ -1,14 +1,15 @@
 """Posições de fixação e política de hedge por usina e safra (posicoes-fixacoes)."""
 from datetime import date, timedelta
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 import market_cache
 from auth import get_current_user
 from limiter import limiter
 from market_cache import get_prices
+from politica_hedge import situacao
 
 router = APIRouter(prefix="/api")
 
@@ -51,7 +52,41 @@ class PosicaoCreate(PosicaoIn):
 class LotePosicoes(BaseModel):
     usina_id: str = Field(pattern=UUID_PADRAO)
     safra: str = Field(pattern=r"^\d{4}/\d{2}$")
-    posicoes: list[PosicaoBase] = Field(max_length=LOTE_MAX)
+    # Linhas validadas uma a uma em _validar_lote, para o 422 dizer a linha e o campo.
+    posicoes: list[Any] = Field(max_length=LOTE_MAX)
+
+
+CAMPO_PT = {
+    "instrumento": "Instrumento",
+    "volume": "Volume",
+    "preco_fixado": "Preço fixado",
+    "cambio_fixado": "Câmbio fixado",
+    "premio": "Prêmio",
+    "vencimento": "Vencimento",
+    "contraparte": "Contraparte",
+    "observacao": "Observação",
+}
+
+
+def _mensagem_linha(n: int, exc: ValidationError) -> str:
+    """Texto em português para a primeira falha de uma linha do lote (1-based)."""
+    erro = exc.errors()[0]
+    loc = erro.get("loc") or ()
+    if not loc:
+        return f"Linha {n}: registro inválido."
+    campo = str(loc[0])
+    motivo = "campo obrigatório" if erro.get("type") == "missing" else "valor inválido"
+    return f"Linha {n} ({CAMPO_PT.get(campo, campo)}): {motivo}."
+
+
+def _validar_lote(brutas: list[Any]) -> list[PosicaoBase]:
+    validadas = []
+    for n, bruta in enumerate(brutas, start=1):
+        try:
+            validadas.append(PosicaoBase.model_validate(bruta))
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=_mensagem_linha(n, exc))
+    return validadas
 
 
 class PoliticaIn(BaseModel):
@@ -85,21 +120,7 @@ def calcular_mtm(p: dict, sb: float, fx: float) -> float:
 
 def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[float], fx: Optional[float]) -> dict:
     """Percentual fixado, preço médio, MTM e status contra a política (R2–R4, R8)."""
-    producao = politica.get("producao_estimada_t") if politica else None
-    minimo = politica.get("minimo_pct") if politica else None
-    maximo = politica.get("maximo_pct") if politica else None
-
-    vol_acucar = sum(p["volume"] for p in posicoes if p["instrumento"] in ACUCAR)
-    pct = round(vol_acucar / producao * 100, 2) if producao else None
-
-    if politica is None:
-        status = "sem_politica"
-    elif not producao:
-        status = "sem_producao"
-    else:
-        lo = minimo or 0
-        hi = 100 if maximo is None else maximo
-        status = "abaixo" if pct < lo else "acima" if pct > hi else "dentro"
+    sit = situacao(posicoes, politica)
 
     venda = [p for p in posicoes if p["instrumento"] in VENDA_ACUCAR]
     vol_v = sum(p["volume"] for p in venda)
@@ -114,14 +135,10 @@ def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[fl
                   for p in posicoes] if posicoes else []
 
     return {
-        "pct_fixado": pct,
-        "minimo_pct": minimo,
-        "maximo_pct": maximo,
-        "producao_estimada_t": producao,
+        **sit,
         "preco_medio_cents_lb": round(sum(p["preco_fixado"] * p["volume"] for p in venda) / vol_v, 2) if vol_v else None,
         "preco_medio_rs_t": round(sum(p["preco_fixado"] * FATOR * p["cambio_fixado"] * p["volume"] for p in com_cambio) / vol_c, 2) if vol_c else None,
         "mtm_total_rs": round(sum(m["mtm_rs"] for m in mtm_linhas), 2),
-        "status": status,
         "avisos": avisos,
         "posicoes": mtm_linhas,
     }
@@ -169,7 +186,7 @@ def criar_lote(request: Request, body: LotePosicoes, user: Annotated[dict, Depen
     if not _membro(supa, user["id"], body.usina_id):
         raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)
     linhas = []
-    for p in body.posicoes:
+    for p in _validar_lote(body.posicoes):
         d = p.model_dump(mode="json")
         d["safra"] = body.safra
         d.update({"usina_id": body.usina_id, "criado_por": user["id"]})

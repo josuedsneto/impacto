@@ -14,7 +14,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 
 def test_main_e_regression_nao_chamam_yf_download():
     """CACHE-01 AC2."""
-    for arquivo in ("main.py", "regression.py"):
+    for arquivo in ("main.py", "regression.py", "routers/conta.py", "routers/opcoes.py", "routers/regressao.py", "routers/simulacoes.py", "routers/atr_usinas.py", "routers/admin.py", "routers/mercado.py", "noticias.py"):
         arvore = ast.parse((RAIZ / arquivo).read_text(encoding="utf-8"))
         chamadas = [
             n for n in ast.walk(arvore)

@@ -25,3 +25,20 @@ describe("montarParams", () => {
     expect(montarParams("vol_acima", 30, "acima")).toEqual({ pct: 30 });
   });
 });
+
+describe("alertas v2", () => {
+  it("prob_cruzar manda prazo e probabilidade como fração", () => {
+    expect(montarParams("prob_cruzar", 5.5, "acima", { horizonte: 30, probPct: 60 }))
+      .toEqual({ nivel: 5.5, direcao: "acima", horizonte: 30, prob: 0.6 });
+  });
+  it("posicao_limite manda usina e safra, sem nível", () => {
+    expect(montarParams("posicao_limite", 0, "acima", { usinaId: "u-1", safra: "2026/27" }))
+      .toEqual({ usina_id: "u-1", safra: "2026/27" });
+  });
+  it("descreve prob_cruzar e posicao_limite", () => {
+    const prob = descreverRegra({ ...base, tipo: "prob_cruzar", params: { nivel: 5.5, direcao: "acima", horizonte: 30, prob: 0.6 } });
+    expect(prob).toContain("em até 30 dias úteis");
+    const pos = descreverRegra({ ...base, tipo: "posicao_limite", params: { usina_id: "u", safra: "2026/27" } });
+    expect(pos).toBe("Safra 2026/27 fora da faixa da política de hedge");
+  });
+});

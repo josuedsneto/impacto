@@ -57,12 +57,12 @@ CORPO = {"ticker": "SB=F", "preco_inicial": 20.0, "dias_simulados": 10, "num_sim
 
 
 def _sem_supabase(monkeypatch):
-    import main
+    from routers import simulacoes
 
     def falha():
         raise AssertionError("Supabase não deveria ser chamado")
 
-    monkeypatch.setattr(main, "supa_client", falha)
+    monkeypatch.setattr(simulacoes, "supa_client", falha)
 
 
 def test_ticker_invalido_na_simulacao_responde_400_sem_consultar_banco(api, monkeypatch):
@@ -85,13 +85,13 @@ def test_preco_inicial_nao_positivo_responde_422(api, monkeypatch, preco):
 
 
 def test_dados_insuficientes_responde_422_em_portugues(api, supa, monkeypatch):
-    import main
+    from routers import simulacoes
 
     def sem_dados(*a, **k):
         raise DadosInsuficientesError("Não há dados históricos suficientes para SB=F (retornos válidos: 0, mínimo: 20).")
 
-    monkeypatch.setattr(main, "run_simulation", sem_dados)
-    monkeypatch.setattr(main, "supa_client", lambda: supa)
+    monkeypatch.setattr(simulacoes, "run_simulation", sem_dados)
+    monkeypatch.setattr(simulacoes, "supa_client", lambda: supa)
     r = api.post("/api/simulations", json=CORPO)
     assert r.status_code == 422
     assert "Não há dados históricos suficientes" in r.json()["detail"]

@@ -10,6 +10,8 @@ import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
 import { lerNumero } from "@/lib/numero";
+import { useReabrirAnalise } from "@/lib/reabrir-analise";
+import { camposDeAnalise } from "@/lib/hedge-reabrir";
 import { leituraHedge } from "@/lib/leitura";
 import { formatBRL, formatCompactBRL, formatDate, formatFX, formatNumber, formatPercent } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -85,7 +87,13 @@ export default function HedgeCambialPage() {
   const [resultado, setResultado] = useState<HedgeResposta | null>(null);
   const [calculando, setCalculando] = useState(false);
 
-  // Padrões de spot e forward atuais; os campos de strike e orçamento começam nesses valores.
+  // PEN-01: reabrir uma análise salva restaura os campos (a ordem com o padrão abaixo não importa).
+  useReabrirAnalise("hedge_cambial", (p) => {
+    setCampos((c) => ({ ...c, ...camposDeAnalise(p) }));
+  });
+
+  // Padrões de spot e forward atuais; os strikes começam nesses valores.
+  // PEN-02: só preenche campo vazio, para não apagar um strike reaberto ou digitado.
   useEffect(() => {
     let ativo = true;
     apiFetch<Padrao>("/api/cambio/previsao?horizonte=63", { timeoutMs: 60_000 })
@@ -95,9 +103,9 @@ export default function HedgeCambialPage() {
         if (p.forward.valor != null) {
           setCampos((c) => ({
             ...c,
-            strikePut: txt(p.spot * 0.95),
-            k1: txt(p.spot * 0.95),
-            k2: txt(p.spot * 1.05),
+            strikePut: c.strikePut || txt(p.spot * 0.95),
+            k1: c.k1 || txt(p.spot * 0.95),
+            k2: c.k2 || txt(p.spot * 1.05),
           }));
         }
       })
