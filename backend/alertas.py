@@ -273,14 +273,15 @@ def _enviar(db, regra: dict, texto: str, emails: dict) -> None:
             telegram_bot.enviar_mensagem(chat, texto)
         except telegram_bot.TelegramNaoConfigurado as exc:
             raise RuntimeError(str(exc))
-        except Exception:
-            logger.exception("Falha no envio pelo Telegram da regra %s", regra["id"])
+        except Exception as exc:  # sem traceback: a URL da Bot API leva o token nos logs
+            logger.warning("Falha no envio pelo Telegram da regra %s: %s", regra["id"], type(exc).__name__)
             raise RuntimeError("Falha no envio pelo Telegram")
         return
     destino = _email_do_usuario(db, emails, regra["user_id"])
     if not destino:
         raise RuntimeError("Usuário sem e-mail cadastrado.")
-    enviar_email(destino, f"Alerta: {regra['ticker']}", texto)
+    assunto = f"Alerta: safra {regra['params']['safra']}" if regra["tipo"] == "posicao_limite" else f"Alerta: {regra['ticker']}"
+    enviar_email(destino, assunto, texto)
 
 
 # ── Disparo (DEC-06: evento primeiro, estado, envio, confirmação) ──────────────

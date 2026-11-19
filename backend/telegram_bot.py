@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sem 0/O/1/I, para ditar sem erro
+ALFABETO_CODIGO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # sem 0/O/1/I, para ditar sem erro
 VALIDADE_CODIGO = timedelta(minutes=15)
 
 

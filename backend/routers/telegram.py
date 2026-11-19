@@ -107,11 +107,15 @@ def webhook(
         return {"ok": True}
 
     # Consumo atômico: só grava se o código ainda existe e não expirou.
-    usado = (
-        db.table("telegram_vinculos")
-        .update({"chat_id": chat_id, "codigo": None, "codigo_expira": None})
-        .eq("codigo", codigo).gt("codigo_expira", agora).execute().data or []
-    )
+    try:
+        usado = (
+            db.table("telegram_vinculos")
+            .update({"chat_id": chat_id, "codigo": None, "codigo_expira": None})
+            .eq("codigo", codigo).gt("codigo_expira", agora).execute().data or []
+        )
+    except Exception:  # corrida: outro webhook gravou o mesmo chat_id (UNIQUE)
+        _responder(chat_id, "Este Telegram já está vinculado a outra conta.")
+        return {"ok": True}
     if usado:
         _responder(chat_id, "Pronto. Alertas por Telegram ativados.")
     else:
