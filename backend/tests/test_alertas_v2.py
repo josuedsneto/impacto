@@ -242,3 +242,36 @@ def test_briefing_so_vai_para_quem_optou(supa, monkeypatch):
     assert destino == "ana@x.com"
     assert "SB=F fechou acima do nível" in texto and "indisponível" in texto  # dólar sem dado
     assert "&lt;b&gt;Açúcar sobe" in html  # manchete escapada
+
+
+# ── Revisão da rodada 2: feriado, Telegram desvinculado, briefing idempotente ──
+
+def test_feriado_ice_nao_avalia_alertas_nem_envia_briefing(supa):
+    thanksgiving = datetime(2026, 11, 26, 21, 0, tzinfo=timezone.utc)
+    assert alertas.rodar_avaliacoes(agora=thanksgiving)["feriado"] is True
+    assert briefing.enviar_briefings(agora=thanksgiving, pausa=0)["feriado"] is True
+
+
+def test_telegram_desvinculado_cai_no_email(supa, monkeypatch):
+    supa.auth = SimpleNamespace(admin=SimpleNamespace(
+        get_user_by_id=lambda uid: SimpleNamespace(user=SimpleNamespace(email=f"{uid}@x.com"))))
+    enviados = []
+    monkeypatch.setattr(alertas, "enviar_email", lambda destino, assunto, texto, html=None: enviados.append(destino))
+    regra = {"id": RID, "user_id": "u1", "canal": "telegram", "tipo": "vol_acima", "ticker": "SB=F"}
+    alertas._enviar(supa, regra, "texto", {})
+    assert enviados == ["u1@x.com"]
+
+
+def test_briefing_nao_reenvia_no_mesmo_dia(supa, monkeypatch):
+    supa.table("preferencias_usuario").insert({"user_id": "ana", "briefing_email": True}).execute()
+    supa.auth = SimpleNamespace(admin=SimpleNamespace(
+        get_user_by_id=lambda uid: SimpleNamespace(user=SimpleNamespace(email=f"{uid}@x.com"))))
+    comum = {"acucar": None, "dolar": None, "focus": {}, "manchetes": None}
+    monkeypatch.setattr(briefing, "conteudo_comum", lambda hoje: comum)
+    enviados = []
+    monkeypatch.setattr(alertas, "enviar_email", lambda destino, *a, **k: enviados.append(destino))
+    agora = datetime(2026, 11, 18, 10, 30, tzinfo=timezone.utc)
+    briefing.enviar_briefings(agora=agora, pausa=0)
+    segunda = briefing.enviar_briefings(agora=agora, pausa=0)
+    assert enviados == ["ana@x.com"]
+    assert segunda["destinatarios"] == 0

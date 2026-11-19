@@ -23,6 +23,7 @@ import cambio
 import market_cache
 import politica_hedge
 import telegram_bot
+from pregao import FERIADOS_ICE
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +269,10 @@ def _enviar(db, regra: dict, texto: str, emails: dict) -> None:
     if regra.get("canal") == "telegram":
         chat = _chat_telegram(db, regra["user_id"])
         if not chat:
-            raise RuntimeError("Telegram não vinculado")
+            # Vínculo desfeito depois de criar a regra: o alerta cai no e-mail em vez de se perder.
+            logger.info("Regra %s sem Telegram vinculado; enviando por e-mail", regra["id"])
+            regra = {**regra, "canal": "email"}
+            return _enviar(db, regra, texto, emails)
         try:
             telegram_bot.enviar_mensagem(chat, texto)
         except telegram_bot.TelegramNaoConfigurado as exc:
@@ -344,6 +348,9 @@ def rodar_avaliacoes(agora: datetime | None = None, tipos: list[str] | None = No
     """Avalia as regras ativas (filtradas por `tipos`, se dado). Um get_prices por ticker. Retorna o resumo."""
     agora = agora or datetime.now(timezone.utc)
     hoje = agora.astimezone(BRT).date()
+    if hoje in FERIADOS_ICE:
+        # Sem pregão, sem avaliação: o briefing também pula o feriado, então nada sai repetido nem perdido.
+        return {"avaliadas": 0, "disparadas": 0, "puladas": 0, "erros": 0, "feriado": True}
     db = market_cache.supa_client()
     consulta = db.table("alert_rules").select("*").eq("ativo", True)
     if tipos:

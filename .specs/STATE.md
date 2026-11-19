@@ -71,7 +71,7 @@ Branch integrada: `integracao/rodada-2`, a partir da `main` já com os PRs #2 e 
 - **Checagens:** backend com 291 testes, mais `test_calcs.py` e `test_mensagens.py`; frontend com 362 testes, lint, `tsc` e `next build`. Tudo passou.
 
 **Pendente do usuário:**
-1. Aplicar as migrations `20261119000001` a `20261119000003`.
+1. Aplicar as migrations `20261119000001` a `20261119000004`.
 2. Configurar `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` no Railway e registrar o webhook (`setWebhook`, comando na spec de alertas).
 3. Conferir quantos crons o plano da Vercel permite (agora são 3).
 

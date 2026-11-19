@@ -102,9 +102,16 @@ def montar(comum: dict, eventos: list[dict], hoje: date, ontem: date) -> tuple[s
 def enviar_briefings(agora: datetime | None = None, pausa: float = PAUSA_ENVIO) -> dict:
     agora = agora or datetime.now(timezone.utc)
     hoje = agora.astimezone(alertas.BRT).date()
+    if hoje in FERIADOS_ICE:
+        return {"destinatarios": 0, "enviados": 0, "sem_email": 0, "erros": 0, "feriado": True}
     ontem = ultimo_dia_util_anterior(hoje)
     db = market_cache.supa_client()
-    prefs = db.table("preferencias_usuario").select("user_id").eq("briefing_email", True).execute().data or []
+    prefs = (
+        db.table("preferencias_usuario").select("user_id, briefing_ultimo_envio").eq("briefing_email", True).execute().data
+        or []
+    )
+    # Idempotente: quem já recebeu hoje não recebe de novo (retry do cron ou disparo manual).
+    prefs = [p for p in prefs if p.get("briefing_ultimo_envio") != hoje.isoformat()]
     resumo = {"destinatarios": len(prefs), "enviados": 0, "sem_email": 0, "erros": 0}
     if not prefs:
         return resumo
@@ -124,6 +131,7 @@ def enviar_briefings(agora: datetime | None = None, pausa: float = PAUSA_ENVIO) 
             )
             texto, corpo = montar(comum, eventos, hoje, ontem)
             alertas.enviar_email(destino, f"Briefing do mercado, {hoje.strftime('%d/%m/%Y')}", texto, corpo)
+            db.table("preferencias_usuario").update({"briefing_ultimo_envio": hoje.isoformat()}).eq("user_id", uid).execute()
             resumo["enviados"] += 1
         except Exception:
             logger.exception("Briefing: falha para um destinatário")
