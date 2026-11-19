@@ -150,3 +150,33 @@ export function leituraRiscoConjunto(r: { prob: N; meta: number; p50: N }) {
   if (falta(r.prob, r.p50)) return AUSENTE;
   return `Há ${probabilidade(r.prob!)} de chance de a receita ficar abaixo de ${formatBRL(r.meta)}/t. A receita mediana é ${formatBRL(r.p50)}/t.`;
 }
+
+// ── Painel "Hoje" ───────────────────────────────────────────────────────────
+
+/** Posição da usina contra a política de hedge da safra (PNL-17). Pontos em pt-BR, 1 casa. */
+export function leituraPosicaoPolitica(r: {
+  status: string | null | undefined;
+  pct: N;
+  minimo: N;
+  maximo: N;
+  safra: string;
+}) {
+  const s = r.safra;
+  switch (r.status) {
+    case "sem_politica":
+      return `Defina a política de hedge da safra ${s} para acompanhar o % fixado.`;
+    case "sem_producao":
+      return `Informe a produção estimada da safra ${s} na política de hedge.`;
+    case "abaixo":
+      if (falta(r.pct, r.minimo)) return AUSENTE;
+      return `Você está ${formatNumber(r.minimo! - r.pct!, 1)} pontos abaixo da política de hedge da safra ${s}.`;
+    case "acima":
+      if (falta(r.pct, r.maximo)) return AUSENTE;
+      return `Você está ${formatNumber(r.pct! - r.maximo!, 1)} pontos acima da política de hedge da safra ${s}.`;
+    case "dentro":
+      if (falta(r.pct, r.minimo)) return AUSENTE;
+      return `Você está dentro da política de hedge da safra ${s}: ${formatNumber(r.pct!, 1)}% fixado.`;
+    default:
+      return AUSENTE;
+  }
+}
