@@ -17,6 +17,7 @@
 | AD-011 | 2026-11-18 | Endpoints novos ficam em `backend/routers/<frente>.py`; o rate limiter é único (`backend/limiter.py`). A divisão do `main.py` em routers fica para depois da integração. | Reduz conflito entre frentes paralelas. |
 | AD-012 | 2026-11-18 | Câmbio: faixa de possibilidades (EWMA + simulação histórica filtrada), não previsão pontual. Backtest em `features/cambio-previsao/backtest.md`. A tela "Modelo do dólar" sai do menu (rota mantida, com link para Câmbio). | Câmbio é quase passeio aleatório; o backtest decide o modelo. |
 | AD-013 | 2026-11-18 | Monte Carlo sem corte nos percentis: o `pct_bound` virou limite de referência ("X% dos cenários saíram da faixa"). Opções sobre futuro por Black-76; Garman-Kohlhagen pronto para o hedge cambial. | Percentis truncados e BS de spot distorciam o resultado. |
+| AD-014 | 2026-11-19 | Decisões em aberto fechadas pelo usuário: (1) a tabela `watchlist` sai (migration `20261120000010`); (2) `SBK26.NYB` sai do catálogo e do aquecimento do cache, por ter vencido em maio/2026; (3) o Plotly fica por enquanto, só na tela de candles; (4) o teto do Monte Carlo continua só como referência, sem cortar os percentis; (5) a análise de hedge salva com orçamento vazio reabre com o valor salvo. | Recomendações aceitas pelo usuário. |
 
 ## Ordem de execução
 
@@ -75,10 +76,4 @@ Branch integrada: `integracao/rodada-2`, a partir da `main` já com os PRs #2 e 
 2. Configurar `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` no Railway e registrar o webhook (`setWebhook`, comando na spec de alertas).
 3. Conferir quantos crons o plano da Vercel permite (agora são 3).
 
-**Decisões em aberto:**
-- histerese do `prob_cruzar`;
-- análise de hedge com orçamento vazio: reabrir no forward atual ou no salvo;
-- remover a `watchlist`;
-- tirar `SBK26.NYB` do catálogo;
-- trocar Plotly por Recharts;
-- teto do Monte Carlo.
+**Decisões em aberto:** nenhuma. Ver AD-014; a histerese do `prob_cruzar` entra na rodada 3 com margem padrão de 5 p.p.

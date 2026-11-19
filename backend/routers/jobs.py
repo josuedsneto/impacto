@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 # ponytail: espelho de frontend/lib/ativos.ts; se a lista mudar, mude nos dois lugares
-TICKERS_AQUECIMENTO = ["SB=F", "SBK26.NYB", "USDBRL=X", "CL=F"]
+TICKERS_AQUECIMENTO = ["SB=F", "USDBRL=X", "CL=F"]
 INICIO_AQUECIMENTO = date(2007, 1, 1)  # mesma janela do Stress
 
 
