@@ -202,6 +202,7 @@ def test_historico_filtra_na_query_e_nao_expoe_user_id(monkeypatch):
     from fastapi.testclient import TestClient
 
     import main
+    from routers import atr_usinas
 
     eu = str(uuid.uuid4())
     outro = str(uuid.uuid4())
@@ -214,7 +215,7 @@ def test_historico_filtra_na_query_e_nao_expoe_user_id(monkeypatch):
         {**base, "id": "d", "user_id": outro, "compartilhado": None},   # NULL não é compartilhado
     ]
     fake = _FakeSupa(linhas)
-    monkeypatch.setattr(main, "supa_client", lambda: fake)
+    monkeypatch.setattr(atr_usinas, "supa_client", lambda: fake)
     monkeypatch.setattr(main.limiter, "enabled", False)
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": eu, "email": "a@x.com", "role": "user"}
     try:
@@ -291,8 +292,9 @@ def _simular(monkeypatch, fake):
     from fastapi.testclient import TestClient
 
     import main
+    from routers import atr_usinas
 
-    monkeypatch.setattr(main, "supa_client", lambda: fake)
+    monkeypatch.setattr(atr_usinas, "supa_client", lambda: fake)
     monkeypatch.setattr(main.limiter, "enabled", False)
     main.app.dependency_overrides[main.get_current_user] = lambda: {
         "id": str(uuid.uuid4()), "email": "a@x.com", "role": "user"}
