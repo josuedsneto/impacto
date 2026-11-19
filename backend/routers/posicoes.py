@@ -52,7 +52,7 @@ class LotePosicoes(BaseModel):
     usina_id: str = Field(pattern=UUID_PADRAO)
     safra: str = Field(pattern=r"^\d{4}/\d{2}$")
     # Linhas validadas uma a uma em _validar_lote, para o 422 dizer a linha e o campo.
-    posicoes: list[dict] = Field(max_length=LOTE_MAX)
+    posicoes: list[Any] = Field(max_length=LOTE_MAX)
 
 
 CAMPO_PT = {

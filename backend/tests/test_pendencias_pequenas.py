@@ -37,6 +37,21 @@ def test_lote_com_campo_obrigatorio_ausente_aponta_a_linha(api, usinas):
     assert r.json()["detail"] == "Linha 2 (Instrumento): campo obrigatório."
 
 
+def test_lote_com_linha_que_nao_e_objeto_aponta_a_linha(api, usinas):
+    lote = {"usina_id": USINA, "safra": "2026/27", "posicoes": [_pos(), 5]}
+    r = api.post("/api/posicoes/lote", json=lote)
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Linha 2: registro inválido."
+
+
+def test_usuario_alheio_com_lote_invalido_recebe_403_antes_da_validacao(api, usinas):
+    # Membership é checada antes da validação de linha: não-membro não ganha pista sobre as linhas.
+    usinas.db["user_usinas"] = {}
+    lote = {"usina_id": USINA, "safra": "2026/27", "posicoes": [_pos(volume=0)]}
+    r = api.post("/api/posicoes/lote", json=lote)
+    assert r.status_code == 403
+
+
 def test_lote_com_erro_nao_grava_nenhuma_linha(api, usinas):
     lote = {"usina_id": USINA, "safra": "2026/27", "posicoes": [_pos(), _pos(preco_fixado=-1)]}
     assert api.post("/api/posicoes/lote", json=lote).status_code == 422

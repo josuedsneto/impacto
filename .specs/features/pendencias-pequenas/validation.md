@@ -4,7 +4,7 @@
 
 | Comando | Resultado |
 |---|---|
-| `backend/.venv/Scripts/python.exe -m pytest tests -q` (em `backend/`) | 268 passed, 0 failed (inclui os 12 testes novos de `test_pregao.py` e `test_pendencias_pequenas.py`) |
+| `backend/.venv/Scripts/python.exe -m pytest tests -q` (em `backend/`) | 270 passed, 0 failed (inclui os 14 testes novos de `test_pregao.py` e `test_pendencias_pequenas.py`) |
 | `pytest tests/test_pregao.py tests/test_pendencias_pequenas.py -q` | novos testes desta frente |
 | `python test_calcs.py` | ok |
 | `python test_mensagens.py` | ok |
