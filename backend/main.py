@@ -33,106 +33,14 @@ from atr import calibrate_atr, predict_atr
 from observabilidade import RequestIdMiddleware, configurar_logs
 from postgrest.exceptions import APIError
 
+from validacao import validate_ticker, _faixa, _validar_periodo, _validar_paginacao, _lista_periodos
+from constantes import CONSTANTES_NEGOCIO, _valor_numerico, _ler_constantes
+from pregao import estado_pregao
+from fechamentos_cache import fechamentos, INICIO_ESTRESSE
+
 configurar_logs()
 logger = logging.getLogger(__name__)
 
-
-# ── Ticker validation ─────────────────────────────────────────────────────────
-ALLOWED_TICKER_RE = re.compile(r"^[A-Z0-9=.]{1,20}$")
-
-
-def validate_ticker(ticker: str) -> str:
-    t = ticker.strip().upper()
-    if not ALLOWED_TICKER_RE.match(t):
-        raise HTTPException(status_code=400, detail="Código de ativo inválido. Use letras, números, '=' ou '.' (ex.: SB=F).")
-    return t
-
-
-# Constantes de negócio lidas de admin_config. Conjunto fechado: só estas chaves são numéricas.
-CONSTANTES_NEGOCIO: dict[str, tuple[float, str]] = {
-    "breakeven_fator_conversao": (1.12045, "Fator de conversão cents/lb → R$/saca (0,022046 × 50,802). Usado no Breakeven."),
-    "fator_conversao_mtm": (22.928048, "Fator de conversão do valor de mercado (cents/lb → R$/t): 22,0462 × 1,04. Usado em Metas, Risco e Cenários."),
-    "risco_custo_fixo_1": (109212811.0, "Custo fixo 1 do Risco (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
-    "risco_custo_fixo_2": (32947347.0, "Custo fixo 2 do Risco (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
-    "cenarios_custo_fixo_1": (88704735.0, "Custo fixo 1 de Cenários (R$): primeira parcela da fórmula de custo. Confirmar a rubrica."),
-    "cenarios_custo_fixo_2": (43732035.0, "Custo fixo 2 de Cenários (R$): segunda parcela da fórmula de custo. Confirmar a rubrica."),
-    "cenarios_custo_fixo_3": (20286465.0, "Custo fixo 3 de Cenários (R$): terceira parcela da fórmula de custo. Confirmar a rubrica."),
-}
-
-
-def _valor_numerico(texto) -> float:
-    """Aceita dígitos com no máximo um separador decimal (ponto ou vírgula). Precisa ser > 0."""
-    t = str(texto).strip()
-    if not re.fullmatch(r"[0-9]+([.,][0-9]+)?", t):
-        raise ValueError(t)
-    valor = float(t.replace(",", "."))
-    if valor <= 0:
-        raise ValueError(t)
-    return valor
-
-
-def _ler_constantes(*chaves: str) -> dict[str, float]:
-    """Lê as constantes de admin_config. Ausente, ilegível ou erro de rede → valor do código + aviso no log."""
-    try:
-        linhas = supa_client().table("admin_config").select("key,value").execute().data or []
-        brutos = {r["key"]: r["value"] for r in linhas}
-    except Exception as exc:
-        logger.warning("Não foi possível ler admin_config (%s); usando valores do código.", exc)
-        brutos = {}
-    valores = {}
-    for chave in chaves:
-        padrao = CONSTANTES_NEGOCIO[chave][0]
-        if chave not in brutos:
-            logger.warning("Constante %s ausente em admin_config; usando %s.", chave, padrao)
-            valores[chave] = padrao
-            continue
-        try:
-            valores[chave] = _valor_numerico(brutos[chave])
-        except ValueError:
-            logger.warning("Valor inválido em admin_config para %s; usando %s.", chave, padrao)
-            valores[chave] = padrao
-    return valores
-
-
-def _num(valor: float) -> str:
-    return f"{valor:g}".replace(".", ",")
-
-
-def _faixa(nome: str, valor: float, minimo: float, maximo: float) -> None:
-    """HARD-01/06: 422 com mensagem em português quando o valor sai da faixa."""
-    if not (minimo <= valor <= maximo):
-        raise HTTPException(status_code=422, detail=f"{nome} deve estar entre {_num(minimo)} e {_num(maximo)}.")
-
-
-def _validar_periodo(start: date, end: date) -> None:
-    if end < start:
-        raise HTTPException(status_code=400, detail="A data final precisa ser igual ou posterior à data inicial.")
-    if (end - start).days > MAX_DIAS_PERIODO:
-        raise HTTPException(status_code=422, detail="O período não pode passar de 25 anos.")
-
-
-def _validar_paginacao(limit: int, offset: int) -> None:
-    _faixa("O limite", limit, 1, 200)
-    _faixa("O deslocamento (offset)", offset, 0, 100_000)
-
-
-def _lista_periodos(nome: str, texto: str) -> list[int]:
-    """Lista '20,50' → [20, 50]. Até 5 períodos, cada um de 2 a 250 (HARD-01)."""
-    valores = []
-    for parte in (p.strip() for p in texto.split(",")):
-        if not parte:
-            continue
-        if not parte.isdigit() or len(parte) > 6:
-            raise HTTPException(status_code=422, detail=f"Os períodos de {nome} devem ser números inteiros (ex.: 20,50).")
-        valores.append(int(parte))
-    if len(valores) > 5:
-        raise HTTPException(status_code=422, detail=f"Use no máximo 5 médias {nome}.")
-    for v in valores:
-        _faixa(f"Cada média {nome}", v, 2, 250)
-    return valores
-
-
-MAX_DIAS_PERIODO = 25 * 365
 
 # Documentação da API (Swagger, ReDoc e schema) só com ENABLE_DOCS=true.
 _docs_on = os.getenv("ENABLE_DOCS", "").strip().lower() == "true"
@@ -489,18 +397,6 @@ def market_analysis(
     return {"ticker": ticker, "rows": rows, "signals": signals}
 
 
-# ICE Sugar No. 11: seg–sex, 03:30 às 13:00 (Nova York). Sem feriados (ponytail: calendário fixo).
-PREGAO_TZ = ZoneInfo("America/New_York")
-PREGAO_ABERTURA = Hora(3, 30)
-PREGAO_FECHAMENTO = Hora(13, 0)
-
-
-def estado_pregao(agora: datetime) -> str:
-    """REGULAR dentro do pregão do açúcar nº 11, CLOSED fora dele. Intervalo [abertura, fechamento)."""
-    local = agora.astimezone(PREGAO_TZ)
-    if local.weekday() >= 5:
-        return "CLOSED"
-    return "REGULAR" if PREGAO_ABERTURA <= local.time() < PREGAO_FECHAMENTO else "CLOSED"
 
 
 @app.get("/api/market/status")
@@ -1189,23 +1085,6 @@ def admin_usinas_usuarios_list(request: Request, usina_id: str, _: Annotated[dic
     return {"user_ids": [r["user_id"] for r in rows]}
 
 
-# ── Fechamentos do cache ───────────────────────────────────────────────────────
-
-INICIO_ESTRESSE = date(2007, 1, 1)
-
-
-def fechamentos(ticker: str, inicio: date, fim: date | None = None):
-    """
-    Série de fechamentos (pandas, índice de datas) e a data do último dado, lidas pelo cache.
-    503 com mensagem em português quando não há nenhum preço (Yahoo fora e cache vazio).
-    """
-    serie = serie_fechamentos(ticker, inicio, fim)
-    if serie.empty:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Não foi possível obter os preços de {ticker} agora. Tente novamente em alguns minutos.",
-        )
-    return serie, serie.index[-1].strftime("%Y-%m-%d")
 
 
 # ── VaR ────────────────────────────────────────────────────────────────────────

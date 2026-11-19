@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
 
+import constantes
 import main
 
 ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
@@ -15,6 +16,7 @@ ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
 def _supa_do_main(supa, monkeypatch):
     """main importa supa_client por nome: troca também aqui, além do market_cache."""
     monkeypatch.setattr(main, "supa_client", lambda: supa)
+    monkeypatch.setattr(constantes, "supa_client", lambda: supa)
 
 
 @pytest.fixture
