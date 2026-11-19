@@ -38,6 +38,7 @@ CONTRATO = [
     ('DELETE', '/api/analises/{analise_id}', ('request', 'analise_id', 'user'), ('get_current_user',), None, '30 per 1 minute'),
     ('GET', '/api/analises/{analise_id}', ('request', 'analise_id', 'user'), ('get_current_user',), None, '60 per 1 minute'),
     ('PATCH', '/api/analises/{analise_id}', ('request', 'analise_id', 'body', 'user'), ('get_current_user',), None, '30 per 1 minute'),
+    ('GET', '/api/painel/hoje', ('request', 'user'), ('get_current_user',), None, '30 per 1 minute'),
     ('GET', '/api/arima/{ticker}', ('request', 'ticker', 'steps', 'user'), ('get_current_user',), None, '10 per 1 minute'),
     ('GET', '/api/atr/historico', ('request', 'usina_id', 'user'), ('get_current_user',), None, '30 per 1 minute'),
     ('PATCH', '/api/atr/simulacoes/{sim_id}/compartilhar', ('request', 'sim_id', 'body', 'user'), ('get_current_user',), None, '20 per 1 minute'),
