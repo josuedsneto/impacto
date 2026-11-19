@@ -39,7 +39,7 @@ class MCPriceRequest(BaseModel):
     T: float = Field(gt=0, le=30)
     r: float = Field(ge=0, le=5)
     sigma: float = Field(gt=0, le=10)
-    num_simulacoes: int = Field(default=10_000, ge=1, le=100_000)
+    num_simulacoes: int = Field(default=10_000, ge=100, le=100_000)
 
 
 @router.post("/api/options/payoff")

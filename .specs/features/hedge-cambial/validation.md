@@ -57,5 +57,5 @@ Pré-requisito: aplicar `20261118000008_analises_hedge_cambial.sql` no Supabase 
 
 - Aplicar a migration `20261118000008`.
 - Corrigir a autenticação de `/api/cambio/previsao` (item 2).
-- Reabrir análise de hedge ainda não restaura os campos: a tela não usa `useReabrirAnalise` (o link só navega).
+- ~~Reabrir análise de hedge ainda não restaura os campos~~ **Resolvido** em `pendencias-pequenas` (PEN-01 a PEN-03): a tela usa `useReabrirAnalise("hedge_cambial")`.
 - Layout em celular (360px) não foi verificado em navegador nesta rodada.
