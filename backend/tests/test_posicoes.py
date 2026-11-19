@@ -1,4 +1,6 @@
 """POS-01 a POS-05 e POS-09: posições, MTM, resumo e política de hedge."""
+from datetime import date, timedelta
+
 import pandas as pd
 import pytest
 
@@ -207,3 +209,38 @@ def _por_preco(valor):
                              "high": [valor] * len(dias), "low": [valor] * len(dias),
                              "close": [valor] * len(dias), "volume": [0] * len(dias)})
     return f
+
+
+# ── Revisão da rodada 3 ─────────────────────────────────────────────────────────
+
+def test_resumo_so_com_opcao_de_acucar_usa_black76(api, usinas, monkeypatch):
+    """Antes os juros só eram buscados quando havia opção de dólar: a put de açúcar caía no intrínseco."""
+    import routers.posicoes as rp
+
+    def oscilante(ticker, start, end):
+        base = 18.0 if ticker == "SB=F" else 5.0
+        dias = list(dias_uteis(start, end))
+        if not dias:
+            return pd.DataFrame()
+        closes = [base * (1.01 if i % 2 else 0.99) for i in range(len(dias))]
+        return pd.DataFrame({"ticker": ticker, "date": dias, "open": closes, "high": closes, "low": closes,
+                             "close": closes, "volume": [0] * len(dias)})
+
+    monkeypatch.setattr(market_cache, "_fetch_from_yfinance", oscilante)
+    monkeypatch.setattr(rp, "juros_em", lambda _ts: (14.0, 4.5))
+    venc = (date.today() + timedelta(days=120)).isoformat()
+    api.post("/api/posicoes", json=_corpo(instrumento="opcao_acucar", tipo_opcao="put", preco_fixado=17,
+                                          cambio_fixado=None, premio=0.5, vencimento=venc))
+    r = api.get("/api/posicoes/resumo", params={"usina_id": USINA, "safra": "2026/27"})
+    assert r.status_code == 200, r.text
+    assert r.json()["posicoes"][0]["modelo"] == "black76"
+
+
+def test_call_de_acucar_nao_conta_no_pct_fixado_tambem_no_alerta():
+    """situacao() é a fonte única: resumo, alerta posicao_limite e painel usam a mesma regra."""
+    from politica_hedge import situacao
+    pol = {"producao_estimada_t": 10000, "minimo_pct": 40, "maximo_pct": 80}
+    carteira = [{"instrumento": "fixacao_acucar", "volume": 3000},
+                {"instrumento": "opcao_acucar", "volume": 2000, "tipo_opcao": "call"}]
+    s = situacao(carteira, pol)
+    assert s["pct_fixado"] == 30.0 and s["status"] == "abaixo"

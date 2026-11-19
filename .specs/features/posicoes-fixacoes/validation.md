@@ -1,61 +1,66 @@
-# Validação — posicoes-fixacoes
+# Validação: posicoes-fixacoes v2 (rodada 3)
 
-## Evidências
+## Requisitos e evidências
 
 | Requisito | Evidência | Resultado |
 |---|---|---|
-| POS-01 (criar, 201, criado_por do servidor) | `pytest tests/test_posicoes.py` → `test_criar_grava_criado_por_do_servidor` | PASS |
-| POS-01 (403 usina alheia) | `test_criar_em_usina_alheia_responde_403` | PASS |
-| POS-02 (422 instrumento, volume, preço, safra, limite de volume e infinito) | `test_validacao_responde_422` (4 casos), `test_volume_fora_do_limite_ou_infinito_responde_422` | PASS |
-| POS-03 (editar/apagar; 404 em posição alheia; RLS) | `test_editar_e_apagar_posicao_alheia_responde_404`, `test_editar_e_apagar_posicao_propria`. RLS: revisada no SQL, não executada contra Postgres | PASS (API) / não testado no banco |
-| POS-04 (MTM, preço médio, preços de fechamento) | `test_mtm_venda_acucar_bate_com_conta_a_mao` (229.280,48), `test_mtm_put_fora_do_dinheiro_e_so_o_premio`, `test_mtm_ndf_dolar_vendido`, `test_preco_medio_ignora_opcao_e_posicao_sem_cambio`, `test_resumo_com_posicao_marca_contra_fechamento` | PASS |
-| POS-05 (status, sem_politica, sem_producao, 503) | `test_pct_fixado_so_conta_acucar_e_status_abaixo`, `test_status_dentro_e_acima`, `test_sem_politica_ou_sem_producao`, `test_resumo_sem_preco_responde_503` | PASS |
-| POS-06 (tela, cartões, entrada no menu) | `npm run build` gera `/app/posicoes`; `npm test` (regras de UI: cor por token, `toFixed`, `<h1>`); uso em navegador: **pendente (UAT)** | PASS (build/regras) / UAT pendente |
-| POS-07 (importação CSV) | `lib/posicoes.test.ts`: número pt-BR, aspas, rótulo ou código, data dd/mm/aaaa, data inexistente, safra diferente, coluna ausente, limite de 500, reimportação do CSV exportado | PASS |
-| POS-08 (exportação CSV) | `gerarCsvPosicoes` com BOM, `;`, vírgula decimal, aspas em texto com `;` | PASS |
-| POS-09 (política; min > max = 422; upsert) | `test_politica_upsert_substitui_e_valida_faixa` | PASS |
-| POS-10 (edge cases) | `test_resumo_sem_posicoes_nao_busca_preco`, `test_sem_posicoes_preco_medio_nulo`, `test_id_que_nao_e_uuid_responde_422_e_nao_500` | PASS |
+| POS-V2-01 Black-76 no açúcar | `backend/tests/test_mtm_opcoes.py::test_black76_bate_com_options_py`, `::test_call_usa_a_call_do_black76` | PASS |
+| POS-V2-02 GK no dólar | `backend/tests/test_mtm_opcoes.py::test_gk_bate_com_options_py_e_com_a_paridade_do_hedge` | PASS |
+| POS-V2-03 call e put | `test_call_usa_a_call_do_black76`, `test_intrinseco_de_call_no_dolar` | PASS |
+| POS-V2-04 fallback sem erro | `test_acucar_sem_dado_cai_no_intrinseco_com_aviso` (4 casos), `test_dolar_sem_selic_cai_no_intrinseco`, `test_vol_zero_ou_nan_cai_no_intrinseco_sem_erro`, `test_resumo_com_opcao_sem_vencimento_cai_no_intrinseco_sem_500` | PASS |
+| POS-V2-05 detalhes do modelo | `test_black76_bate_com_options_py` (vol, taxas, anos) e `test_resumo_com_opcao...` (modelo e aviso na linha) | PASS |
+| POS-V2-06 endpoint de exposição | `backend/tests/test_exposicao.py::test_exposicao_endpoint_usa_a_conta_unica`, `::test_exposicao_de_usina_alheia_responde_403`; `test_contrato_rotas.py` com a rota nova | PASS |
+| POS-V2-07 função pura única | `test_exposicao.py::test_carteira_sintetica_bate_com_a_conta_a_mao` (valores calculados à mão), `::test_sem_producao...`, `::test_sem_posicoes...`, `::test_produção_menor...`, `::test_sem_sb...` | PASS |
+| POS-V2-08 botão risco conjunto | `frontend/lib/posicoes.test.ts` (`valoresParaRisco`: % com câmbio, limite 100, sem câmbio, nada fixado, sem produção) | PASS (lógica); UAT pendente (clique) |
+| POS-V2-09 botão hedge cambial | `frontend/lib/posicoes.test.ts` (`valorParaHedge`: arredondado, zero, sem produção) | PASS (lógica); UAT pendente |
+| POS-V2-10 migration, form e CSV | `test_exposicao.py::test_tipo_opcao_em_fixacao_responde_422`, `::test_tipo_opcao_invalido_responde_422`, `::test_opcao_com_tipo_call_e_gravada`; `posicoes.test.ts` (`tipo da opção`, CSV com coluna Tipo) | PASS |
 
 ## Comandos e resultados
 
+Backend (venv da checkout principal, dentro de `backend/`):
+
 ```
-cd backend && <venv>/Scripts/python.exe -m pytest tests -q
-→ 45 passed, 5 warnings
-
-cd backend && python test_calcs.py      → exit 0
-cd backend && python test_mensagens.py  → exit 0
-
-cd frontend && npm test
-→ Test Files 14 passed (14), Tests 266 passed (266)
-
-cd frontend && npx tsc --noEmit -p .    → sem erros
-cd frontend && npx eslint app/app/posicoes lib/posicoes.ts lib/posicoes.test.ts components/layout/NavLinks.tsx → sem erros
-
-cd frontend && npm run build            → Compiled successfully; rota /app/posicoes gerada
+python -m pytest tests -q        -> 320 passed, 5 warnings
+python test_calcs.py             -> ok
+python test_mensagens.py         -> ok
 ```
 
-`npm run lint` no projeto inteiro **falha** por um erro que já existia e não é desta feature: `components/ui/input.tsx:4` (interface vazia, `@typescript-eslint/no-empty-object-type`). Não alterado aqui.
+Frontend (junção de `node_modules` para a checkout principal):
 
-## Revisão do advisor Opus
+```
+npx vitest run                   -> 25 files, 374 tests passed
+npx tsc --noEmit                 -> sem erros
+npm run lint                     -> sem erros
+npx next build --webpack         -> Compiled successfully (com NEXT_PUBLIC_* fictícios)
+```
 
-Duas revisões (spec e diff final). Aplicado: opções só put (R1), média só com fixação e futuro (R3), escala em pontos percentuais (R2), RLS completo e `criado_por` com SET NULL (R5/R6), 404 em posição alheia (R7), produção nullable (R8), CHECKs no banco (R9), resumo sem posição sem chamar Yahoo (R11), UUID nas rotas (422, não 500), `allow_inf_nan` e limites de tamanho, ordenação estável, validação de data real, separação de milhar só para volume e produção (correção de `5.250` virar 5250), reset de importação/edição ao trocar usina ou safra, safra só busca quando completa, formulário e política continuam visíveis mesmo com 503 de preço.
+Observação: `npm run build` (Turbopack) falha neste ambiente com `Symlink [project]/node_modules is invalid`, causado pela junção apontar para fora da raiz do projeto. Não é erro do código. A verificação de build foi feita com `--webpack`. Na CI (`npm ci`), o Turbopack deve passar.
 
-## Lacunas conhecidas (não feitas)
+## Migrations
 
-- **R15, mapeamento de erro do lote no backend:** **resolvido** em `pendencias-pequenas` (PEN-04 a PEN-06). O 422 traz `Linha n (Campo): valor inválido.` e a tela mostra no toast. O frontend continua validando antes de enviar.
-- **`limiter` importado de `main`:** import circular. Funciona com `uvicorn main:app` (Procfile e railway.toml). Importar `routers.posicoes` antes de `main` quebra com AttributeError; os testes importam `main` primeiro. Correção definitiva: mover o `limiter` para um módulo próprio. Não feito para não tocar em `main.py` além da linha de include.
-- **Fator de conversão:** `FATOR = 22.0462 * 1.04` repetido em `routers/posicoes.py`. Confirmar com a trading (ver Open questions da spec, incluindo a diferença de ~1% para o faturamento de `main.py`).
-- **Vencimento:** MTM marcado contra o SB=F da frente, sem ajuste por mês. Aviso fixo na tela.
-- **RLS não executada:** o banco de teste não foi usado. Só a API foi testada, com fake do Supabase.
-- **Resumo com 503:** a tela mantém formulário e política, mas os cartões e a tabela somem enquanto o preço não estiver disponível.
+- `supabase/migrations/20261120000004_posicoes_tipo_opcao.sql`: aplicar **antes** do deploy do backend. O `model_dump` envia `tipo_opcao` mesmo nulo; sem a coluna, POST, lote e PUT de posições dão erro no PostgREST.
 
-## Passo a passo de UAT (usuário)
+## UAT (passos para o usuário)
 
-1. Aplicar a migration `supabase/migrations/20261118000005_posicoes_fixacoes.sql` no Supabase.
-2. Entrar no app, abrir **Mercado → Posições da safra**. Escolher a usina (a sua associada) e a safra `2026/27`.
-3. Na seção **Política de hedge**, preencher mínimo 40, máximo 60 e produção estimada em toneladas. Clicar em **Salvar política**.
-4. Em **Nova posição**, registrar uma fixação de açúcar de 1.000 t a 20 ¢/lb com câmbio fixado 5,10. Conferir que o cartão de % fixado, o preço médio e o MTM aparecem, com a data do preço.
-5. Editar a posição (botão **Editar**), mudar o volume e salvar. Apagar outra posição de teste e confirmar a caixa de diálogo.
-6. Importar uma planilha CSV numa safra vazia. A importação só **insere**: importar o mesmo arquivo de novo duplica as posições. Para testar, use uma safra sem posições, por exemplo `2027/28`, e apague as linhas de teste depois.
-7. Testar uma linha inválida no CSV (data 31/02/2027): a tela deve mostrar o número da linha e não importar nada.
-8. Em celular de 360px, conferir a tela de posições (cartões empilhados e tabela com rolagem horizontal).
+1. Aplicar `20261120000004_posicoes_tipo_opcao.sql` no Supabase.
+2. Em **Posições da safra**, escolher uma usina e a safra 2026/27. Registrar uma opção de dólar com vencimento futuro, tipo put, strike 5,20 e prêmio 0,05. A linha da tabela deve mostrar "Garman-Kohlhagen · vol …% · taxa …% · … anos".
+3. Registrar uma opção de açúcar sem vencimento. A linha deve mostrar "Valor intrínseco" com o aviso "Sem vencimento".
+4. Importar um CSV com a coluna "Tipo da opção" (call e vazio). Conferir que as linhas entram e que um tipo inválido aponta a linha.
+5. Exportar o CSV. Conferir as colunas "Tipo da opção", "Modelo do MTM" e "Vol anual".
+6. Em **Risco conjunto**, escolher a usina e a safra e clicar em "Usar minhas posições da safra". O % fixado deve bater com a fixação e o futuro com câmbio ÷ produção. O preço médio deve preencher o campo.
+7. Em **Hedge cambial**, clicar em "Usar o dólar a receber em aberto da safra". O volume deve preencher com o dólar em aberto. Se não houver nada em aberto, deve aparecer o aviso.
+8. Testar em 360px as duas telas e a tela de posições.
+
+## Decisões que o usuário precisa confirmar
+
+- Receita em US$ usa SB=F spot para a produção não fixada, e a fixação sem câmbio a preço fixado. Se a trading usar preço de embarque, a conta muda.
+- Dólar protegido soma o nocional de NDF e de put de dólar. Call de dólar não reduz o aberto.
+- Percentual mandado ao risco conjunto é só a fixação **com câmbio** (é a parte que tem preço em R$/t).
+- O botão de posições e as telas leem `GET /api/posicoes/exposicao`. Os routers `risco_conjunto.py` e `hedge_cambial.py` não ganharam conta própria, para não duplicar a regra.
+- Taxa do açúcar: Fed funds em ln(1+i). Dólar: convenção de `hedge_cambial.py` (Selic, paridade coberta, du/252).
+- Vol do açúcar: 252 retornos de SB=F com limpeza de `cambio.limpar`. Rolagem de contrato ainda pode distorcer a vol; isso não foi tratado.
+
+## Pendências conhecidas
+
+- Opção de açúcar vencendo na segunda após um fim de semana pode mostrar "vencida ou vencendo hoje", porque `busday_count` dá 0 no sábado ou domingo. Não quebra o cálculo do fallback, mas o aviso fica impreciso.
+- Os routers de alertas e o dashboard não foram tocados, como pedido.

@@ -8,7 +8,6 @@ export interface Ativo {
 
 export const ATIVOS: Record<string, Ativo> = {
   "SB=F": { nome: "Açúcar NY nº 11", unidade: "¢/lb" },
-  "SBK26.NYB": { nome: "Açúcar NY maio/2026", unidade: "¢/lb" },
   "USDBRL=X": { nome: "Dólar (USD/BRL)", unidade: "R$/US$" },
   "CL=F": { nome: "Petróleo WTI", unidade: "US$/barril" },
 };

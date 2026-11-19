@@ -83,7 +83,7 @@ function NavLink({ href, label, onNavigate }: { href: string; label: string; onN
 export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Ferramentas" className="pb-6">
-      <NavLink href="/app/dashboard" label="Dashboard" onNavigate={onNavigate} />
+      <NavLink href="/app/dashboard" label="Hoje" onNavigate={onNavigate} />
       {NAV_SECTIONS.map((section) => (
         <div key={section.label}>
           <p className="px-5 pb-1.5 pt-[18px] text-[10px] font-semibold uppercase tracking-[1.5px] text-sidebar-muted">

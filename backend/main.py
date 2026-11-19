@@ -12,7 +12,7 @@ from limiter import limiter
 from observabilidade import RequestIdMiddleware, configurar_logs
 from routers import (
     admin, alertas, analises, atr_usinas, cambio, conta, hedge_cambial, jobs, mercado,
-    opcoes, posicoes, regressao, risco, risco_conjunto, simulacoes, telegram,
+    opcoes, painel, posicoes, regressao, risco, risco_conjunto, simulacoes, telegram,
 )
 
 configurar_logs()
@@ -48,6 +48,6 @@ app.add_middleware(
 # Rotas por domínio: cada router é dono dos seus paths (ver .specs/features/main-routers)
 for modulo in (
     jobs, risco_conjunto, alertas, analises, posicoes, cambio, hedge_cambial,
-    conta, mercado, regressao, simulacoes, opcoes, atr_usinas, admin, risco, telegram,
+    conta, mercado, regressao, simulacoes, opcoes, atr_usinas, admin, risco, telegram, painel,
 ):
     app.include_router(modulo.router)

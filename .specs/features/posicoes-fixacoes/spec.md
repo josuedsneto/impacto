@@ -215,3 +215,126 @@ O app é um conjunto de calculadoras. Ninguém registra as fixações reais da u
 - [ ] Uma fixação de teste produz MTM e % fixado iguais aos calculados à mão na planilha da trading.
 - [ ] `test_calcs.py`, `test_mensagens.py`, `pytest tests` e `npm test` / `npm run lint` / `npm run build` passam.
 - [ ] A tela funciona em 360px (AD-005).
+
+---
+
+# v2: ligação com as ferramentas de risco (rodada 3)
+
+Esta seção substitui as linhas de Out of Scope marcadas como "v2" e a decisão R1 e o MTM de opção do MVP onde houver conflito. Requisitos novos com prefixo `POS-V2-`.
+
+## Problem Statement
+
+No MVP, o MTM de opção é o valor intrínseco menos o prêmio, sem tempo. As ferramentas de risco (`risco-conjunto` e `hedge-cambial`) trabalham com números digitados à mão, sem ligação com a carteira. A equipe precisa de três coisas: (a) MTM de opção por modelo, com vol e taxas à vista; (b) o risco da parte ainda não fixada da safra, puxado das posições; (c) o dólar a receber em aberto, puxado das posições, para dimensionar o hedge cambial.
+
+## Goals (v2)
+
+- [ ] MTM de `opcao_acucar` por Black-76 e de `opcao_dolar` por Garman-Kohlhagen, com aviso e fallback para o intrínseco.
+- [ ] Detalhes de cada opção mostram vol, taxas, tempo até o vencimento e o modelo usado.
+- [ ] Botões "Usar minhas posições da safra" (risco conjunto) e "Usar o dólar a receber em aberto da safra" (hedge cambial), que preenchem o campo. A entrada manual continua.
+- [ ] Uma função pura (`exposicao_aberta`) faz a conta de exposição. Nenhum router reimplementa a conta.
+
+## Out of Scope (v2)
+
+| Item | Motivo |
+|------|--------|
+| Opções vendidas (lançamento) | Não é hedge de usina. |
+| Rolagem de vencimento do SB=F | R12 do MVP continua valendo. |
+| Preço de embarque por mês (curva) | Usa SB=F spot. Ver Open questions. |
+| Mudança em `politica_hedge.situacao()` | Assinatura mantida: o alerta `posicao_limite` usa a função. |
+| `routers/alertas.py`, `alertas.py`, `frontend/app/app/dashboard` | Outras threads. |
+
+## Assumptions & Decisions (v2)
+
+| Decisão | Escolha | Motivo | Confirmada? |
+|---|---|---|---|
+| D-V2-01: tipo da opção | Coluna nova `tipo_opcao` (`call` ou `put`), nullable. `NULL` em opção = `put` (linhas do MVP). CHECK: só opção pode ter tipo. | A tabela não tinha tipo. Strike já é `preco_fixado` e prêmio já é `premio`: só falta o tipo. | n |
+| D-V2-02: supersede R1 | Com `tipo_opcao`, call comprada é aceita no MTM. Put continua o padrão. | Registrar o tipo que a trading usar. | n |
+| D-V2-03: vol do açúcar | Desvio-padrão amostral dos log-retornos diários de `SB=F` nos últimos 252 retornos × √252. Mínimo de 60 retornos; senão, sem vol. | "Vol anual histórica" do pedido. Janela de 1 ano é a convenção do app. | n |
+| D-V2-04: vol do dólar | `cambio.vol_ewma` sobre os últimos 756 fechamentos de `USDBRL=X` limpos por `cambio.limpar`, × √252, como em `routers/hedge_cambial.py`. | Pedido: vol EWMA. Mesma estimativa do hedge. | n |
+| D-V2-05: taxa do açúcar | Black-76 desconta à Fed funds (`taxas.fed_funds_serie`, % a.a. ÷ 100, contínua). | O prêmio do SB é em US$. | n |
+| D-V2-06: taxas do dólar | GK: `r_dom` = Selic meta ÷ 100 (`taxas.selic_serie`), `r_for` = Fed funds ÷ 100. Contínuas, como em `hedge_cambial.py`. | Mesma convenção do hedge. | n |
+| D-V2-07: tempo | `T = dias corridos até o vencimento / 365`. Sem vencimento, ou `T ≤ 0`: intrínseco com aviso. | Vencimento já existe no cadastro. | n |
+| D-V2-08: fallback | Sem vol, taxa, vencimento ou com T ≤ 0: intrínseco menos prêmio, com aviso na linha. Falha de rede nas taxas ou no histórico vira fallback, nunca 500. | Pedido. | n |
+| D-V2-09: MTM de opção | Açúcar: `(V − prêmio) × FATOR × USDBRL spot × volume (t)`, V em ¢/lb (Black-76). Dólar: `(V − prêmio) × volume (US$)`, V em R$/US$ (GK). | Mesma unidade do MTM do MVP. | n |
+| D-V2-10: receita em US$ | `receita_usd = (Σ vol·preço de fixação+futuro + max(producao − Σvol de fixação+futuro, 0) · SB=F) × FATOR`. A parte já fechada usa o preço fixado; o restante usa SB=F spot. | A parte fechada em US$ tem preço conhecido. | n (validar com advisor) |
+| D-V2-11: dólar protegido | `usd_protegido = Σ volume(ndf_dolar) + Σ volume(opcao_dolar)`, nocional em US$. | Pedido: "o que está protegido". Delta exigiria modelo de risco fora do pedido. | n (validar com advisor) |
+| D-V2-12: dólar em aberto | `usd_aberto = max(receita_usd − usd_protegido, 0)`. Nulo se faltar produção ou SB=F. | Pedido. | n |
+| D-V2-13: % e preço do risco | `pct_fixado` como no MVP (R2). Preço médio em R$/t como no MVP (R4). O botão limita o % a 100. | Mesma conta do resumo. | n |
+| D-V2-14: onde a conta mora | `backend/exposicao.py` tem a função pura. `GET /api/posicoes/exposicao?usina_id&safra` a chama. As duas telas consomem esse endpoint. `routers/risco_conjunto.py` e `routers/hedge_cambial.py` não ganham conta própria. | Uma conta, um lugar. | n |
+| D-V2-15: FATOR | Movido para `backend/exposicao.py` e reexportado por `routers/posicoes.py`. | Evita importação circular. | n |
+| D-V2-16: dependências | Nenhuma nova. | Regra do projeto. | y |
+
+**Open questions (v2):**
+- A receita em US$ para o restante da produção deve ser SB=F spot (como aqui) ou preço de embarque?
+- O hedge cambial deve descontar o nocional da opção de dólar ou só o delta?
+
+## Revisão do advisor Opus (v2; prevalecem sobre a tabela acima)
+
+| # | Decisão | Motivo |
+|---|---|---|
+| R-V2-01 | **Receita em US$ (D-V2-10):** fixação ou futuro com `cambio_fixado` já está travado em R$ e sai de `receita_usd`. Só o volume sem câmbio fixado conta como receita em US$ a proteger. Restante da produção a SB=F spot. | Evita contar duas vezes o dólar já fechado. Premissa a confirmar com a trading (ver Open questions). |
+| R-V2-02 | **Dólar protegido (D-V2-11):** nocional, e só `opcao_dolar` **put** (ou `tipo_opcao` nulo) conta. Call de USD não reduz `usd_aberto`. NDF soma o volume. | Put garante piso sobre o nocional; call comprada aumenta exposição. |
+| R-V2-03 | **Calls fora dos totais de açúcar:** `fixacao_acucar`, `futuro_acucar` e `opcao_acucar` **put** entram em `pct_fixado`; call não entra. `situacao()` recebe a lista já filtrada, assinatura intacta. | `situacao()` soma toda `opcao_acucar`; a filtragem é feita antes. |
+| R-V2-04 | **Black-76 (D-V2-05):** taxa contínua `r = ln(1 + Fed funds/100)`. Vol histórica calculada sobre a série de `SB=F` passada por `cambio.limpar` (rolagem de contrato não infla a vol). | Mesma convenção de taxa do hedge. |
+| R-V2-05 | **GK (D-V2-06), reaproveitando o hedge:** `F = cambio.forward(spot, selic, du, fed, dc)`; `r_dom, r_for = hc.taxas_gk(F, spot, selic, T)` (`r_dom = ln(1+Selic)`, `r_for` pela paridade coberta). `S = spot` da série limpa via `serie_fx`; `juros_em` para as taxas. Mesmo número que a tela de hedge. | Uma convenção para as duas telas. |
+| R-V2-06 | **Tempo (D-V2-07):** `T = du / 252`, com `du = np.busday_count(hoje, vencimento)`, sem calendário de feriados (como `hedge_cambial.py`). `dc` = dias corridos para o forward. | Mesma regra do hedge. |
+| R-V2-07 | **Fallback (D-V2-08):** o gatilho é `HTTPException` (de `serie_fx`/`get_prices`) ou `ValueError` / exceção de rede nas taxas. Qualquer um deles vira fallback com aviso, nunca 500. Falha de preço de SB=F ou USDBRL=X no resumo continua 503, como o MVP. | Exceções exatas. |
+| R-V2-08 | **Percentual que vai para o risco (D-V2-13):** o botão do risco conjunto usa `pct_travado` = volume de fixação + futuro (sem put) ÷ produção, limitado a 100. O preço é o médio em R$/t, que também só usa fixação e futuro. | Put não tem preço travado; mandar o % total com o preço médio dá número errado. |
+| R-V2-09 | **Busca de preço:** SB=F é consultado sempre que houver produção estimada (para `receita_usd`) ou posições. Sem nada disso, nenhuma consulta. | Corrige o conflito com POS-V2-06 AC3. |
+| R-V2-10 | **Nomes:** a resposta de `/exposicao` usa `receita_usd_estimada` e traz `usd_protegido` (soma de NDF + put de dólar). `receita_usd` do D-V2-10 é o mesmo campo. | Um nome só. |
+| R-V2-11 | **Campos por modelo (POS-V2-05):** em `black76`, `taxa_for` é nulo. Em `intrinseco`, `vol_anual`, `taxa_dom`, `taxa_for` e `anos_ate_vencimento` são nulos; `valor_unitario` traz o intrínseco quando calculável e é nulo quando o modelo falha por dado inválido (revisão da rodada 3). | Contrato explícito. |
+| R-V2-12 | **Tipo da opção (D-V2-01, MVP AC5):** se `tipo_opcao` vier e não for `call` ou `put` → 422. Ausente = `put`. Substitui o AC5 do MVP. | Compatível com R1 para dados antigos. |
+| R-V2-13 | **Avisos fixos (POS-V2-08 AC4, POS-V2-09 AC3):** "Sem câmbio fixado, o preço médio em R$/t não foi preenchido. Informe o preço manualmente." e "Não há dólar em aberto nesta safra para preencher." | Texto testável. |
+| R-V2-14 | **Testes do MVP:** `calcular_mtm` e `resumo_safra` continuam intrínsecos e puros; o MTM por modelo só vale no endpoint. Opção sem vencimento no MVP cai no intrínseco, então os testes existentes não mudam. | Não quebrar R16. |
+
+## User Stories (v2)
+
+### P1: MTM de opção por modelo ⭐ v2
+
+1. **POS-V2-01** WHEN `opcao_acucar` tem vencimento futuro, vol histórica e Fed funds THEN o MTM SHALL usar Black-76 (`options.black76_price`) com F = SB=F, K = `preco_fixado`, T, r = Fed funds e sigma = vol histórica.
+2. **POS-V2-02** WHEN `opcao_dolar` tem vencimento futuro, vol EWMA, Selic e Fed funds THEN o MTM SHALL usar Garman-Kohlhagen (`options.gk_price`) com S = USDBRL=X, K = `preco_fixado`, r_dom = Selic, r_for = Fed funds e sigma = EWMA anualizada.
+3. **POS-V2-03** WHEN `tipo_opcao` é `call` THEN o modelo SHALL usar a call; WHEN é `put` ou nulo THEN o modelo SHALL usar a put.
+4. **POS-V2-04** WHEN falta vol, taxa ou vencimento, OR `T ≤ 0` THEN o MTM SHALL cair no valor intrínseco menos prêmio, com aviso na linha, e a API SHALL responder 200.
+5. **POS-V2-05** WHEN a resposta traz uma opção THEN cada linha SHALL trazer `modelo` (`black76`, `gk` ou `intrinseco`), `vol_anual`, `taxa_dom`, `taxa_for`, `anos_ate_vencimento`, `valor_unitario` e `aviso` (ou nulo).
+6. **POS-V2-10** A migration SHALL adicionar `tipo_opcao` nullable com CHECK (`call`/`put`, só em opção). O formulário e o CSV de importação/exportação SHALL aceitar o campo.
+
+**Independent Test**: `test_mtm_opcoes.py` compara com `black76_price` e `gk_price` diretamente, e cobre os fallbacks (vol ausente, vencida, sem vencimento).
+
+### P1: Exposição aberta da safra ⭐ v2
+
+1. **POS-V2-06** WHEN `GET /api/posicoes/exposicao` é chamado para uma usina associada THEN a API SHALL responder `pct_fixado`, `producao_estimada_t`, `preco_medio_rs_t`, `preco_medio_cents_lb`, `acucar_aberto_t`, `receita_usd_estimada`, `usd_ndf`, `usd_opcao_dolar`, `usd_aberto`, `sb_fechamento`, `usdbrl_fechamento` e `avisos`.
+2. **POS-V2-07** `exposicao_aberta` SHALL ser função pura, sem I/O, e a única fonte da conta de exposição (D-V2-14).
+3. IF a usina não é associada THEN a API SHALL responder 403. IF não há posições THEN 200 com volumes zero, sem consultar preços.
+4. IF falta produção estimada THEN `pct_fixado`, `acucar_aberto_t`, `receita_usd_estimada` e `usd_aberto` SHALL ser nulos e `avisos` SHALL dizer por quê.
+5. IF `SB=F` ou `USDBRL=X` não têm preço THEN a API SHALL responder 503, como o resumo.
+
+**Independent Test**: carteira sintética em `test_exposicao.py` com valores calculados à mão.
+
+### P1: Botões nas telas de risco ⭐ v2
+
+1. **POS-V2-08** WHEN o usuário clica em "Usar minhas posições da safra" na tela de risco conjunto THEN o botão SHALL preencher o % fixado (limitado a 100) e o preço médio fixado em R$/t da usina e safra escolhidas.
+2. **POS-V2-09** WHEN o usuário clica em "Usar o dólar a receber em aberto da safra" na tela de hedge cambial THEN o botão SHALL preencher o volume em US$ com `usd_aberto`.
+3. IF `usd_aberto` é zero ou nulo THEN o botão SHALL mostrar aviso em português e não preencher.
+4. IF não há preço médio em R$/t (falta câmbio fixado) THEN o campo de preço fica como está e a tela avisa.
+5. A entrada manual SHALL continuar igual.
+
+## Edge Cases (v2)
+
+- IF Σvol(fixação+futuro) > produção THEN `acucar_aberto_t` = 0 e `pct_fixado` passa de 100 (o botão limita a 100).
+- IF `usd_protegido > receita_usd` THEN `usd_aberto` = 0.
+- IF há menos de 60 retornos de SB=F THEN sem vol → intrínseco com aviso.
+
+## Requirement Traceability (v2)
+
+| Requirement ID | Story | Phase | Status |
+|---|---|---|---|
+| POS-V2-01 | Black-76 no açúcar | Design | Pending |
+| POS-V2-02 | GK no dólar | Design | Pending |
+| POS-V2-03 | call e put | Design | Pending |
+| POS-V2-04 | fallback intrínseco | Design | Pending |
+| POS-V2-05 | detalhes do modelo | Design | Pending |
+| POS-V2-06 | endpoint de exposição | Design | Pending |
+| POS-V2-07 | função pura única | Design | Pending |
+| POS-V2-08 | botão no risco conjunto | Design | Pending |
+| POS-V2-09 | botão no hedge cambial | Design | Pending |
+| POS-V2-10 | migration tipo_opcao, form e CSV | Design | Pending |

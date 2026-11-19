@@ -2,19 +2,22 @@
 from datetime import date, timedelta
 from typing import Annotated, Any, Literal, Optional
 
+import numpy as np
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+import cambio
 import market_cache
 from auth import get_current_user
+from exposicao import FATOR, e_call, exposicao_aberta  # FATOR reexportado (testes e import antigo)
 from limiter import limiter
 from market_cache import get_prices
+from mtm_opcoes import opcao_acucar, opcao_dolar, vol_historica
 from politica_hedge import situacao
+from routers.cambio import JANELA as JANELA_FX, juros_em, serie_fx
 
 router = APIRouter(prefix="/api")
-
-# ponytail: mesma convenção do MTM de metas (main.py). Se backend-robustez mover para admin_config, trocar aqui.
-FATOR = 22.0462 * 1.04  # ¢/lb × 22,0462 = US$/t; × 1,04 é a convenção do código
 
 INSTRUMENTOS = ("fixacao_acucar", "futuro_acucar", "ndf_dolar", "opcao_acucar", "opcao_dolar")
 ACUCAR = ("fixacao_acucar", "futuro_acucar", "opcao_acucar")
@@ -39,6 +42,14 @@ class PosicaoBase(BaseModel):
     vencimento: Optional[date] = None
     contraparte: Optional[str] = Field(default=None, max_length=120)
     observacao: Optional[str] = Field(default=None, max_length=300)
+    # v2 (POS-V2-10): nulo em opção = put (linhas do MVP). Só opção pode ter tipo.
+    tipo_opcao: Optional[Literal["call", "put"]] = None
+
+    @model_validator(mode="after")
+    def tipo_so_em_opcao(self):
+        if self.tipo_opcao is not None and self.instrumento not in ("opcao_acucar", "opcao_dolar"):
+            raise ValueError("tipo_opcao só vale para opção")
+        return self
 
 
 class PosicaoIn(PosicaoBase):
@@ -65,6 +76,7 @@ CAMPO_PT = {
     "vencimento": "Vencimento",
     "contraparte": "Contraparte",
     "observacao": "Observação",
+    "tipo_opcao": "Tipo da opção",
 }
 
 
@@ -105,21 +117,36 @@ def unidade(instrumento: str) -> str:
 
 
 def calcular_mtm(p: dict, sb: float, fx: float) -> float:
-    """MTM em R$ de uma posição. Venda de açúcar/NDF = (fixado − mercado); put = intrínseco − prêmio."""
+    """MTM intrínseco em R$ de uma posição (fallback do MTM por modelo). Venda = (fixado − mercado)."""
     k, v, pr, ins = p["preco_fixado"], p["volume"], p.get("premio") or 0, p["instrumento"]
     if ins in VENDA_ACUCAR:
         return (k - sb) * FATOR * fx * v
     if ins == "opcao_acucar":
-        return (max(k - sb, 0) - pr) * FATOR * fx * v
+        intr = max(sb - k, 0) if e_call(p) else max(k - sb, 0)
+        return (intr - pr) * FATOR * fx * v
     if ins == "ndf_dolar":
         return (k - fx) * v
     if ins == "opcao_dolar":
-        return (max(k - fx, 0) - pr) * v
+        intr = max(fx - k, 0) if e_call(p) else max(k - fx, 0)
+        return (intr - pr) * v
     raise ValueError(f"instrumento desconhecido: {ins}")
 
 
-def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[float], fx: Optional[float]) -> dict:
-    """Percentual fixado, preço médio, MTM e status contra a política (R2–R4, R8)."""
+def mtm_com_modelo(p: dict, detalhe: dict, sb: float, fx: float) -> float:
+    """MTM em R$ de uma opção pelo valor de mercado do modelo (POS-V2-01/02): (valor − prêmio) × escala."""
+    v, pr = p["volume"], p.get("premio") or 0
+    if p["instrumento"] == "opcao_acucar":
+        return (detalhe["valor_unitario"] - pr) * FATOR * fx * v
+    return (detalhe["valor_unitario"] - pr) * v
+
+
+def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[float], fx: Optional[float],
+                 modelos: Optional[dict] = None) -> dict:
+    """Percentual fixado, preço médio, MTM e status contra a política (R2–R4, R8; v2 MTM por modelo).
+
+    `modelos` mapeia id da posição → detalhe do MTM por modelo (opcoes v2). Sem entrada, cai no intrínseco.
+    """
+    modelos = modelos or {}
     sit = situacao(posicoes, politica)
 
     venda = [p for p in posicoes if p["instrumento"] in VENDA_ACUCAR]
@@ -131,9 +158,23 @@ def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[fl
         for p in venda if not p.get("cambio_fixado")
     ]
 
-    mtm_linhas = [{**p, "unidade": unidade(p["instrumento"]), "mtm_rs": round(calcular_mtm(p, sb, fx), 2)}
-                  for p in posicoes] if posicoes else []
+    mtm_linhas = []
+    for p in posicoes:
+        detalhe = modelos.get(p.get("id")) if p["instrumento"] in ("opcao_acucar", "opcao_dolar") else None
+        if detalhe and detalhe["modelo"] != "intrinseco":
+            mtm = mtm_com_modelo(p, detalhe, sb, fx)
+        else:
+            mtm = calcular_mtm(p, sb, fx)
+        vazio = {"modelo": None, "vol_anual": None, "taxa_dom": None, "taxa_for": None,
+                 "anos_ate_vencimento": None, "valor_unitario": None, "aviso": None}
+        if p["instrumento"] in ("opcao_acucar", "opcao_dolar") and not detalhe:
+            detalhe = {**vazio, "modelo": "intrinseco"}  # sem modelo calculado (uso puro): só o intrínseco
+        mtm_linhas.append({**p, **(detalhe if p["instrumento"] in ("opcao_acucar", "opcao_dolar") else vazio),
+                           "unidade": unidade(p["instrumento"]), "mtm_rs": round(mtm, 2)})
+        if detalhe and detalhe.get("aviso"):
+            avisos.append(detalhe["aviso"])
 
+    avisos = list(dict.fromkeys(avisos))
     return {
         **sit,
         "preco_medio_cents_lb": round(sum(p["preco_fixado"] * p["volume"] for p in venda) / vol_v, 2) if vol_v else None,
@@ -196,26 +237,101 @@ def criar_lote(request: Request, body: LotePosicoes, user: Annotated[dict, Depen
     return {"inseridas": len(linhas)}
 
 
-@router.get("/posicoes/resumo")
-@limiter.limit("30/minute")
-def resumo(request: Request, usina_id: Annotated[str, Query(pattern=UUID_PADRAO)], safra: str, user: Annotated[dict, Depends(get_current_user)]):
-    supa = market_cache.supa_client()
-    if not _membro(supa, user["id"], usina_id):
-        raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)
+def _carregar_safra(supa, usina_id: str, safra: str) -> tuple[list[dict], Optional[dict]]:
     posicoes = (
         supa.table("posicoes").select("*").eq("usina_id", usina_id).eq("safra", safra).order("created_at").execute()
     ).data
     pol = (
         supa.table("politica_hedge").select("*").eq("usina_id", usina_id).eq("safra", safra).execute()
     ).data
-    politica = pol[0] if pol else None
+    return posicoes, (pol[0] if pol else None)
+
+
+def _modelos_opcoes(posicoes: list[dict], sb: float, fx: float) -> dict:
+    """MTM por modelo das opções (POS-V2-01 a 05). Histórico ou juros indisponíveis viram fallback com aviso, nunca erro."""
+    opcoes = [p for p in posicoes if p["instrumento"] in ("opcao_acucar", "opcao_dolar")]
+    if not opcoes:
+        return {}
+    hoje = date.today()
+    vol_sb = vol_fx = selic = fed = None
+    spot_fx = fx  # série limpa do USDBRL, como no hedge; o tick bruto do resumo é o fallback
+    if any(p["instrumento"] == "opcao_acucar" for p in opcoes):
+        try:
+            linhas = [r for r in get_prices("SB=F", hoje - timedelta(days=400), hoje) if r.get("close") is not None]
+            closes, _ = cambio.limpar(np.array([float(r["close"]) for r in linhas]), np.array([r["date"] for r in linhas]))
+            vol_sb = vol_historica(closes)
+        except Exception:
+            vol_sb = None  # sem histórico: intrínseco com aviso
+    if any(p["instrumento"] == "opcao_dolar" for p in opcoes):
+        try:
+            closes, _ = serie_fx(hoje)
+            spot_fx = float(closes[-1])
+            _, sigma_dia = cambio.vol_ewma(cambio.retornos(closes[-JANELA_FX:]))
+            vol_fx = sigma_dia * np.sqrt(cambio.DIAS_UTEIS_ANO)
+        except Exception:
+            vol_fx = None
+
+    # Black-76 também desconta pela taxa: busca os juros para qualquer opção, não só a de dólar.
+    try:
+        selic, fed = juros_em(pd.Timestamp(hoje))
+    except Exception:
+        selic = fed = None
+
+    modelos = {}
+    for p in opcoes:
+        du = dc = None
+        if p.get("vencimento"):
+            venc = date.fromisoformat(str(p["vencimento"])[:10])
+            du = int(np.busday_count(hoje, venc))
+            dc = (venc - hoje).days
+        try:
+            if p["instrumento"] == "opcao_acucar":
+                modelos[p.get("id")] = opcao_acucar(p, sb, vol_sb, fed, du)
+            else:
+                modelos[p.get("id")] = opcao_dolar(p, spot_fx, vol_fx, selic, fed, du, dc)
+        except (ValueError, ZeroDivisionError, FloatingPointError):
+            # Dado que o modelo não aceita: nunca 500 (POS-V2-04)
+            modelos[p.get("id")] = {"modelo": "intrinseco", "valor_unitario": None, "vol_anual": None,
+                                    "taxa_dom": None, "taxa_for": None, "anos_ate_vencimento": None,
+                                    "aviso": "Modelo indisponível para estes dados: valor intrínseco."}
+    return modelos
+
+
+@router.get("/posicoes/resumo")
+@limiter.limit("30/minute")
+def resumo(request: Request, usina_id: Annotated[str, Query(pattern=UUID_PADRAO)], safra: str, user: Annotated[dict, Depends(get_current_user)]):
+    supa = market_cache.supa_client()
+    if not _membro(supa, user["id"], usina_id):
+        raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)
+    posicoes, politica = _carregar_safra(supa, usina_id, safra)
 
     sb = fx = data_sb = data_fx = None
     if posicoes:  # sem posições não há o que marcar: não busca preço (R11)
         sb, data_sb = _ultimo_fechamento("SB=F")
         fx, data_fx = _ultimo_fechamento("USDBRL=X")
 
-    out = resumo_safra(posicoes, politica, sb, fx)
+    modelos = _modelos_opcoes(posicoes, sb, fx) if posicoes else {}
+    out = resumo_safra(posicoes, politica, sb, fx, modelos)
+    out.update({"sb_fechamento": sb, "usdbrl_fechamento": fx, "data_sb": data_sb, "data_usdbrl": data_fx})
+    return out
+
+
+@router.get("/posicoes/exposicao")
+@limiter.limit("30/minute")
+def exposicao(request: Request, usina_id: Annotated[str, Query(pattern=UUID_PADRAO)], safra: str, user: Annotated[dict, Depends(get_current_user)]):
+    """Parte aberta da safra e dólar em aberto (POS-V2-06). Conta única em exposicao.exposicao_aberta."""
+    supa = market_cache.supa_client()
+    if not _membro(supa, user["id"], usina_id):
+        raise HTTPException(status_code=403, detail=MSG_SEM_ACESSO)
+    posicoes, politica = _carregar_safra(supa, usina_id, safra)
+    producao = politica.get("producao_estimada_t") if politica else None
+
+    sb = fx = data_sb = data_fx = None
+    if posicoes or producao:  # a receita em US$ precisa de SB=F (POS-V2-06, R-V2-09)
+        sb, data_sb = _ultimo_fechamento("SB=F")
+        fx, data_fx = _ultimo_fechamento("USDBRL=X")
+
+    out = exposicao_aberta(posicoes, producao, sb)
     out.update({"sb_fechamento": sb, "usdbrl_fechamento": fx, "data_sb": data_sb, "data_usdbrl": data_fx})
     return out
 
