@@ -9,6 +9,7 @@ import market_cache
 from auth import get_current_user
 from limiter import limiter
 from market_cache import get_prices
+from politica_hedge import situacao
 
 router = APIRouter(prefix="/api")
 
@@ -85,21 +86,7 @@ def calcular_mtm(p: dict, sb: float, fx: float) -> float:
 
 def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[float], fx: Optional[float]) -> dict:
     """Percentual fixado, preço médio, MTM e status contra a política (R2–R4, R8)."""
-    producao = politica.get("producao_estimada_t") if politica else None
-    minimo = politica.get("minimo_pct") if politica else None
-    maximo = politica.get("maximo_pct") if politica else None
-
-    vol_acucar = sum(p["volume"] for p in posicoes if p["instrumento"] in ACUCAR)
-    pct = round(vol_acucar / producao * 100, 2) if producao else None
-
-    if politica is None:
-        status = "sem_politica"
-    elif not producao:
-        status = "sem_producao"
-    else:
-        lo = minimo or 0
-        hi = 100 if maximo is None else maximo
-        status = "abaixo" if pct < lo else "acima" if pct > hi else "dentro"
+    sit = situacao(posicoes, politica)
 
     venda = [p for p in posicoes if p["instrumento"] in VENDA_ACUCAR]
     vol_v = sum(p["volume"] for p in venda)
@@ -114,14 +101,10 @@ def resumo_safra(posicoes: list[dict], politica: Optional[dict], sb: Optional[fl
                   for p in posicoes] if posicoes else []
 
     return {
-        "pct_fixado": pct,
-        "minimo_pct": minimo,
-        "maximo_pct": maximo,
-        "producao_estimada_t": producao,
+        **sit,
         "preco_medio_cents_lb": round(sum(p["preco_fixado"] * p["volume"] for p in venda) / vol_v, 2) if vol_v else None,
         "preco_medio_rs_t": round(sum(p["preco_fixado"] * FATOR * p["cambio_fixado"] * p["volume"] for p in com_cambio) / vol_c, 2) if vol_c else None,
         "mtm_total_rs": round(sum(m["mtm_rs"] for m in mtm_linhas), 2),
-        "status": status,
         "avisos": avisos,
         "posicoes": mtm_linhas,
     }
