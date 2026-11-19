@@ -53,3 +53,10 @@ def aquecer_cache():
             "ultimo_dado": linhas[-1]["date"] if linhas else None,
         })
     return {"aquecidos": aquecidos}
+
+
+@router.post("/briefing", dependencies=[Depends(require_job_secret)])
+def job_briefing():
+    """BRF-02: briefing diário por e-mail para quem optou (preferencias_usuario.briefing_email)."""
+    import briefing
+    return briefing.enviar_briefings()

@@ -1990,3 +1990,6 @@ app.include_router(cambio_router)
 # Hedge cambial: routers/hedge_cambial.py
 from routers.hedge_cambial import router as hedge_cambial_router  # noqa: E402
 app.include_router(hedge_cambial_router)
+# Telegram (alertas-v2): routers/telegram.py
+from routers.telegram import router as telegram_router  # noqa: E402
+app.include_router(telegram_router)

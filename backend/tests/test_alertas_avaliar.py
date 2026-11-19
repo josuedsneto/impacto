@@ -130,7 +130,7 @@ def test_params_por_tipo_rejeitam_valor_fora_do_schema():
     assert alertas.validar_params("vol_acima", {"pct": 30}) == {"pct": 30.0}
 
 
-def test_prob_cruzar_tem_schema_mas_nao_esta_disponivel():
-    assert "prob_cruzar" in alertas.TIPOS
-    assert "prob_cruzar" not in alertas.TIPOS_DISPONIVEIS
-    assert alertas.validar_params("prob_cruzar", {"strike": 5, "direcao": "acima", "horizonte_dias": 30, "prob_min": 60})
+def test_prob_cruzar_e_posicao_limite_estao_disponiveis():
+    assert "prob_cruzar" in alertas.TIPOS_DISPONIVEIS
+    assert "posicao_limite" in alertas.TIPOS_DISPONIVEIS
+    assert alertas.validar_params("prob_cruzar", {"nivel": 5.5, "direcao": "acima", "horizonte": 30, "prob": 0.6})
