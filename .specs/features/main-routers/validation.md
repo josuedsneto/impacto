@@ -18,7 +18,7 @@ Refatoração sem mudança de comportamento. O contrato HTTP é a prova principa
 
 ```
 cd backend && .venv/Scripts/python.exe -m pytest tests -q
-257 passed in 33.41s
+291 passed (após merge das rodadas pendências e alertas v2)
 
 cd backend && .venv/Scripts/python.exe -m pytest tests/test_contrato_rotas.py -q
 1 passed
@@ -36,6 +36,12 @@ Verificação extra: scan de nomes indefinidos em 13 módulos alterados, sem ach
 - `jump-diffusion` foi para `simulacoes.py` (advisor).
 - `modelos.py` não foi criado: nenhum modelo é usado por dois domínios.
 - `main.py` reexporta `get_current_user` e `require_admin`.
+
+## Integração das branches (após a divisão)
+
+- Merge de `bb/rodada-2-pend-ncias-pequenas-thr_sq4zvmmk66` (`1b23f8e`) e de `bb/rodada-2-alertas-v2-...` (`c1c5fd1`).
+- Backend: 291 passed; `test_calcs.py` ok; `test_mensagens.py` ok.
+- Frontend: `npm test` 25 arquivos / 362 testes passed; `npx tsc --noEmit` sem erro.
 
 ## Fora desta entrega
 
