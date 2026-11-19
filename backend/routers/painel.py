@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 BRT = ZoneInfo("America/Sao_Paulo")
 HORIZONTE_DOLAR = 21  # dias úteis, faixa de 90% (A-5)
+AVISO_PRECO = "Resultado a mercado indisponível agora: sem preço do açúcar ou do dólar."
 MSG_GENERICA = "Não foi possível carregar esta seção agora. Tente novamente em alguns minutos."
 
 
@@ -112,10 +113,11 @@ def secao_posicoes(user: dict, hoje: date) -> list[dict]:
     aviso = None
     if posicoes:
         try:
-            sb, _ = _ultimo_fechamento("SB=F")
-            fx, _ = _ultimo_fechamento("USDBRL=X")
-        except HTTPException as exc:
-            aviso = _motivo(exc)
+            # Tupla inteira avaliada antes de atribuir: se o dólar falhar, sb também fica None.
+            (sb, _), (fx, _) = _ultimo_fechamento("SB=F"), _ultimo_fechamento("USDBRL=X")
+        except HTTPException:
+            logger.exception("painel/hoje: preço indisponível para posições")
+            aviso = AVISO_PRECO
 
     saida = []
     for a in assoc:

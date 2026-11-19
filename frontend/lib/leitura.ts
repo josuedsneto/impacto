@@ -1,6 +1,6 @@
 // Frases que dizem, em português, o que o resultado de cada ferramenta significa (LING-03, LING-04).
 // Os textos seguem a tabela de .specs/features/linguagem-clara/design.md.
-import { formatBRL, formatCompactBRL, formatDate, formatFX, formatNumber, formatPercent, formatPreco } from "@/lib/format";
+import { formatBRL, formatCompactBRL, formatDate, formatFX, formatNumber, formatPercent, formatPontos, formatPreco } from "@/lib/format";
 
 type N = number | null | undefined;
 
@@ -162,20 +162,21 @@ export function leituraPosicaoPolitica(r: {
   safra: string;
 }) {
   const s = r.safra;
+  // Mínimo e máximo podem faltar na política: o backend usa 0 e 100 (politica_hedge.situacao).
   switch (r.status) {
     case "sem_politica":
       return `Defina a política de hedge da safra ${s} para acompanhar o % fixado.`;
     case "sem_producao":
       return `Informe a produção estimada da safra ${s} na política de hedge.`;
     case "abaixo":
-      if (falta(r.pct, r.minimo)) return AUSENTE;
-      return `Você está ${formatNumber(r.minimo! - r.pct!, 1)} pontos abaixo da política de hedge da safra ${s}.`;
+      if (falta(r.pct)) return AUSENTE;
+      return `Você está ${formatPontos((r.minimo ?? 0) - r.pct!)} pontos abaixo da política de hedge da safra ${s}.`;
     case "acima":
-      if (falta(r.pct, r.maximo)) return AUSENTE;
-      return `Você está ${formatNumber(r.pct! - r.maximo!, 1)} pontos acima da política de hedge da safra ${s}.`;
+      if (falta(r.pct)) return AUSENTE;
+      return `Você está ${formatPontos(r.pct! - (r.maximo ?? 100))} pontos acima da política de hedge da safra ${s}.`;
     case "dentro":
-      if (falta(r.pct, r.minimo)) return AUSENTE;
-      return `Você está dentro da política de hedge da safra ${s}: ${formatNumber(r.pct!, 1)}% fixado.`;
+      if (falta(r.pct)) return AUSENTE;
+      return `Você está dentro da política de hedge da safra ${s}: ${formatPontos(r.pct)}% fixado.`;
     default:
       return AUSENTE;
   }

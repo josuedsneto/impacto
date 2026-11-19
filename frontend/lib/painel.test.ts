@@ -43,10 +43,16 @@ describe("texto de posição (PNL-17, AC-4)", () => {
 
   it("acima e dentro", () => {
     expect(leituraPosicaoPolitica({ status: "acima", pct: 85, minimo: 50, maximo: 80, safra: "2026/27" })).toBe(
-      "Você está 5,0 pontos acima da política de hedge da safra 2026/27."
+      "Você está 5 pontos acima da política de hedge da safra 2026/27."
     );
     expect(leituraPosicaoPolitica({ status: "dentro", pct: 60, minimo: 50, maximo: 80, safra: "2026/27" })).toBe(
-      "Você está dentro da política de hedge da safra 2026/27: 60,0% fixado."
+      "Você está dentro da política de hedge da safra 2026/27: 60% fixado."
+    );
+  });
+
+  it("política sem mínimo usa 0 e 100 como o backend", () => {
+    expect(leituraPosicaoPolitica({ status: "dentro", pct: 60, minimo: null, maximo: 80, safra: "2026/27" })).toBe(
+      "Você está dentro da política de hedge da safra 2026/27: 60% fixado."
     );
   });
 

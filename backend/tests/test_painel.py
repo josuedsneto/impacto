@@ -64,7 +64,7 @@ def test_preco_fora_mantem_percentual_e_status_sem_mtm(supa, monkeypatch):
     (a,) = painel.secao_posicoes({"id": "u1"}, date(2026, 11, 19))
     assert a["status"] == "abaixo" and a["pct_fixado"] == 10.0
     assert a["mtm_total_rs"] is None
-    assert a["aviso"] == "Sem preço do açúcar."
+    assert a["aviso"] == painel.AVISO_PRECO
     assert a["motivo"] is None
 
 
@@ -96,3 +96,20 @@ def test_safra_comeca_em_abril(hoje, esperado):
 ])
 def test_ultimo_dia_util_pula_fim_de_semana(agora, esperado):
     assert painel._ultimo_dia_util(agora) == esperado
+
+
+def test_falha_so_no_dolar_zera_o_mtm_e_nao_quebra_a_usina(supa, monkeypatch):
+    """O açúcar sai e o dólar falha: sb não pode vazar sozinho para resumo_safra (fx None)."""
+    _seed_usina_com_posicao(supa)
+
+    def so_dolar_falha(ticker):
+        if ticker == "USDBRL=X":
+            raise HTTPException(status_code=503, detail="Sem preço do dólar.")
+        return 20.0, "2026-11-18"
+
+    monkeypatch.setattr(painel, "_ultimo_fechamento", so_dolar_falha)
+    (a,) = painel.secao_posicoes({"id": "u1"}, date(2026, 11, 19))
+    assert a["motivo"] is None
+    assert a["status"] == "abaixo" and a["pct_fixado"] == 10.0
+    assert a["mtm_total_rs"] is None
+    assert a["aviso"] == painel.AVISO_PRECO
