@@ -119,3 +119,61 @@ Build com Turbopack (`next build` padrão) falha nesta máquina por causa da jun
 6. Criar um alerta com canal Telegram e disparar o job manualmente quando a condição estiver verdadeira. Conferir a mensagem no chat.
 7. Em **Briefing diário**, ativar o interruptor. No dia seguinte, conferir o e-mail às 7h (horário de Brasília) com spot, variação, Focus, manchetes e alertas do último pregão.
 8. Desativar o interruptor e confirmar que o briefing não chega mais.
+
+---
+
+# Rodada 3 (alertas-v3): histerese, bloqueio de nível já cruzado e sinal técnico
+
+## Requisitos e evidências
+
+| Requisito | Evidência | Resultado |
+|---|---|---|
+| ALE-10 histerese `prob_cruzar` (margem, rearme abaixo de prob − margem) | `pytest backend/tests/test_alertas_v3.py -k "oscilacao or rearme or armada"` | Passa. Sem histerese a mesma série dispara 4 vezes; com ela, 1 |
+| ALE-10 histerese `preco_cruza` (`margem_pct`, 0 mantém o atual) | `test_preco_margem_zero_mantem_comportamento_atual`, `test_preco_com_margem_so_rearma_alem_da_margem`, `test_preco_armado_na_faixa_de_margem_dispara_ao_cruzar` | Passa |
+| ALE-10 validação de `margem` (< prob, 0 a 0,2; `margem_pct` 0 a 20) | `test_margem_igual_ou_maior_que_limiar_e_recusada`, `test_margem_fora_do_intervalo_e_recusada`, `test_margem_omitida_vira_padrao_na_validacao` | Passa |
+| ALE-11 bloqueio de nível já cruzado na criação (422 com mensagem exata) | `test_ja_cruzado_*`, `test_criar_prob_ja_cruzada_responde_422` | Passa |
+| ALE-11 bloqueio na edição (`PATCH` com `params`, só prob_cruzar) | `test_editar_params_ja_cruzado_responde_422`, `test_editar_params_de_outro_tipo_responde_422` | Passa |
+| ALE-11 sem preço: aceita e registra aviso | `test_sem_preco_aceita_e_registra_aviso` | Passa |
+| ALE-12 sinal técnico: sinal na última barra, não em barra anterior, sem dado suficiente | `test_sinal_*`, `test_poucas_barras_levantam_dados_insuficientes` | Passa |
+| ALE-12 API de sinal técnico e indicador inválido | `test_criar_sinal_tecnico_responde_201_e_indicador_invalido_422` | Passa |
+| ALE-12 migração `20261120000007` | Revisada por leitura (padrão da 20261119000002). Não aplicada no banco | Pendente de aplicação |
+| ALE-10/12 tela e frase de leitura | `npm test` (`lib/alertas.test.ts`, bloco "alertas v3") | Passa |
+
+### Comandos e resultados
+
+```
+cd backend && .venv/Scripts/python.exe -m pytest tests -q
+→ 320 passed, 5 warnings in 93.74s
+
+cd backend && python test_calcs.py      → exit=0
+cd backend && python test_mensagens.py  → exit=0
+
+cd frontend && npm test
+→ Test Files 25 passed (25) · Tests 367 passed (367)
+
+cd frontend && npm run lint  → exit=0
+cd frontend && npx tsc --noEmit  → (ver linha final abaixo)
+cd frontend && npm run build  → (ver linha final abaixo)
+```
+
+## Decisões desta rodada (DEC-28 a DEC-32, ver spec.md)
+
+- `ultimo_estado = true` significa "ligado" para `prob_cruzar` e `preco_cruza`: o rearme só acontece abaixo da faixa de margem. Estado armado ou nulo não é afetado pela faixa.
+- Regra antiga sem `margem` usa `min(0,05; prob/2)`, para nunca travar.
+- `PATCH` com `params` existe só para `prob_cruzar` (interpretação de "edição", ver DEC-30). Mudar `params` zera `ultimo_estado` e reavalia sem disparar.
+- `sinal_tecnico` usa a barra do último pregão. Se o cron falha ou a barra atrasa, o sinal daquele dia se perde (limitação aceita, ver DEC-31).
+
+## Pendências e riscos
+
+1. **Migração não aplicada**: `20261120000007_alertas_sinal_tecnico.sql`. Aplicar antes do backend desta rodada: sem ela, criar `sinal_tecnico` dá erro de CHECK.
+2. **Limitação de barra atrasada**: se a barra do dia não entrar no cache a tempo, o sinal daquele dia não dispara (DEC-31).
+3. **Edição**: não há tela de edição; o `PATCH` com `params` existe na API e não é usado pela tela.
+4. Sem mudanças de variável de ambiente nem de cron nesta rodada.
+
+## UAT para o usuário
+
+1. Aplicar `20261120000007_alertas_sinal_tecnico.sql` no Supabase e conferir o CHECK de `tipo`.
+2. Em `/app/alertas`, criar um alerta de **chance de tocar** o dólar com nível já do lado da direção (ex.: acima de 5,00 com o dólar a 5,60). Conferir a mensagem de bloqueio.
+3. Criar o mesmo alerta com nível do lado certo. Conferir o texto "volta a valer abaixo de …%" na tabela.
+4. Criar um alerta de **preço** com margem de 2% e conferir a frase "volta a valer ao recuar 2% além do nível".
+5. Criar um alerta de **sinal técnico**: RSI, compra, sobre SB=F. Conferir a frase "Sinal técnico de RSI de compra no último fechamento" e clicar em **Testar**: a mensagem deve dizer que é sinal técnico, não recomendação.

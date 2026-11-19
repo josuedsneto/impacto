@@ -61,6 +61,11 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 | DEC-25 Manchetes do briefing | `backend/noticias.py` com a mesma URL e o mesmo parse de `main.get_news` (Google News RSS). `main.py` não é tocado nesta rodada, então a função de `main` continua com a sua cópia. Débito: unir as duas quando `main.py` for dividido. | Não mexer em `main.py` além do include. | n |
 | DEC-26 Briefing: conteúdo e falhas | Spot e variação de SB=F e USDBRL=X com a data do último fechamento. Focus: `fetch_indicator("Câmbio", ano)` e `("Selic", ano)` com `ano` = ano corrente. Se uma seção falha, o e-mail sai com "indisponível" nela; o job não cai. Alertas de ontem = eventos do próprio usuário com `dia` igual ao último dia útil anterior (Brasília); segunda-feira pega sexta. Feriados não tratados nesta rodada. | Degrada sem derrubar o envio. | n |
 | DEC-27 Envio com HTML | `enviar_email` aceita `html` opcional; com `html`, o Resend recebe `html` e `text`. | Briefing em HTML simples com versão em texto. | — |
+| DEC-28 Histerese (rodada 3) | `prob_cruzar` com `params.margem` (fração, 0 a 0,2; padrão 0,05 = 5 p.p.). `ultimo_estado=true` significa "ligado": após disparar, a regra só rearma (`ultimo_estado=false`) quando `valor < prob − margem`. Entre `prob − margem` e `prob`, o estado fica como estava. Disparo continua sendo só falso→verdadeiro fora do cooldown. Regras já existentes sem `margem` usam `min(0,05; prob/2)`, para que o rearme nunca fique impossível. A API recusa `margem ≥ prob` (422). | Pedido: série rente ao limiar não pode disparar a cada cooldown. A conta fica em `proximo_estado()`, pura. | n |
+| DEC-29 Histerese de preço (rodada 3) | `preco_cruza` com `params.margem_pct` (em %, 0 a 20; padrão 0). Rearme: `acima` só quando `ultimo < nivel × (1 − margem_pct/100)`; `abaixo` só quando `ultimo > nivel × (1 + margem_pct/100)`. Com padrão 0, o comportamento é o atual. Não se aplica a `variacao_diaria` nem a `vol_acima` (fora do pedido). | Pedido. Mantém as regras existentes idênticas. | n |
+| DEC-30 Bloqueio "já cruzado" (rodada 3) | `prob_cruzar` na criação (`POST`) e na edição de parâmetros (`PATCH` com `params`): consulta o último fechamento de `get_prices` (janela de DEC-14). Se `acima` e `ultimo ≥ nivel` (ou `abaixo` e `ultimo ≤ nivel`), responde `422`: "O dólar já está acima de {nivel} ({preco} em DD/MM). Escolha um nível acima do preço atual." (ou "abaixo… abaixo do preço atual"). Nome do ativo: `dólar` para `USDBRL=X`, `açúcar` para `SB=F`, senão o código. Sem preço (exceção, série vazia): aceita e registra `logger.warning`. `PATCH` passa a aceitar `params` opcional, **só para `prob_cruzar`** (422 nos outros tipos, para não mexer em `posicao_limite` nem trocar `usina_id` sem o 403 de DEC-22). Ao mudar `params`, `ultimo_estado` vai para nulo e a regra é reavaliada sem disparar (DEC-04): sem isso, a regra ligada pelo nível antigo só rearmaria abaixo de `novo_prob − margem`. Corpo sem `ativo` nem `params` → 422. Limitação: não há tela de edição; a tela não usa o `PATCH` com `params` nesta rodada. | Pedido. "Edição" aqui = `PATCH` com `params`, que hoje não existe; criado porque o pedido o nomeia. | n |
+| DEC-31 Sinal técnico (rodada 3) | `sinal_tecnico` com `params`: `indicador` ∈ {`rsi`, `bollinger`, `macd`, `stoch`, `cci`, `sma`, `ema`} e `sentido` ∈ {`compra`, `venda`}. Usa `analysis.compute_analysis` com `IndicatorConfig` padrão e médias `sma` [20, 50] e `ema` [9, 21]. Condição = existe sinal do `indicador` com `type` correspondente (`buy`/`sell`) na data do último pregão. Valor = último fechamento. Mínimo de 60 fechamentos, senão `DadosInsuficientes` (DEC-15). Avaliado só na rodada diária, como `vol_acima`. Só entram barras com `close`, `high` e `low` válidos (buracos no cache não quebram as janelas). Limitações aceitas: a barra do dia pode ser provisória se o job rodar antes do fechamento (como em DEC-03); se o cron falha ou a barra atrasa, o sinal daquele dia se perde (a regra não tem como recuperá-lo); com cooldown acima de 24 h, um sinal que aparece dentro do cooldown também se perde. Mensagem: "{ticker}: sinal técnico de {nome} de {compra|venda} em DD/MM/AAAA (fechamento X). Sinal técnico, não uma recomendação." | Reaproveita a tela Mercado → Sinais. Sem parâmetros de período no alerta: fixo, para não dobrar a UI. | — |
+| DEC-32 Migration (rodada 3) | `20261120000007_alertas_sinal_tecnico.sql` troca o CHECK de `tipo` para incluir `sinal_tecnico`. Intervalo reservado `20261120000007` a `000009`; só a 000007 é usada. Sem coluna nova: `margem` e `margem_pct` vão em `params` (jsonb). | Mesmo padrão da 000002. | — |
 
 **Open questions:**
 - Plano da Vercel (DEC-01) e se o usuário quer pagar Pro para intradiário (DEC-02).
@@ -216,6 +221,58 @@ curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
 ```
 Variáveis: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` (só no backend). Para conferir: `getWebhookInfo` na mesma API.
 
+### P1 (rodada 3): Histerese ⭐
+
+**User Story**: Como usuário, quero que um alerta rente ao limiar avise uma vez, e não a cada cooldown enquanto a série oscila em torno do nível.
+
+**Acceptance Criteria**:
+
+1. WHEN `prob_cruzar` tem `params.margem` (0 a 0,2, padrão 0,05) THEN a API SHALL aceitar a regra e validar o intervalo (422 fora dele).
+2. WHEN `prob_cruzar` dispara e o valor oscila entre `prob − margem` e `prob` THEN o job SHALL NOT disparar de novo, mesmo após o cooldown (DEC-28).
+3. WHEN o valor cai abaixo de `prob − margem` THEN o estado SHALL rearmar e a próxima subida acima de `prob` SHALL disparar (fora do cooldown).
+4. WHEN `preco_cruza` tem `params.margem_pct` (0 a 20, padrão 0) THEN o rearme SHALL exigir o preço além do nível pela margem (DEC-29); com 0, o comportamento é o da rodada 1.
+5. The tela SHALL explicar a margem em uma frase em cada tipo que a usa.
+
+**Independent Test**: `pytest backend/tests/test_alertas_v3.py::test_oscilacao_dispara_uma_vez`.
+
+### P1 (rodada 3): Bloqueio de nível já cruzado ⭐
+
+**User Story**: Como trader, quero ser avisado na próxima vez que o dólar atravessar um nível, e não recebo um alerta que dispara na hora porque o nível já passou.
+
+**Acceptance Criteria**:
+
+1. WHEN `POST /api/alertas` cria `prob_cruzar` com nível já do lado da direção pedida THEN a API SHALL responder `422` com a mensagem de DEC-30 (preço e data do último fechamento).
+2. WHEN `PATCH /api/alertas/{id}` envia `params` de `prob_cruzar` nessa situação THEN a API SHALL responder `422` com a mesma mensagem.
+3. WHEN não há preço disponível THEN a API SHALL aceitar a regra e registrar um aviso no log.
+4. WHEN o nível está do lado certo THEN a API SHALL criar a regra normalmente (`201`).
+
+**Independent Test**: `pytest backend/tests/test_alertas_v3.py -k ja_cruzado`.
+
+### P1 (rodada 3): Alerta de sinal técnico ⭐
+
+**User Story**: Como usuário, quero um aviso quando um indicador técnico do açúcar ou do dólar dá sinal de compra ou venda no último fechamento.
+
+**Acceptance Criteria**:
+
+1. WHEN o usuário cria `sinal_tecnico` com `indicador` e `sentido` válidos THEN a API SHALL aceitar a regra (`201`) com `ticker` normalizado.
+2. WHEN `sinal_tecnico` é avaliado e o sinal aparece na data do último pregão THEN `condicao` SHALL ser verdadeira e o `valor` o último fechamento (DEC-31).
+3. WHEN o sinal não aparece na última barra, mesmo que apareceu antes THEN `condicao` SHALL ser falsa.
+4. WHEN a mensagem é montada THEN SHALL dizer que é sinal técnico, não recomendação.
+5. The tela SHALL oferecer o tipo com indicador e sentido, e a frase de leitura SHALL dizer o indicador e o sentido.
+
+**Independent Test**: `pytest backend/tests/test_alertas_v3.py -k sinal`.
+
+### P1 (rodada 3): Migração e tipos
+
+**User Story**: Como desenvolvedor, quero o banco aceitando o novo tipo e a API recusando tipo desconhecido.
+
+**Acceptance Criteria**:
+
+1. The migration `20261120000007_alertas_sinal_tecnico.sql` SHALL trocar o CHECK de `tipo` para incluir `sinal_tecnico` (DEC-32).
+2. WHEN `tipo` não existe THEN a API SHALL responder `422` (comportamento atual, coberto pelos testes).
+
+---
+
 ### P2: Briefing, detalhamento de entrega
 
 - BRF-01 usa `supabase/migrations/20261119000001_preferencias_usuario.sql`.
@@ -251,9 +308,12 @@ Variáveis: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` (só no backend). P
 | ALE-07 | P1 rodada 2: prob_cruzar (avaliador, semente, teste) | - | Pending |
 | ALE-08 | P1 rodada 2: posicao_limite (função situacao, criação com membro) | - | Pending |
 | ALE-09 | P1 rodada 2: Telegram (código, webhook, envio) | - | Pending |
+| ALE-10 | P1 rodada 3: histerese (prob_cruzar e preco_cruza) | - | Pending |
+| ALE-11 | P1 rodada 3: bloqueio de nível já cruzado (POST e PATCH) | - | Pending |
+| ALE-12 | P1 rodada 3: sinal_tecnico (avaliador, tela, migração) | - | Pending |
 | MIG | Migrations 20261119000001 (preferencias_usuario), 000002 (tipo posicao_limite no CHECK), 000003 (telegram_vinculos) | - | Pending |
 
-**Coverage:** 12 total, 0 mapeados (Medium).
+**Coverage:** 15 total, 0 mapeados (Medium).
 
 ## Success Criteria
 

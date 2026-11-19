@@ -42,3 +42,18 @@ Legenda: `[ ]` pendente · `[x]` feito. Cada tarefa vira um commit atômico (Con
 - Lógica de manchetes duplicada com `main.get_news` (DEC-25): unir quando `main.py` for dividido.
 - Histerese para `prob_cruzar` (ver DEC-21): não implementada.
 - Bloqueio na criação de `prob_cruzar` com nível já do lado da direção (DEC-20): não implementado.
+
+## Rodada 3 (alertas-v3)
+
+- [ ] **T20** `backend/alertas.py`: `proximo_estado()` e `decidir()` puros (histerese de `prob_cruzar` com `margem` e de `preco_cruza` com `margem_pct`); `processar` usa `decidir`. (ALE-10, DEC-28, DEC-29)
+- [ ] **T21** `backend/alertas.py`: `ProbCruzarParams.margem` (0 a 0,2, padrão 0,05), `PrecoCruzaParams.margem_pct` (0 a 20, padrão 0). (ALE-10)
+- [ ] **T22** `backend/tests/test_alertas_v3.py`: série oscilando em torno do limiar dispara uma vez; rearme abaixo de `prob − margem` dispara de novo; `margem_pct` 0 mantém o comportamento. (ALE-10)
+- [ ] **T23** `backend/alertas.py`: `checar_ja_cruzado()` (usa `get_prices`, mensagem de DEC-30, aviso se não há preço). (ALE-11)
+- [ ] **T24** `backend/routers/alertas.py`: chama `checar_ja_cruzado` em `POST`; `RegraPatch` com `params` opcional validado e checado no `PATCH`. (ALE-11)
+- [ ] **T25** `backend/tests/test_alertas_v3.py`: 422 na criação e na edição com a mensagem exata, 201 do lado certo, sem preço aceita com aviso. (ALE-11)
+- [ ] **T26** Migration `supabase/migrations/20261120000007_alertas_sinal_tecnico.sql`: CHECK de `tipo` com `sinal_tecnico`. (ALE-12, DEC-32)
+- [ ] **T27** `backend/alertas.py`: `SinalTecnicoParams`, `avaliar` para `sinal_tecnico` via `analysis.compute_analysis`. (ALE-12, DEC-31)
+- [ ] **T28** `backend/tests/test_alertas_v3.py`: sinal na última barra vs. sinal em barra anterior; mensagem sem "recomendação" faltando; tipo inválido → 422. (ALE-12)
+- [ ] **T29** `frontend/lib/alertas.ts` e `alertas.test.ts`: tipo `sinal_tecnico`, `descreverRegra`, `montarParams`, margem nas regras. (ALE-10, ALE-12)
+- [ ] **T30** `frontend/app/app/alertas/page.tsx`: campos de indicador/sentido, campos de margem com frase de explicação. (ALE-10, ALE-12)
+- [ ] **T31** Validação: `pytest`, `test_calcs.py`, `test_mensagens.py`, `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`. Grava `validation.md` da rodada 3.
