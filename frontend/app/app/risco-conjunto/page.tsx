@@ -11,6 +11,8 @@ import { leituraRiscoConjunto, probabilidade } from "@/lib/leitura";
 import { lerNumero } from "@/lib/numero";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
+import { SeletorCarteira } from "@/components/posicoes/SeletorCarteira";
+import { valoresParaRisco, type Exposicao } from "@/lib/posicoes";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -144,6 +146,17 @@ export default function RiscoConjuntoPage() {
     </label>
   );
 
+  // Preenche só o que a carteira tem; o resto continua como o usuário digitou (POS-V2-08).
+  function usarCarteira(ex: Exposicao) {
+    const v = valoresParaRisco(ex);
+    setEntradas((prev) => ({
+      ...prev,
+      ...(v.pctFixado !== null ? { pctFixado: v.pctFixado } : {}),
+      ...(v.precoFixado !== null ? { precoFixado: v.precoFixado } : {}),
+    }));
+    if (v.aviso) toast(v.aviso);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -192,6 +205,7 @@ export default function RiscoConjuntoPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <SeletorCarteira rotuloBotao="Usar minhas posições da safra" onUsar={usarCarteira} />
           <div className="flex flex-wrap items-end gap-4">
             {campo("Meta (R$/t)", "meta")}
             {campo("Horizonte (pregões)", "horizonte", "Dias úteis até o fim do período: 63 é cerca de 3 meses.")}
