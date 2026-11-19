@@ -59,3 +59,26 @@ Branch integrada: `integracao/auditoria` (local, sem push), com as 16 frentes fe
 4. UAT de cada frente, com os passos no `validation.md` dela.
 
 **Próximos passos:** dividir `main.py` em routers; alerta `posicao_limite`; Telegram.
+
+
+## Rodada 2026-11-19
+
+Branch integrada: `integracao/rodada-2`, a partir da `main` já com os PRs #2 e #3.
+
+- **`main-routers`:** `backend/main.py` foi de 2.000 para 53 linhas. As rotas foram para `backend/routers/*` e os helpers para `validacao.py`, `constantes.py`, `pregao.py` e `noticias.py`. O teste `tests/test_contrato_rotas.py` congela as 80 rotas.
+- **`alertas` (rodada 2):** `prob_cruzar`, briefing diário por e-mail (opt-in, 10h30 UTC), `posicao_limite` e Telegram.
+- **`pendencias-pequenas`:** reabrir análise de hedge, erro por linha no lote de posições, teste do heatmap, feriados da ICE (2026/2027, atualizar todo ano) e mínimo de 100 cenários no MC pricer.
+- **Checagens:** backend com 291 testes, mais `test_calcs.py` e `test_mensagens.py`; frontend com 362 testes, lint, `tsc` e `next build`. Tudo passou.
+
+**Pendente do usuário:**
+1. Aplicar as migrations `20261119000001` a `20261119000003`.
+2. Configurar `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` no Railway e registrar o webhook (`setWebhook`, comando na spec de alertas).
+3. Conferir quantos crons o plano da Vercel permite (agora são 3).
+
+**Decisões em aberto:**
+- histerese do `prob_cruzar`;
+- análise de hedge com orçamento vazio: reabrir no forward atual ou no salvo;
+- remover a `watchlist`;
+- tirar `SBK26.NYB` do catálogo;
+- trocar Plotly por Recharts;
+- teto do Monte Carlo.
