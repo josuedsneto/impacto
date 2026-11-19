@@ -15,7 +15,7 @@ from limiter import limiter
 
 
 class RegraIn(BaseModel):
-    tipo: Literal["preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar", "posicao_limite"]
+    tipo: Literal["preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar", "posicao_limite", "sinal_tecnico"]
     ticker: str = Field(min_length=1, max_length=20)
     params: dict
     canal: Literal["email", "telegram"] = "email"
@@ -23,7 +23,8 @@ class RegraIn(BaseModel):
 
 
 class RegraPatch(BaseModel):
-    ativo: bool
+    ativo: bool | None = None
+    params: dict | None = None  # rodada 3, DEC-30: só prob_cruzar; reavalia o estado
 
 
 def _validar_regra(body: RegraIn, db, user: dict) -> tuple[str, dict]:
@@ -73,6 +74,10 @@ def criar(request: Request, body: RegraIn, user: Annotated[dict, Depends(get_cur
     atuais = db.table("alert_rules").select("id").eq("user_id", user["id"]).execute().data or []
     if len(atuais) >= alertas.MAX_REGRAS_POR_USUARIO:
         raise HTTPException(400, "Limite de 20 alertas por conta atingido. Apague um alerta para criar outro.")
+    if body.tipo == "prob_cruzar":
+        msg = alertas.ja_cruzado(ticker, params["direcao"], params["nivel"], datetime.now(alertas.BRT).date())
+        if msg:
+            raise HTTPException(422, msg)  # DEC-30
     criada = (
         db.table("alert_rules")
         .insert({"user_id": user["id"], "tipo": body.tipo, "ticker": ticker, "params": params,
@@ -87,10 +92,30 @@ def criar(request: Request, body: RegraIn, user: Annotated[dict, Depends(get_cur
 def alterar(rule_id: UUID, body: RegraPatch, user: Annotated[dict, Depends(get_current_user)]):
     db = market_cache.supa_client()
     regra = _regra_do_usuario(db, rule_id, user)
-    db.table("alert_rules").update({"ativo": body.ativo}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
-    if body.ativo and not regra["ativo"]:
-        db.table("alert_rules").update({"ultimo_estado": None}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
-        alertas.inicializar_estado(db, {**regra, "ativo": True})  # DEC-04: reativar reavalia, sem disparar
+    if body.ativo is None and body.params is None:
+        raise HTTPException(422, "Informe 'ativo' ou 'params'.")
+    if body.params is not None:
+        # DEC-30: editar parâmetros só para prob_cruzar. Mudou o nível, o estado antigo não vale mais.
+        if regra["tipo"] != "prob_cruzar":
+            raise HTTPException(422, "Só é possível editar os parâmetros de chance de cruzar um nível.")
+        try:
+            params = alertas.validar_params(regra["tipo"], body.params)
+        except ValidationError:
+            raise HTTPException(422, "Parâmetros inválidos para este tipo de alerta.")
+        msg = alertas.ja_cruzado(regra["ticker"], params["direcao"], params["nivel"], datetime.now(alertas.BRT).date())
+        if msg:
+            raise HTTPException(422, msg)
+        regra = {**regra, "params": params, "ultimo_estado": None}
+        db.table("alert_rules").update({"params": params, "ultimo_estado": None}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
+    if body.ativo is not None:
+        db.table("alert_rules").update({"ativo": body.ativo}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
+        if body.ativo and not regra["ativo"]:
+            db.table("alert_rules").update({"ultimo_estado": None}).eq("id", regra["id"]).eq("user_id", user["id"]).execute()
+            regra = {**regra, "ultimo_estado": None}
+            alertas.inicializar_estado(db, {**regra, "ativo": True})  # DEC-04: reativar reavalia, sem disparar
+            return _regra_do_usuario(db, rule_id, user)
+    if body.params is not None and (body.ativo if body.ativo is not None else regra.get("ativo")):
+        alertas.inicializar_estado(db, {**regra, "ativo": True})  # DEC-04: novo nível, reavalia sem disparar
     return _regra_do_usuario(db, rule_id, user)
 
 
