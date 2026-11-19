@@ -9,7 +9,7 @@ from postgrest.exceptions import APIError
 
 import constantes
 import main
-from routers import simulacoes
+from routers import admin as admin_router, simulacoes
 
 ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
 
@@ -179,7 +179,7 @@ class _Supa:
 
 def test_todos_usuarios_percorre_todas_as_paginas():
     supa = _Supa(2005)
-    usuarios = main._todos_usuarios(supa)
+    usuarios = admin_router._todos_usuarios(supa)
     assert len(usuarios) == 2005
     assert supa.auth.admin.pedidos == [1, 2, 3, 4]  # para na página vazia
     emails = [u.email for u in usuarios]
@@ -259,10 +259,10 @@ def test_409_so_para_conflito_de_unicidade(admin, monkeypatch):
         def execute(self):
             return self
 
-    monkeypatch.setattr(main, "supa_client", lambda: _Insere("23505"))
+    monkeypatch.setattr(admin_router, "supa_client", lambda: _Insere("23505"))
     assert admin.post("/api/admin/usinas", json={"nome": "Usina A"}).status_code == 409
 
-    monkeypatch.setattr(main, "supa_client", lambda: _Insere("42501"))
+    monkeypatch.setattr(admin_router, "supa_client", lambda: _Insere("42501"))
     cliente = TestClient(main.app, raise_server_exceptions=False)
     assert cliente.post("/api/admin/usinas", json={"nome": "Usina B"}).status_code == 500
 
