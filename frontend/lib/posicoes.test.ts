@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { gerarCsvPosicoes, linhaCsv, parseCsvPosicoes, parseNumero, validarPosicao, type Resumo } from "./posicoes";
+import {
+  AVISO_SEM_CAMBIO, AVISO_SEM_DOLAR, AVISO_SEM_PRODUCAO, gerarCsvPosicoes, linhaCsv, parseCsvPosicoes,
+  parseNumero, validarPosicao, valorParaHedge, valoresParaRisco, type Exposicao, type Resumo,
+} from "./posicoes";
 
 const SAFRA = "2026/27";
 const CAB = "Safra;Instrumento;Volume (t ou US$);Preço fixado (¢/lb ou R$/US$);Câmbio fixado (R$/US$);Prêmio;Vencimento;Contraparte;Observação";
@@ -101,7 +104,69 @@ describe("gerarCsvPosicoes", () => {
     const csv = gerarCsvPosicoes({ usina: "Usina A", safra: SAFRA, resumo });
     expect(csv.startsWith("﻿")).toBe(true);
     expect(csv).toContain("Instrumento;Safra;");
-    expect(csv).toContain("Fixação de açúcar;2026/27;1000;20;5;0;;\"a;b\";;229280,48");
+    expect(csv).toContain("Fixação de açúcar;2026/27;1000;20;5;0;;;\"a;b\";;;;229280,48");
     expect(csv).toContain("% fixado (%);25");
+  });
+});
+
+// ── v2: tipo de opção, preenchimento das telas de risco (POS-V2-08 e 09) ──
+
+const EX_BASE: Exposicao = {
+  pct_fixado: 55, pct_travado: 45, pct_travado_rs: 20, producao_estimada_t: 4000, acucar_aberto_t: 1800,
+  preco_medio_cents_lb: 20.72, preco_medio_rs_t: 500, receita_usd_estimada: 1000000,
+  usd_ndf: 200000, usd_opcao_dolar: 100000, usd_protegido: 300000, usd_aberto: 700000,
+  sb_fechamento: 18, usdbrl_fechamento: 5, avisos: [],
+};
+
+describe("valoresParaRisco", () => {
+  it("usa o % com câmbio fixado e o preço médio em R$/t", () => {
+    expect(valoresParaRisco(EX_BASE)).toEqual({ pctFixado: "20", precoFixado: "500", aviso: null });
+  });
+  it("limita o % a 100", () => {
+    expect(valoresParaRisco({ ...EX_BASE, pct_travado_rs: 130 }).pctFixado).toBe("100");
+  });
+  it("sem câmbio fixado, preenche só o %, com aviso", () => {
+    const r = valoresParaRisco({ ...EX_BASE, preco_medio_rs_t: null });
+    expect(r.precoFixado).toBeNull();
+    expect(r.aviso).toBe(AVISO_SEM_CAMBIO);
+  });
+  it("nada fixado: preenche 0 e não avisa de câmbio", () => {
+    const r = valoresParaRisco({ ...EX_BASE, pct_travado_rs: 0, preco_medio_rs_t: null });
+    expect(r).toEqual({ pctFixado: "0", precoFixado: null, aviso: null });
+  });
+  it("sem produção, não preenche o %", () => {
+    const r = valoresParaRisco({ ...EX_BASE, pct_travado_rs: null });
+    expect(r.pctFixado).toBeNull();
+    expect(r.aviso).toBe(AVISO_SEM_PRODUCAO);
+  });
+});
+
+describe("valorParaHedge", () => {
+  it("preenche o dólar em aberto arredondado", () => {
+    expect(valorParaHedge(EX_BASE)).toEqual({ volume: "700000", aviso: null });
+  });
+  it("sem nada em aberto, não preenche e avisa", () => {
+    expect(valorParaHedge({ ...EX_BASE, usd_aberto: 0 })).toEqual({ volume: null, aviso: AVISO_SEM_DOLAR });
+  });
+  it("sem produção, avisa que não calculou", () => {
+    expect(valorParaHedge({ ...EX_BASE, usd_aberto: null }).volume).toBeNull();
+  });
+});
+
+describe("tipo da opção", () => {
+  const base = { safra: SAFRA, volume: 1000, preco_fixado: 15, cambio_fixado: null, premio: 0.5,
+    vencimento: null, contraparte: null, observacao: null, tipo_opcao: null };
+
+  it("aceita call e put só em opção", () => {
+    expect(validarPosicao({ ...base, instrumento: "opcao_acucar", tipo_opcao: "call" })).toEqual([]);
+    expect(validarPosicao({ ...base, instrumento: "fixacao_acucar", tipo_opcao: "put" })).toContain("tipo da opção só vale para opção");
+    expect(validarPosicao({ ...base, instrumento: "opcao_dolar", tipo_opcao: "straddle" as "put" })).toContain("tipo da opção deve ser call ou put");
+  });
+
+  it("lê a coluna Tipo da opção do CSV e vazia vira nulo (put)", () => {
+    const csv = `Safra;Instrumento;Volume;Preço fixado;Prêmio;Tipo da opção\n${SAFRA};opcao_dolar;100000;5,2;0;call\n${SAFRA};opcao_dolar;100000;5,2;0;`;
+    const r = parseCsvPosicoes(csv, SAFRA);
+    expect(r.erros).toEqual([]);
+    expect(r.posicoes.map((p) => p.tipo_opcao)).toEqual(["call", null]);
   });
 });

@@ -14,18 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatBRL, formatCents, formatDate, formatFX, formatNumber } from "@/lib/format";
 import { nomeArquivo } from "@/lib/csv";
 import {
-  INSTRUMENTOS, LOTE_MAX, STATUS_LABEL, gerarCsvPosicoes, parseCsvPosicoes, parseNumero, pontosPercentuais,
-  validarPosicao, type Instrumento, type PosicaoDados, type PosicaoLinha, type ResultadoImportacao, type Resumo,
+  INSTRUMENTOS, LOTE_MAX, MODELO_LABEL, STATUS_LABEL, TIPO_OPCAO_LABEL, ehOpcao, gerarCsvPosicoes, parseCsvPosicoes,
+  parseNumero, pontosPercentuais, safraAtual, validarPosicao, type Instrumento, type PosicaoDados, type PosicaoLinha,
+  type ResultadoImportacao, type Resumo, type TipoOpcao,
 } from "@/lib/posicoes";
 
 interface Usina { id: string; nome: string }
-
-/** Safra agrícola começa em abril: em 18/11/2026 a safra é 2026/27. */
-function safraAtual(): string {
-  const hoje = new Date();
-  const ano = hoje.getMonth() >= 3 ? hoje.getFullYear() : hoje.getFullYear() - 1;
-  return `${ano}/${String((ano + 1) % 100).padStart(2, "0")}`;
-}
 
 interface Form {
   instrumento: Instrumento;
@@ -33,15 +27,27 @@ interface Form {
   preco: string;
   cambio: string;
   premio: string;
+  tipo: "" | TipoOpcao; // "" = não informado (put, nas linhas antigas)
   vencimento: string;
   contraparte: string;
   observacao: string;
 }
 
 const FORM_VAZIO: Form = {
-  instrumento: "fixacao_acucar", volume: "", preco: "", cambio: "", premio: "",
+  instrumento: "fixacao_acucar", volume: "", preco: "", cambio: "", premio: "", tipo: "",
   vencimento: "", contraparte: "", observacao: "",
 };
+
+/** Linha do MTM por modelo, para a tabela: modelo, vol e taxas (POS-V2-05). */
+function detalheModelo(p: PosicaoLinha): string | null {
+  if (!ehOpcao(p.instrumento)) return null;
+  if (!p.modelo || p.modelo === "intrinseco") return p.aviso ?? "Valor intrínseco menos o prêmio.";
+  const partes = [MODELO_LABEL[p.modelo]];
+  if (p.vol_anual != null) partes.push(`vol ${formatNumber(p.vol_anual * 100, 1)}%`);
+  if (p.taxa_dom != null) partes.push(`taxa ${formatNumber(p.taxa_dom * 100, 2)}%`);
+  if (p.anos_ate_vencimento != null) partes.push(`${formatNumber(p.anos_ate_vencimento, 2)} anos`);
+  return partes.join(" · ");
+}
 
 const ehAcucar = (i: Instrumento) => i === "fixacao_acucar" || i === "futuro_acucar" || i === "opcao_acucar";
 const precoFormatado = (p: PosicaoLinha) => (ehAcucar(p.instrumento) ? formatCents(p.preco_fixado) : formatFX(p.preco_fixado));
@@ -133,6 +139,7 @@ export default function PosicoesPage() {
       preco: String(p.preco_fixado),
       cambio: p.cambio_fixado?.toString() ?? "",
       premio: p.premio ? String(p.premio) : "",
+      tipo: p.tipo_opcao ?? "",
       vencimento: p.vencimento ?? "",
       contraparte: p.contraparte ?? "",
       observacao: p.observacao ?? "",
@@ -147,6 +154,7 @@ export default function PosicoesPage() {
       preco_fixado: parseNumero(form.preco) ?? NaN,
       cambio_fixado: parseNumero(form.cambio),
       premio: parseNumero(form.premio) ?? 0,
+      tipo_opcao: ehOpcao(form.instrumento) && form.tipo !== "" ? form.tipo : null,
       vencimento: nulo(form.vencimento),
       contraparte: nulo(form.contraparte),
       observacao: nulo(form.observacao),
@@ -313,7 +321,17 @@ export default function PosicoesPage() {
               {campo(ehAcucar(form.instrumento) ? "Volume (t)" : "Volume (US$)", "volume")}
               {campo(ehAcucar(form.instrumento) ? "Preço fixado (¢/lb)" : "Taxa ou strike (R$/US$)", "preco")}
               {ehAcucar(form.instrumento) && campo("Câmbio fixado (R$/US$)", "cambio")}
-              {form.instrumento.startsWith("opcao") && campo("Prêmio pago (mesma unidade do preço)", "premio")}
+              {ehOpcao(form.instrumento) && campo("Prêmio pago (mesma unidade do preço)", "premio")}
+              {ehOpcao(form.instrumento) && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="tipo">Tipo da opção</Label>
+                  <select id="tipo" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.tipo}
+                    onChange={(e) => setForm({ ...form, tipo: e.target.value as "" | TipoOpcao })}>
+                    <option value="">Não informado (put)</option>
+                    {(Object.keys(TIPO_OPCAO_LABEL) as TipoOpcao[]).map((t) => <option key={t} value={t}>{TIPO_OPCAO_LABEL[t]}</option>)}
+                  </select>
+                </div>
+              )}
               {campo("Vencimento", "vencimento", "date")}
               {campo("Contraparte", "contraparte")}
               {campo("Observação", "observacao")}
@@ -348,7 +366,10 @@ export default function PosicoesPage() {
                       <TableCell>{formatNumber(p.volume, 0)} {p.unidade}</TableCell>
                       <TableCell>{precoFormatado(p)}</TableCell>
                       <TableCell>{formatDate(p.vencimento)}</TableCell>
-                      <TableCell>{formatBRL(p.mtm_rs)}</TableCell>
+                      <TableCell>
+                        {formatBRL(p.mtm_rs)}
+                        {detalheModelo(p) && <p className={p.aviso ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>{detalheModelo(p)}</p>}
+                      </TableCell>
                       <TableCell className="space-x-2 whitespace-nowrap">
                         <Button type="button" variant="ghost" size="sm" onClick={() => editar(p)}>Editar</Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => apagar(p.id)}>Apagar</Button>
@@ -367,7 +388,8 @@ export default function PosicoesPage() {
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             CSV com separador &quot;;&quot; e vírgula decimal (padrão Excel BR). Colunas: Safra, Instrumento, Volume, Preço fixado,
-            Câmbio fixado, Prêmio, Vencimento, Contraparte, Observação. Até {LOTE_MAX} linhas, todas na safra selecionada.
+            Câmbio fixado, Prêmio, Tipo da opção (call ou put; vazio = put), Vencimento, Contraparte, Observação.
+            Até {LOTE_MAX} linhas, todas na safra selecionada.
           </p>
           <Input type="file" accept=".csv,text/csv" aria-label="Arquivo CSV" onChange={(e) => { const f = e.target.files?.[0]; if (f) lerArquivo(f); }} />
           {importacao?.cabecalho && <p className="text-sm text-destructive">{importacao.cabecalho}</p>}
@@ -389,7 +411,9 @@ export default function PosicoesPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        MTM marcado contra o último fechamento de SB=F e USDBRL=X, sem ajuste por mês de vencimento. Opções valem pelo intrínseco menos o prêmio.
+        MTM marcado contra o último fechamento de SB=F e USDBRL=X, sem ajuste por mês de vencimento. Opções de açúcar valem por
+        Black-76 e de dólar por Garman-Kohlhagen, com a vol e as taxas mostradas em cada linha. Sem vol, taxa ou vencimento, vale o
+        intrínseco menos o prêmio, com aviso.
       </p>
     </div>
   );

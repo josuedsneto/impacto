@@ -9,6 +9,8 @@ import { Leitura } from "@/components/ui/leitura";
 import { BotaoExportar } from "@/components/ui/botao-exportar";
 import { BotaoSalvarAnalise } from "@/components/analises/botao-salvar-analise";
 import { gerarCsv, nomeArquivo } from "@/lib/csv";
+import { SeletorCarteira } from "@/components/posicoes/SeletorCarteira";
+import { valorParaHedge, type Exposicao } from "@/lib/posicoes";
 import { lerNumero } from "@/lib/numero";
 import { useReabrirAnalise } from "@/lib/reabrir-analise";
 import { camposDeAnalise } from "@/lib/hedge-reabrir";
@@ -121,6 +123,13 @@ export default function HedgeCambialPage() {
     setCampos((c) => ({ ...c, [campo]: valor }));
   }
 
+  // Preenche o volume com o dólar em aberto da safra (POS-V2-09); a entrada manual continua igual.
+  function usarCarteira(ex: Exposicao) {
+    const v = valorParaHedge(ex);
+    if (v.volume !== null) atualizar("volume", v.volume);
+    if (v.aviso) toast(v.aviso);
+  }
+
   async function calcular() {
     // b. Volume em pt-BR: ponto é separador de milhar ("500.000" = 500 mil).
     const volTexto = campos.volume.trim();
@@ -195,6 +204,10 @@ export default function HedgeCambialPage() {
 
       {erroPadrao && <ErrorState mensagem={erroPadrao} />}
       {!padrao && !erroPadrao && <Skeleton className="mb-4 h-24" />}
+
+      <div className="mb-4 rounded-xl border border-border bg-card p-4">
+        <SeletorCarteira rotuloBotao="Usar o dólar a receber em aberto da safra" onUsar={usarCarteira} />
+      </div>
 
       <div className="mb-4 grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1">
