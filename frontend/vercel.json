@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/alertas", "schedule": "0 21 * * 1-5" },
-    { "path": "/api/cron/aquecer-cache", "schedule": "0 6 * * 1-5" }
+    { "path": "/api/cron/aquecer-cache", "schedule": "0 6 * * 1-5" },
+    { "path": "/api/cron/briefing", "schedule": "30 10 * * 1-5" }
   ]
 }
