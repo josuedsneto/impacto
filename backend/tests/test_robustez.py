@@ -9,7 +9,7 @@ from postgrest.exceptions import APIError
 
 import constantes
 import main
-from routers import admin as admin_router, simulacoes
+from routers import admin as admin_router, risco, simulacoes
 
 ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
 
@@ -105,7 +105,7 @@ def test_excecao_nao_tratada_vira_500_em_portugues_com_cors(supa, monkeypatch):
     def quebra(*_a, **_k):
         raise RuntimeError("segredo interno")
 
-    monkeypatch.setattr(main, "get_prices", quebra)
+    monkeypatch.setattr(risco, "get_prices", quebra)
     main.limiter.enabled = False
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": "u1", "email": "u@x.com", "role": "user"}
     cliente = TestClient(main.app, raise_server_exceptions=False)
@@ -124,7 +124,7 @@ def test_excecao_nao_tratada_vira_500_em_portugues_com_cors(supa, monkeypatch):
 def test_breakeven_ignora_fechamento_nulo(supa, monkeypatch):
     dados = _precos_recentes(20.0, 5.0)
     dados["SB=F"].append({"date": date.today().isoformat(), "close": None})
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     main.limiter.enabled = False
     main.app.dependency_overrides[main.get_current_user] = lambda: {"id": "u1", "email": "u@x.com", "role": "user"}
     try:
@@ -190,14 +190,14 @@ def test_todos_usuarios_percorre_todas_as_paginas():
 
 def test_constante_ausente_ou_invalida_usa_valor_do_codigo(supa):
     supa.db["admin_config"] = {("fator_conversao_mtm",): {"key": "fator_conversao_mtm", "value": "1.000.000"}}
-    valores = main._ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1")
-    assert valores["fator_conversao_mtm"] == main.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0]
-    assert valores["risco_custo_fixo_1"] == main.CONSTANTES_NEGOCIO["risco_custo_fixo_1"][0]
+    valores = constantes._ler_constantes("fator_conversao_mtm", "risco_custo_fixo_1")
+    assert valores["fator_conversao_mtm"] == constantes.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0]
+    assert valores["risco_custo_fixo_1"] == constantes.CONSTANTES_NEGOCIO["risco_custo_fixo_1"][0]
 
 
 def test_constante_lida_do_banco_aceita_virgula(supa):
     supa.db["admin_config"] = {("breakeven_fator_conversao",): {"key": "breakeven_fator_conversao", "value": "1,2"}}
-    assert main._ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"] == 1.2
+    assert constantes._ler_constantes("breakeven_fator_conversao")["breakeven_fator_conversao"] == 1.2
 
 
 def test_put_constante_nao_numerica_responde_422(admin):
@@ -221,7 +221,7 @@ def test_put_constante_numerica_grava_com_ponto(admin):
 
 def test_heatmap_centrado_no_ultimo_fechamento(api, monkeypatch):
     dados = _precos_recentes(18.0, 5.6)
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     r = api.get("/api/metas", params={"meta": 2600})
     assert r.status_code == 200
     corpo = r.json()
@@ -230,14 +230,14 @@ def test_heatmap_centrado_no_ultimo_fechamento(api, monkeypatch):
     assert corpo["dolares"][5] == 5.6
     assert corpo["acucares"] == sorted(corpo["acucares"], reverse=True)
     assert corpo["dolares"] == sorted(corpo["dolares"])
-    assert corpo["heatmap"][5][5] == round(main.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0] * 18.0 * 5.6 - 2600, 2)
+    assert corpo["heatmap"][5][5] == round(constantes.CONSTANTES_NEGOCIO["fator_conversao_mtm"][0] * 18.0 * 5.6 - 2600, 2)
 
 
 def test_metas_sem_precos_recentes_responde_503(api, monkeypatch):
     dados = _precos_recentes(18.0, 5.6)
     antigos = [{**r, "date": "2020-01-0" + str(i % 9 + 1)} for i, r in enumerate(dados["SB=F"])]
     dados["SB=F"] = antigos
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: dados[t])
+    monkeypatch.setattr(risco, "get_prices", lambda t, s, e: dados[t])
     r = api.get("/api/metas")
     assert r.status_code == 503
     assert r.json()["detail"] == "Sem preços recentes para montar o mapa de metas."
