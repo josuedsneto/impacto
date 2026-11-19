@@ -17,10 +17,12 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import requests
-from pydantic import BaseModel, Field
+import pandas as pd
+from pydantic import BaseModel, Field, model_validator
 
 import cambio
 import market_cache
+from analysis import IndicatorConfig, compute_analysis
 import politica_hedge
 import telegram_bot
 from pregao import FERIADOS_ICE
@@ -35,7 +37,11 @@ DIAS_DADO_VELHO = 4        # DEC-15: barra mais antiga que isso = ticker pulado
 TICKER_POSICAO = "POSICAO" # DEC-22: regra de posição não tem ticker de mercado
 MIN_FECHAMENTOS_PROB = 60  # DEC-20
 N_CAMINHOS_PROB = 5000     # DEC-20
-TIPOS_DISPONIVEIS = ("preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar", "posicao_limite")
+MIN_FECHAMENTOS_SINAL = 60  # rodada 3: SMA 50 e MACD precisam de barras para aquecer
+TIPOS_DISPONIVEIS = ("preco_cruza", "variacao_diaria", "vol_acima", "prob_cruzar", "posicao_limite", "sinal_tecnico")
+NOME_ATIVO = {"USDBRL=X": "dólar", "SB=F": "açúcar"}  # rodada 3: texto do bloqueio (DEC-30)
+NOME_SINAL = {"rsi": "RSI", "bollinger": "Bollinger", "macd": "MACD", "stoch": "estocástico",
+              "cci": "CCI", "sma": "cruzamento de médias simples", "ema": "cruzamento de médias exponenciais"}
 TIPOS = TIPOS_DISPONIVEIS
 
 
@@ -52,6 +58,7 @@ class EmailNaoConfigurado(Exception):
 class PrecoCruzaParams(BaseModel):
     nivel: float = Field(gt=0)
     direcao: Literal["acima", "abaixo"]
+    margem_pct: float = Field(default=0, ge=0, le=20)  # rodada 3, DEC-29: rearme exige preço além do nível por essa margem
 
 
 class VariacaoDiariaParams(BaseModel):
@@ -67,11 +74,25 @@ class ProbCruzarParams(BaseModel):
     direcao: Literal["acima", "abaixo"]
     horizonte: int = Field(ge=1, le=252)  # dias úteis
     prob: float = Field(gt=0, le=1)       # limiar, fração (0,30 = 30%)
+    margem: float | None = Field(default=None, ge=0, le=0.2)  # rodada 3, DEC-28: rearme abaixo de prob − margem
+
+    @model_validator(mode="after")
+    def _margem_menor_que_prob(self):
+        if self.margem is None:
+            self.margem = min(0.05, self.prob / 2)
+        if self.margem >= self.prob:
+            raise ValueError("A margem tem de ser menor que a probabilidade.")
+        return self
 
 
 class PosicaoLimiteParams(BaseModel):
     usina_id: str = Field(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     safra: str = Field(pattern=r"^\d{4}/\d{2}$")
+
+
+class SinalTecnicoParams(BaseModel):
+    indicador: Literal["rsi", "bollinger", "macd", "stoch", "cci", "sma", "ema"]
+    sentido: Literal["compra", "venda"]
 
 
 PARAMS_POR_TIPO = {
@@ -80,6 +101,7 @@ PARAMS_POR_TIPO = {
     "vol_acima": VolAcimaParams,
     "prob_cruzar": ProbCruzarParams,
     "posicao_limite": PosicaoLimiteParams,
+    "sinal_tecnico": SinalTecnicoParams,
 }
 
 
@@ -194,7 +216,56 @@ def avaliar(regra: dict, serie: list[dict], dia: date | None = None) -> tuple[bo
         )
         return cond, vol, msg
 
+    if tipo == "sinal_tecnico":
+        return _avaliar_sinal(regra, serie)
+
     raise ValueError(f"Tipo sem avaliador: {tipo}")
+
+
+def _avaliar_sinal(regra: dict, serie: list[dict]) -> tuple[bool, float | None, str]:
+    """DEC-31: sinal do analysis.compute_analysis na data do último pregão. Só barras com close, high e low."""
+    linhas = [r for r in serie if all(r.get(c) is not None for c in ("close", "high", "low"))]
+    if len(linhas) < MIN_FECHAMENTOS_SINAL:
+        raise DadosInsuficientes
+    df = pd.DataFrame(linhas)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date").sort_index()
+    for c in ("open", "high", "low", "close", "volume"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    p = regra["params"]
+    cfg = IndicatorConfig(indicators=[p["indicador"]], sma_periods=[20, 50], ema_periods=[9, 21])
+    _, sinais = compute_analysis(df, cfg)
+    ultima = df.index[-1].date().isoformat()
+    tipo_sinal = "buy" if p["sentido"] == "compra" else "sell"
+    cond = any(s["indicator"] == p["indicador"] and s["type"] == tipo_sinal and s["date"] == ultima for s in sinais)
+    fechamento = float(df["close"].iloc[-1])
+    msg = (
+        f"{regra['ticker']}: sinal técnico de {NOME_SINAL[p['indicador']]} de {p['sentido']} "
+        f"em {_data_br(ultima)} (fechamento {_num(fechamento, 4)}). "
+        f"Sinal técnico, não uma recomendação."
+    )
+    return cond, fechamento, msg
+
+
+def ja_cruzado(ticker: str, direcao: str, nivel: float, hoje: date) -> str | None:
+    """DEC-30: mensagem de bloqueio se o último fechamento já está do lado da direção. None se ok ou sem preço."""
+    try:
+        linhas = market_cache.get_prices(ticker, hoje - timedelta(days=JANELA_DIAS), hoje)
+    except Exception:
+        logger.warning("Sem preço de %s para checar nível já cruzado; regra aceita", ticker)
+        return None
+    fech = _fechamentos(linhas)
+    if not fech or (hoje - date.fromisoformat(fech[-1][0])).days > DIAS_DADO_VELHO:
+        logger.warning("Dado velho ou ausente para %s; nível já cruzado não checado", ticker)
+        return None
+    data, ultimo = fech[-1]
+    if not ((direcao == "acima" and ultimo >= nivel) or (direcao == "abaixo" and ultimo <= nivel)):
+        return None
+    return (
+        f"O {NOME_ATIVO.get(ticker, ticker)} já está {direcao} de {_num(nivel, 2)} "
+        f"({_num(ultimo, 2)} em {_data_br(data)[:5]}). Escolha um nível {direcao} do preço atual."
+    )
 
 
 def avaliar_posicao(regra: dict, posicoes: list[dict], politica: dict | None) -> tuple[bool, float | None, str]:
@@ -215,6 +286,33 @@ def avaliar_posicao(regra: dict, posicoes: list[dict], politica: dict | None) ->
 
 
 # ── Transição e cooldown (ALE-03) ──────────────────────────────────────────────
+
+def _margem_prob(p: dict) -> float:
+    """DEC-28: regra antiga sem `margem` usa 0,05, limitado a metade do limiar para não travar."""
+    return float(p["margem"]) if "margem" in p else min(0.05, float(p["prob"]) / 2)
+
+
+def proximo_estado(regra: dict, condicao: bool, valor: float | None) -> bool:
+    """DEC-28/29: estado gravado em ultimo_estado (true = ligado). Sem histerese, é a própria condição.
+    Estado nulo (DEC-04) grava a condição sem disparar."""
+    prev = regra.get("ultimo_estado")
+    if condicao or prev is not True:  # armado (False) ou nulo: a faixa de margem não liga nada
+        return condicao
+    p, tipo = regra["params"], regra["tipo"]
+    if tipo == "prob_cruzar":
+        return not (valor < float(p["prob"]) - _margem_prob(p))
+    if tipo == "preco_cruza":
+        m = float(p.get("margem_pct", 0)) / 100
+        nivel = float(p["nivel"])
+        rearmou = valor < nivel * (1 - m) if p["direcao"] == "acima" else valor > nivel * (1 + m)
+        return not rearmou
+    return condicao
+
+
+def decidir(regra: dict, condicao: bool, valor: float | None, agora: datetime) -> tuple[bool, bool]:
+    """Pura: (disparar, novo_estado) para uma avaliação."""
+    return deve_disparar(regra, condicao, agora), proximo_estado(regra, condicao, valor)
+
 
 def deve_disparar(regra: dict, condicao: bool, agora: datetime) -> bool:
     """Dispara só na transição falso→verdadeiro, fora do cooldown (DEC-04: estado nulo não dispara)."""
@@ -290,7 +388,7 @@ def _enviar(db, regra: dict, texto: str, emails: dict) -> None:
 
 # ── Disparo (DEC-06: evento primeiro, estado, envio, confirmação) ──────────────
 
-def _disparar(db, regra: dict, condicao: bool, valor, msg: str, agora: datetime, emails: dict) -> bool:
+def _disparar(db, regra: dict, estado: bool, valor, msg: str, agora: datetime, emails: dict) -> bool:
     dia = agora.astimezone(BRT).date()
     hora = agora.astimezone(BRT).strftime("%H:%M")
     texto = f"{msg} Avaliado às {hora} (Brasília)."
@@ -304,11 +402,11 @@ def _disparar(db, regra: dict, condicao: bool, valor, msg: str, agora: datetime,
         .execute()
     )
     if not ins.data:  # já há evento da regra hoje: não envia de novo
-        db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
+        db.table("alert_rules").update({"ultimo_estado": estado}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
         return False
     evento_id = ins.data[0]["id"]
     db.table("alert_rules").update(
-        {"ultimo_estado": True, "ultimo_disparo": agora.isoformat()}
+        {"ultimo_estado": estado, "ultimo_disparo": agora.isoformat()}
     ).eq("id", regra["id"]).execute()
 
     erro, enviado = None, False
@@ -362,11 +460,12 @@ def rodar_avaliacoes(agora: datetime | None = None, tipos: list[str] | None = No
 
     def processar(regra: dict, condicao: bool, valor, msg: str) -> None:
         resumo["avaliadas"] += 1
-        if deve_disparar(regra, condicao, agora):
-            if _disparar(db, regra, condicao, valor, msg, agora, emails):
+        disparar, estado = decidir(regra, condicao, valor, agora)
+        if disparar:
+            if _disparar(db, regra, estado, valor, msg, agora, emails):
                 resumo["disparadas"] += 1
         else:
-            db.table("alert_rules").update({"ultimo_estado": condicao}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
+            db.table("alert_rules").update({"ultimo_estado": estado}).eq("id", regra["id"]).eq("user_id", regra["user_id"]).execute()
 
     for regra in (r for r in regras if r["tipo"] == "posicao_limite"):
         try:
