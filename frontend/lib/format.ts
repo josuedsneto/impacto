@@ -18,6 +18,12 @@ export function formatNumber(v: Valor, casas = 2): string {
   return fmt({ minimumFractionDigits: casas, maximumFractionDigits: casas }).format(v);
 }
 
+/** Pontos percentuais: até 1 casa, sem ",0" quando é inteiro (12 e 11,5). */
+export function formatPontos(v: Valor): string {
+  if (ausente(v)) return VAZIO;
+  return fmt({ maximumFractionDigits: 1 }).format(v);
+}
+
 export function formatBRL(v: Valor): string {
   if (ausente(v)) return VAZIO;
   return espaco(fmt({ style: "currency", currency: "BRL" }).format(v));
@@ -59,7 +65,10 @@ export function formatDataHora(iso: string | null | undefined): string {
   if (!iso) return VAZIO;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return VAZIO;
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(d);
+  // Fuso fixo de Brasília: o servidor (Vercel) roda em UTC.
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+  }).format(d);
 }
 
 /** Hora HH:mm de um instante (ex.: hora da última atualização). */

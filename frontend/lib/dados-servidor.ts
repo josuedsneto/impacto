@@ -2,7 +2,7 @@
 // Toda carga devolve Carga<T>: falha vira { ok: false } com log, nunca silêncio (FD-01, FD-02).
 // React.cache deduplica dentro de uma requisição: layout e dashboard pedem /api/focus uma vez (FD-04).
 import { cache } from "react";
-import type { FocusData, MarketStatus, PriceRow, SimulationRow } from "@/lib/types/api";
+import type { FocusData, MarketStatus, PainelHoje, PriceRow, SimulationRow } from "@/lib/types/api";
 
 export type Carga<T> = { ok: true; dados: T } | { ok: false; erro: string };
 
@@ -65,4 +65,9 @@ export const getStatusMercado = cache((token: string): Promise<Carga<MarketStatu
 
 export const getSimulacoes = cache((token: string) =>
   pedir<{ simulations?: SimulationRow[] }>("/api/simulations", token, 0),
+);
+
+/** Painel "Hoje": dado do usuário, sem cache. 15 s porque o câmbio simula 10.000 caminhos (PNL-20). */
+export const getPainelHoje = cache((token: string): Promise<Carga<PainelHoje>> =>
+  pedir<PainelHoje>("/api/painel/hoje", token, 0, 15000),
 );
