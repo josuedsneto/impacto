@@ -10,6 +10,9 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 
 - [ ] Usuário cria, pausa e apaga até 20 regras de alerta na tela `/app/alertas`.
 - [ ] Três tipos avaliados no MVP: `preco_cruza`, `variacao_diaria`, `vol_acima`.
+- [ ] (Rodada 2) Quarto tipo `prob_cruzar`: probabilidade de o câmbio tocar um nível em até N dias úteis (`cambio.py`).
+- [ ] (Rodada 2) Quinto tipo `posicao_limite`: % fixado da safra fora da política de hedge.
+- [ ] (Rodada 2) Canal Telegram com vínculo por código.
 - [ ] Cada regra dispara **na transição** (condição passou de falsa para verdadeira) e respeita cooldown.
 - [ ] Cada disparo grava um evento (um por regra por dia) e envia e-mail; falha de envio fica registrada, não quebra o job.
 - [ ] (P2) Briefing diário por e-mail para quem optou.
@@ -18,8 +21,9 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 
 | Item | Motivo |
 |------|--------|
-| Tipo `prob_cruzar` (avaliador) | Depende de `backend/cambio.py`, que não existe nesta base. Schema e check do banco já aceitam o tipo; a API recusa criação com 422 "disponível em breve". Pendência registrada. |
-| Canal Telegram | v2. O check do banco aceita `telegram`; a API recusa. |
+| Alerta de `prob_cruzar` com dados intradiários | Usa fechamentos diários do cache, como os demais tipos. |
+| Telegram para o briefing diário | Só alertas usam o canal Telegram nesta rodada. |
+| Reenvio de alerta de Telegram que falhou | Mesma regra de DEC-07 (sem reenvio). |
 | Avaliação a cada 15 min no pregão | O plano Hobby da Vercel permite só cron diário (ver DEC-02). Caminho de upgrade descrito abaixo. |
 | Alerta em tempo real, push, SMS | Fora do escopo do pedido. |
 | Refatorar `/api/volatility` para usar a função nova | Mudança em `main.py` fora da linha de include. A conta é replicada e coberta por teste de paridade. |
@@ -49,6 +53,14 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 | DEC-17 E-mail de destino | `supa.auth.admin.get_user_by_id(user_id)`, uma vez por usuário por rodada. Sem coluna nova. Sem e-mail: evento com `erro` preenchido. | Sem duplicar dado de usuário. | — |
 | DEC-18 Cooldown e variação | `cooldown_horas` entre 24 e 720 (cron diário). `variacao_diaria` segue a regra de transição: dois dias seguidos acima do limite disparam uma vez. Transição que cai no cooldown é perdida até a condição voltar a falsa; isso é aceito e documentado para o usuário na tela. | Simples e previsível. | n |
 | DEC-19 Rota de cron | `GET` (é como a Vercel chama). `CRON_SECRET` ausente → 503. Comparação com `hmac.compare_digest`. `JOBS_SECRET` e `CRON_SECRET` só no servidor, sem `NEXT_PUBLIC_`. | Evita `Bearer undefined` aceito. | — |
+| DEC-20 `prob_cruzar` | `params`: `nivel` (>0), `direcao` (`acima`/`abaixo`), `horizonte` (1 a 252 dias úteis), `prob` (0 < prob ≤ 1). Valor = fração de caminhos que tocam o nível no fechamento diário (monitoramento só no fechamento, por isso a probabilidade é menor que a intradiária) em até `horizonte` dias. Condição = valor ≥ `prob`. Limitação aceita: se o nível já está do lado da direção (ex.: `acima` com nível abaixo do spot), o valor fica perto de 1; não há bloqueio na criação nesta rodada, a tela explica. Modelo: `cambio.simular` (EWMA + resíduos reamostrados), 5.000 caminhos, drift zero, sobre `cambio.limpar`. Mínimo de 60 fechamentos limpos, senão `DadosInsuficientes`. | Pedido do usuário. Direção explícita: `acima` conta máximo ≥ nível; `abaixo` conta mínimo ≤ nível (não depende de nível estar acima ou abaixo do spot, diferente de `prob_tocar`). | n |
+| DEC-21 Semente do `prob_cruzar` | `seed = int(sha256(f"{rule_id}|{dia}")[:8], 16)`, com `dia` = data de Brasília da avaliação. Mesma regra, mesmo dia e mesma série dão o mesmo número. `/testar` às 14h e o job às 21h podem ver fechamentos diferentes; a semente muda todo dia, então uma regra rente ao limiar pode disparar de novo após o cooldown (erro de Monte Carlo com 5.000 caminhos ≈ 0,7 p.p. perto de 50%). Não usa `hash()` do Python (muda entre processos). | Reprodutível, como pedido. | — |
+| DEC-22 `posicao_limite` | `params`: `usina_id`, `safra`. Ticker gravado como `POSICAO` (não é ticker de mercado; o job não busca preço para ele). Condição = status `abaixo` ou `acima` da política (`politica_hedge.situacao`, mesma função de `GET /api/posicoes/resumo`). `sem_politica` ou `sem_producao` → `DadosInsuficientes` (regra pulada). Valor = `pct_fixado`. Criação exige membro da usina (`user_usinas`), senão 403. | Regra por usina e safra, sem duplicar cálculo. Aberto: a checagem de membro só ocorre na criação; quem saiu da usina continua recebendo até apagar a regra. | n |
+| DEC-23 Telegram | Tabela `telegram_vinculos` (`user_id` PK, `chat_id` único, `codigo`, `codigo_expira`). `POST /api/telegram/codigo` gera código de 8 caracteres (`secrets`), válido 15 min, de uso único. Webhook `POST /api/telegram/webhook` valida `X-Telegram-Bot-Api-Secret-Token` com `hmac.compare_digest` (sem `TELEGRAM_WEBHOOK_SECRET` → 503). Reconhece `/start CODIGO`; grava `chat_id` e apaga o código. Envio por `POST https://api.telegram.org/bot<TOKEN>/sendMessage` com `requests`. Sem `TELEGRAM_BOT_TOKEN` o canal aparece indisponível e o job grava erro. Criar regra com `canal=telegram` exige vínculo (422 se não houver). Só chats privados (`chat.type == "private"`) vinculam; grupo recebe a mensagem de recusa. Se o `chat_id` já pertence a outra conta, o webhook responde que o Telegram já está vinculado a outra conta e não grava. O webhook responde 200 em todos os casos de mensagem (código inválido inclusive), para o Telegram não reenviar. Validação e consumo do código são uma única operação (`UPDATE ... WHERE codigo = X AND codigo_expira > now() RETURNING`). Alfabeto do código: `ABCDEFGHJKMNPQRSTUVWXYZ23456789`. `POST /api/telegram/codigo` tem rate limit (5/min). Erro de envio pelo Telegram grava mensagem fixa (`Falha no envio pelo Telegram (HTTP n)`), nunca o texto da exceção, porque a URL da Bot API contém o token. | Pedido do usuário. Código curto evita colar token longo; expira e é de uso único. | — |
+| DEC-24 Briefing: horário e opt-in | Cron `30 10 * * 1-5` (10:30 UTC = 07:30 de Brasília, como pedido). No Hobby, a precisão é de hora: a execução cai entre 10:00 e 10:59 UTC, ou seja, entre 07:00 e 07:59 de Brasília. A tela diz "entre 7h e 8h", não "às 7h30". Os envios são espaçados (~0,6 s, limite de 2 req/s do Resend) para caber nos 60 s. Opt-in em `preferencias_usuario.briefing_email` (RLS próprio). Usuário sem opt-in nunca recebe. | Pedido do usuário; limite do plano (ver DEC-01). | n |
+| DEC-25 Manchetes do briefing | `backend/noticias.py` com a mesma URL e o mesmo parse de `main.get_news` (Google News RSS). `main.py` não é tocado nesta rodada, então a função de `main` continua com a sua cópia. Débito: unir as duas quando `main.py` for dividido. | Não mexer em `main.py` além do include. | n |
+| DEC-26 Briefing: conteúdo e falhas | Spot e variação de SB=F e USDBRL=X com a data do último fechamento. Focus: `fetch_indicator("Câmbio", ano)` e `("Selic", ano)` com `ano` = ano corrente. Se uma seção falha, o e-mail sai com "indisponível" nela; o job não cai. Alertas de ontem = eventos do próprio usuário com `dia` igual ao último dia útil anterior (Brasília); segunda-feira pega sexta. Feriados não tratados nesta rodada. | Degrada sem derrubar o envio. | n |
+| DEC-27 Envio com HTML | `enviar_email` aceita `html` opcional; com `html`, o Resend recebe `html` e `text`. | Briefing em HTML simples com versão em texto. | — |
 
 **Open questions:**
 - Plano da Vercel (DEC-01) e se o usuário quer pagar Pro para intradiário (DEC-02).
@@ -69,7 +81,7 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 3. WHEN o usuário já tem 20 regras THEN a API SHALL responder `400` "Limite de 20 alertas por conta atingido. Apague um alerta para criar outro."
 4. WHEN o usuário chama `PATCH /api/alertas/{id}` com `ativo` THEN a API SHALL alterar só esse campo, e `ultimo_estado` SHALL ser mantido.
 5. WHEN o usuário chama `PATCH`, `DELETE` ou `/testar` numa regra alheia, ou `/eventos` de regra alheia THEN a API SHALL responder `404`.
-6. WHEN o `tipo` é `prob_cruzar` ou o `canal` é `telegram` THEN a API SHALL responder `422` "Disponível em breve."
+6. WHEN o `tipo` não existe ou o `canal` é `telegram` sem vínculo (DEC-23) THEN a API SHALL responder `422` com mensagem em português ("Vincule o Telegram antes de usar este canal.").
 
 **Independent Test**: `pytest backend/tests/test_alertas_api.py` com Supabase simulado.
 
@@ -146,9 +158,69 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 **Acceptance Criteria**:
 
 1. WHEN o usuário ativa a opção em `Alertas` THEN a tabela `preferencias_usuario` SHALL gravar `briefing_email=true` (RLS: CRUD próprio).
-2. WHEN o cron de `0 10 * * 1-5` (07:00 de Brasília, com precisão de hora no Hobby, ou seja, entre 07:00 e 07:59) roda THEN a rota SHALL chamar `POST /api/jobs/briefing`. O horário "7h30" do pedido não é garantido no Hobby; ver pergunta aberta.
+2. WHEN o cron de `30 10 * * 1-5` roda (DEC-24: 07:30 de Brasília, mas no Hobby a execução cai entre 10:00 e 10:59 UTC) THEN a rota SHALL chamar `POST /api/jobs/briefing` com `X-Job-Secret`.
 3. The e-mail SHALL conter: spot e variação de açúcar e dólar com a data; Focus; as 3 primeiras manchetes; alertas disparados ontem.
 4. WHEN um usuário não tem opt-in THEN o job SHALL não enviar nada a ele.
+
+### P1 (rodada 2): Probabilidade de cruzar ⭐
+
+**User Story**: Como trader de câmbio, quero um aviso quando a chance de o dólar tocar um nível em alguns dias úteis passar de um limite que eu escolho.
+
+**Acceptance Criteria**:
+
+1. WHEN o usuário cria `prob_cruzar` com `nivel`, `direcao`, `horizonte` (1 a 252) e `prob` (0 < prob ≤ 1) válidos THEN a API SHALL aceitar a regra (`201`) e avaliá-la para gravar `ultimo_estado` (DEC-04).
+2. WHEN `avaliar` roda para `prob_cruzar` THEN o valor SHALL ser a fração de caminhos que tocam o nível em até `horizonte` dias úteis (DEC-20) e `condicao` SHALL ser `valor ≥ prob`.
+3. WHEN a avaliação roda com a mesma regra e o mesmo dia THEN o valor SHALL ser idêntico em duas chamadas (DEC-21).
+4. WHEN `POST /api/alertas/{id}/testar` roda para `prob_cruzar` THEN SHALL devolver valor, condição e mensagem com a probabilidade em %, sem gravar nada.
+5. The tela SHALL oferecer o tipo com nível, direção, horizonte em dias úteis e probabilidade em %.
+
+**Independent Test**: `pytest backend/tests/test_alertas_prob.py` com série sintética (passeio determinístico e série com tendência): probabilidade em [0,1], monotônica no nível, reprodutível pela semente.
+
+### P1 (rodada 2): Alerta de posição fora da política ⭐
+
+**User Story**: Como gestor de hedge, quero um aviso quando o % fixado de uma safra sai da faixa da política.
+
+**Acceptance Criteria**:
+
+1. WHEN o usuário que é membro da usina cria `posicao_limite` com `usina_id` e `safra` THEN a API SHALL criar a regra (`201`) com `ticker="POSICAO"` (DEC-22).
+2. WHEN o usuário não é membro da usina THEN a API SHALL responder `403` "Usuário não associado a esta usina."
+3. WHEN o job avalia a regra THEN ele SHALL usar `politica_hedge.situacao`, a mesma função de `GET /api/posicoes/resumo`, e SHALL NOT buscar preço de mercado para essa regra.
+4. WHEN o status é `abaixo` ou `acima` THEN `condicao` SHALL ser verdadeira e a mensagem SHALL dizer o % fixado e a faixa da política.
+5. A função `situacao` (em `backend/politica_hedge.py`) SHALL ser pura e coberta por teste; `resumo_safra` já a usa e SHALL continuar passando `test_posicoes.py`.
+6. WHEN o job avalia `posicao_limite` e o criador não é mais membro da usina THEN a regra SHALL ser pulada (contada em `puladas`), sem ler nem enviar dados da usina.
+
+**Independent Test**: `pytest backend/tests/test_posicoes.py backend/tests/test_alertas_posicao.py`.
+
+### P1 (rodada 2): Canal Telegram ⭐
+
+**User Story**: Como usuário, quero vincular meu Telegram por um código curto e receber os alertas por lá.
+
+**Acceptance Criteria**:
+
+1. WHEN o usuário chama `POST /api/telegram/codigo` THEN a API SHALL gerar código de 8 caracteres válido por 15 min e devolver `{codigo, expira_em}`. IF o token do bot não está configurado THEN responder `503`.
+2. WHEN o Telegram envia `/start CODIGO` com o header `X-Telegram-Bot-Api-Secret-Token` correto e o código não expirou THEN o webhook SHALL gravar `chat_id`, apagar o código e responder `200`, enviando "Pronto. Alertas por Telegram ativados." ao chat.
+3. IF o header não confere, ou `TELEGRAM_WEBHOOK_SECRET` não existe THEN o webhook SHALL responder `401` ou `503` e nunca gravar nada.
+4. WHEN o código está expirado ou já foi usado THEN o webhook SHALL responder ao chat "Código inválido ou expirado. Gere outro na tela de alertas." e não gravar.
+5. WHEN o usuário chama `GET /api/telegram/status` THEN SHALL receber `{disponivel, vinculado}`; `DELETE /api/telegram/vinculo` SHALL remover o `chat_id`.
+6. WHEN o job dispara uma regra com `canal=telegram` THEN SHALL enviar pelo `chat_id` do usuário; sem token, grava `erro`, sem quebrar o job.
+
+**Independent Test**: `pytest backend/tests/test_telegram.py` com `requests` simulado.
+
+**Migrations desta rodada:** `20261119000001_preferencias_usuario.sql` (BRF-01), `20261119000002_alertas_posicao_limite.sql` (troca o CHECK de `tipo` para incluir `posicao_limite`), `20261119000003_telegram_vinculos.sql` (RLS: leitura e remoção do próprio vínculo; escrita pelo backend).
+
+**Como registrar o webhook (uma vez, após o deploy)**:
+```
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -d "url=https://<host-do-backend>/api/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+```
+Variáveis: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` (só no backend). Para conferir: `getWebhookInfo` na mesma API.
+
+### P2: Briefing, detalhamento de entrega
+
+- BRF-01 usa `supabase/migrations/20261119000001_preferencias_usuario.sql`.
+- BRF-02 usa cron `30 10 * * 1-5` (DEC-24).
+- BRF-03 segue DEC-25 a DEC-27.
 
 ---
 
@@ -156,7 +228,9 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 
 - WHEN o ticker não tem dado no intervalo THEN a regra é pulada (DEC-15) e não recebe evento.
 - WHEN a regra é apagada no meio da rodada THEN o `unique` e o `on delete cascade` evitam evento órfão; o envio segue só se o evento foi inserido.
-- WHEN a condição é `prob_cruzar` existente no banco (criada antes) THEN o job SHALL marcar `erro="Tipo ainda não disponível"` e não alterar estado.
+- WHEN `posicao_limite` tem política sem produção estimada, ou não há política THEN a regra é pulada (DEC-22) e não recebe evento.
+- WHEN `prob_cruzar` tem menos de 60 fechamentos limpos THEN a regra é pulada (DEC-20).
+- WHEN o usuário apaga o vínculo do Telegram com regras de canal `telegram` THEN os disparos seguintes seguem a DEC-06 (estado gravado) e gravam evento com `enviado=false` e `erro="Telegram não vinculado"`; não há reenvio por e-mail.
 - WHEN `RESEND_API_KEY` não existe THEN o job SHALL não quebrar e os eventos SHALL registrar o erro (DEC-07).
 
 ---
@@ -174,8 +248,12 @@ O MVP cria regras de alerta por usuário, avaliadas por um job agendado, com env
 | BRF-01 | P2 Briefing: opt-in com RLS | - | Pending |
 | BRF-02 | P2 Briefing: cron 10:30 UTC e endpoint | - | Pending |
 | BRF-03 | P2 Briefing: conteúdo do e-mail | - | Pending |
+| ALE-07 | P1 rodada 2: prob_cruzar (avaliador, semente, teste) | - | Pending |
+| ALE-08 | P1 rodada 2: posicao_limite (função situacao, criação com membro) | - | Pending |
+| ALE-09 | P1 rodada 2: Telegram (código, webhook, envio) | - | Pending |
+| MIG | Migrations 20261119000001 (preferencias_usuario), 000002 (tipo posicao_limite no CHECK), 000003 (telegram_vinculos) | - | Pending |
 
-**Coverage:** 9 total, 0 mapeados (Medium).
+**Coverage:** 12 total, 0 mapeados (Medium).
 
 ## Success Criteria
 
