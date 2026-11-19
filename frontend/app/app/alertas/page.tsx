@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { ATIVOS, nomeAtivo } from "@/lib/ativos";
-import { descreverRegra, LIMITE_REGRAS, montarParams, TIPOS, type Evento, type Regra, type TipoAlerta } from "@/lib/alertas";
+import { descreverRegra, INDICADORES, LIMITE_REGRAS, montarParams, TIPOS, type Evento, type IndicadorSinal, type Regra, type SentidoSinal, type TipoAlerta } from "@/lib/alertas";
 import { BriefingToggle, TelegramVinculo } from "@/components/alertas/CanaisAlerta";
 import { formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -35,6 +35,10 @@ export default function AlertasPage() {
   const [cooldown, setCooldown] = useState("24");
   const [horizonte, setHorizonte] = useState("5");
   const [probPct, setProbPct] = useState("");
+  const [margemPp, setMargemPp] = useState("5");
+  const [margemPct, setMargemPct] = useState("0");
+  const [indicador, setIndicador] = useState<IndicadorSinal>("rsi");
+  const [sentido, setSentido] = useState<SentidoSinal>("compra");
   const [usinas, setUsinas] = useState<{ id: string; nome: string }[]>([]);
   const [usinaId, setUsinaId] = useState("");
   const [safra, setSafra] = useState("2026/27");
@@ -82,12 +86,26 @@ export default function AlertasPage() {
         toast.error("Escolha a usina e informe a safra no formato 2026/27.");
         return;
       }
-    } else if (!nivel || !Number.isFinite(valor) || valor <= 0) {
+    } else if (tipo !== "sinal_tecnico" && (!nivel || !Number.isFinite(valor) || valor <= 0)) {
       toast.error(tipo === "preco_cruza" || tipo === "prob_cruzar" ? "Informe um nível de preço maior que zero." : "Informe um percentual maior que zero.");
       return;
     }
     if (tipo === "prob_cruzar" && (!Number.isInteger(h) || h < 1 || h > 252 || !(prob > 0 && prob <= 100))) {
       toast.error("Use de 1 a 252 dias úteis e uma probabilidade entre 0 e 100%.");
+      return;
+    }
+    const mPp = Number(margemPp.replace(",", "."));
+    const mPct = Number(margemPct.replace(",", "."));
+    if (tipo === "prob_cruzar" && !(mPp >= 0 && mPp <= 20)) {
+      toast.error("A margem para rearmar deve estar entre 0 e 20 pontos percentuais.");
+      return;
+    }
+    if (tipo === "prob_cruzar" && mPp / 100 >= prob / 100) {
+      toast.error("A margem para rearmar tem de ser menor que a probabilidade.");
+      return;
+    }
+    if (tipo === "preco_cruza" && !(mPct >= 0 && mPct <= 20)) {
+      toast.error("A margem para rearmar deve estar entre 0% e 20%.");
       return;
     }
     setSalvando(true);
@@ -97,7 +115,9 @@ export default function AlertasPage() {
         body: JSON.stringify({
           tipo,
           ticker: tipo === "posicao_limite" ? "POSICAO" : ticker,
-          params: montarParams(tipo, valor, direcao, { horizonte: h, probPct: prob, usinaId, safra }),
+          params: montarParams(tipo, valor, direcao, {
+            horizonte: h, probPct: prob, margemPp: mPp, margemPct: mPct, indicador, sentido, usinaId, safra,
+          }),
           canal,
           cooldown_horas: Number(cooldown),
         }),
@@ -146,7 +166,7 @@ export default function AlertasPage() {
     <div>
       <PageHeader
         titulo="Alertas"
-        descricao="Avisos por e-mail quando um preço cruza um nível ou quando a volatilidade passa do limite. Cada alerta avisa na mudança, não a cada dia enquanto a condição continua."
+        descricao="Avisos por e-mail quando um preço cruza um nível, quando a volatilidade passa do limite ou quando um indicador técnico dá sinal. Cada alerta avisa na mudança, não a cada dia enquanto a condição continua."
       />
 
       {erro && <ErrorState mensagem={erro} onRetry={carregar} />}
@@ -249,7 +269,30 @@ export default function AlertasPage() {
                 </div>
               )}
 
-              {tipo === "posicao_limite" ? (
+              {tipo === "sinal_tecnico" ? (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Indicador</Label>
+                    <Select value={indicador} onValueChange={(v) => setIndicador(v as IndicadorSinal)}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {INDICADORES.map((i) => <SelectItem key={i.valor} value={i.valor}>{i.rotulo}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Sentido</Label>
+                    <Select value={sentido} onValueChange={(v) => setSentido(v as SentidoSinal)}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="compra">Compra</SelectItem>
+                        <SelectItem value="venda">Venda</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs text-muted-foreground">Sinal técnico, não uma recomendação. Avaliado no último fechamento, após o pregão.</span>
+                  </div>
+                </>
+              ) : tipo === "posicao_limite" ? (
                 <>
                   <div className="flex flex-col gap-1.5">
                     <Label>Usina</Label>
@@ -284,6 +327,14 @@ export default function AlertasPage() {
                 </div>
               )}
 
+              {tipo === "preco_cruza" && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="margem-preco">Margem para rearmar (%)</Label>
+                  <Input id="margem-preco" inputMode="decimal" value={margemPct} onChange={(ev) => setMargemPct(ev.target.value)} />
+                  <span className="text-xs text-muted-foreground">Depois de avisar, o alerta só volta a valer quando o preço recuar essa porcentagem além do nível. Use 0 para rearmar assim que sair do lado do nível.</span>
+                </div>
+              )}
+
               {tipo === "prob_cruzar" && (
                 <>
                   <div className="flex flex-col gap-1.5">
@@ -294,6 +345,11 @@ export default function AlertasPage() {
                     <Label htmlFor="probabilidade">Avisar quando a chance passar de (%)</Label>
                     <Input id="probabilidade" inputMode="decimal" placeholder="ex.: 30" value={probPct} onChange={(ev) => setProbPct(ev.target.value)} />
                     <span className="text-xs text-muted-foreground">Estimativa no fechamento diário. Não é previsão.</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="margem-prob">Margem para rearmar (pontos percentuais)</Label>
+                    <Input id="margem-prob" inputMode="decimal" value={margemPp} onChange={(ev) => setMargemPp(ev.target.value)} />
+                    <span className="text-xs text-muted-foreground">Depois de avisar, o alerta só volta a valer quando a chance cair essa quantidade de pontos abaixo do limite.</span>
                   </div>
                 </>
               )}
