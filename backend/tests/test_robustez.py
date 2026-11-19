@@ -1,4 +1,5 @@
 """HARD-01 a HARD-12: validações, erro 500 controlado, constantes, heatmap e jump-diffusion."""
+import importlib
 import math
 from datetime import date, timedelta
 
@@ -8,15 +9,30 @@ from postgrest.exceptions import APIError
 
 import constantes
 import main
+from routers import simulacoes
 
 ADMIN = {"id": "adm", "email": "a@x.com", "role": "admin"}
 
 
+DOMINIOS = ["conta", "opcoes", "regressao", "simulacoes", "atr_usinas", "admin", "mercado", "risco"]
+
+
+def _modulos_com_supa():
+    """Cada módulo que importa supa_client por nome precisa do fake (main e constantes incluídos)."""
+    mods = [main, constantes]
+    for dominio in DOMINIOS:
+        try:
+            mods.append(importlib.import_module(f"routers.{dominio}"))
+        except ModuleNotFoundError:
+            pass  # domínio ainda não migrado
+    return [m for m in mods if hasattr(m, "supa_client")]
+
+
 @pytest.fixture(autouse=True)
 def _supa_do_main(supa, monkeypatch):
-    """main importa supa_client por nome: troca também aqui, além do market_cache."""
-    monkeypatch.setattr(main, "supa_client", lambda: supa)
-    monkeypatch.setattr(constantes, "supa_client", lambda: supa)
+    """Módulos importam supa_client por nome: troca em cada um, além do market_cache."""
+    for mod in _modulos_com_supa():
+        monkeypatch.setattr(mod, "supa_client", lambda: supa)
 
 
 @pytest.fixture
@@ -258,7 +274,7 @@ def test_jump_diffusion_sem_saltos_segue_o_drift_em_log(api, monkeypatch):
     # deve ser T·mu. Com a dupla contagem antiga (−σ²/2 extra) a média cairia ~ T·σ²/2.
     closes = [100.0 + (i % 2) for i in range(30)]
     linhas = [{"date": (date.today() - timedelta(days=i)).isoformat(), "close": c} for i, c in enumerate(closes)]
-    monkeypatch.setattr(main, "get_prices", lambda t, s, e: linhas)
+    monkeypatch.setattr(simulacoes, "get_prices", lambda t, s, e: linhas)
     T, rep = 252, 300
     somas, mu = [], None
     for _ in range(rep):
