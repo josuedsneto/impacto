@@ -152,8 +152,8 @@ cd frontend && npm test
 → Test Files 25 passed (25) · Tests 367 passed (367)
 
 cd frontend && npm run lint  → exit=0
-cd frontend && npx tsc --noEmit  → (ver linha final abaixo)
-cd frontend && npm run build  → (ver linha final abaixo)
+cd frontend && npx tsc --noEmit  → exit=0
+cd frontend && npm run build  → FALHOU (TurbopackInternalError: "Symlink [project]/node_modules is invalid, it points out of the filesystem root"). Causa: o node_modules desta worktree é uma junção para a checkout principal, e o Turbopack recusa o link. Não é erro de código. Build NÃO verificado: rodar `npm run build` numa checkout com node_modules próprio antes do merge.
 ```
 
 ## Decisões desta rodada (DEC-28 a DEC-32, ver spec.md)
@@ -166,9 +166,10 @@ cd frontend && npm run build  → (ver linha final abaixo)
 ## Pendências e riscos
 
 1. **Migração não aplicada**: `20261120000007_alertas_sinal_tecnico.sql`. Aplicar antes do backend desta rodada: sem ela, criar `sinal_tecnico` dá erro de CHECK.
-2. **Limitação de barra atrasada**: se a barra do dia não entrar no cache a tempo, o sinal daquele dia não dispara (DEC-31).
-3. **Edição**: não há tela de edição; o `PATCH` com `params` existe na API e não é usado pela tela.
-4. Sem mudanças de variável de ambiente nem de cron nesta rodada.
+2. **Build não verificado** (ver resultado acima): rodar `npm run build` com `node_modules` real antes do merge.
+3. **Limitação de barra atrasada**: se a barra do dia não entrar no cache a tempo, o sinal daquele dia não dispara (DEC-31).
+4. **Edição**: não há tela de edição; o `PATCH` com `params` existe na API e não é usado pela tela.
+5. Sem mudanças de variável de ambiente nem de cron nesta rodada.
 
 ## UAT para o usuário
 
